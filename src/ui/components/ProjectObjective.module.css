@@ -1,0 +1,35 @@
+.root {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--base-size-8);
+  min-width: 0;
+}
+
+.outcome {
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-medium);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  font-style: italic;
+}
+
+/* Single line: outcome truncates with an ellipsis, the date label keeps its size. */
+.compact {
+  flex-wrap: nowrap;
+}
+
+.compact .outcome {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.compact > :not(.outcome) {
+  flex-shrink: 0;
+}
