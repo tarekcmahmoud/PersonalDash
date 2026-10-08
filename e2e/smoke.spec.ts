@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { goTo, openApp, type NavLabel } from './nav'
+import { goTo, openApp, openImport, type NavLabel } from './nav'
 
 const ROUTES: { label: NavLabel; heading: string }[] = [
   { label: 'Week', heading: 'Week' },
@@ -34,9 +34,7 @@ test('every route renders its heading without console or page errors', async ({ 
   }
 
   // Routes that are not in the main navigation.
-  await goTo(page, 'Projects')
-  await page.getByRole('link', { name: 'Import breakdown' }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Import breakdown' })).toBeVisible()
+  await openImport(page)
 
   await goTo(page, 'Projects')
   await page.getByRole('link', { name: 'Client website redesign' }).first().click()

@@ -10,15 +10,17 @@ function dayMenuLabel(date: Date): string {
   return `${weekday} ${month} ${date.getDate()}`
 }
 
-/** Hours planned, read from the capacity bar text "3.5h planned of 20h". */
+/** Hours planned, read from the capacity line "3.5 of 20h planned". */
 async function plannedHours(capacityText: Locator): Promise<number> {
   const text = await capacityText.innerText()
-  const m = /([\d.]+)h planned of/.exec(text)
+  const m = /^([\d.]+) of [\d.]+h planned/.exec(text.trim())
   if (!m) throw new Error(`Unexpected capacity text: ${text}`)
   return Number(m[1])
 }
 
-test('plan a neglected project task, pin it to today, and finish it from Today', async ({ page }) => {
+test('plan a neglected project task, move it to today on the Week board, and finish it from Today', async ({
+  page,
+}) => {
   await openApp(page)
   await goTo(page, 'Plan')
   await expect(page.getByRole('heading', { level: 1, name: 'Plan the week' })).toBeVisible()
@@ -27,7 +29,7 @@ test('plan a neglected project task, pin it to today, and finish it from Today',
   await expect(card.getByText('Nothing planned', { exact: true })).toBeVisible()
   await expect(card.getByText('0 planned', { exact: true })).toBeVisible()
 
-  const capacity = page.getByText(/h planned of /)
+  const capacity = page.getByText(/^[\d.]+ of [\d.]+h planned/)
   const before = await plannedHours(capacity)
 
   // Plan the task for this week.
@@ -39,17 +41,24 @@ test('plan a neglected project task, pin it to today, and finish it from Today',
   await expect(card.getByText('1 planned', { exact: true })).toBeVisible()
   await expect.poll(() => plannedHours(capacity)).toBeGreaterThan(before)
 
-  // Pin it to today from the "Planned this week" section.
-  const planned = page.getByText(/^Planned this week \(\d+\)$/)
-  await planned.click()
-  await page.getByRole('button', { name: `Pin "${TASK}" to a day` }).click()
+  // Week board: the task sits in "Any day"; move it to today with its "Move to…" menu.
+  await goTo(page, 'Week')
+  await expect(page.getByRole('heading', { level: 1, name: 'Week' })).toBeVisible()
+  const weekRow = page.getByTestId('task-row').filter({
+    has: page.getByRole('button', { name: TASK, exact: true }),
+  })
+  await expect(weekRow).toHaveCount(1)
+  await weekRow.hover()
+  await weekRow.getByRole('button', { name: `Move "${TASK}" to…` }).click()
   await page.getByRole('menuitem', { name: new RegExp(`^${dayMenuLabel(new Date())}\\b`) }).click()
 
-  // The task is now pinned to today and shows up on the Today page.
+  // The task is now pinned to today and shows up in the "Today" section of the Today page.
   await goTo(page, 'Today')
   await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
-  const pinned = page.getByRole('region', { name: /^Pinned for today/ })
-  const row = pinned.getByTestId('task-row').filter({
+  const todaySection = page
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { level: 2, name: 'Today', exact: true }) })
+  const row = todaySection.getByTestId('task-row').filter({
     has: page.getByRole('button', { name: TASK, exact: true }),
   })
   await expect(row).toHaveCount(1)
