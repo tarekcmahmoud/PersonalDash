@@ -324,7 +324,7 @@ function SettingsForm({ settings, children }: { settings: Settings; children?: R
           <FieldError>{errors.deadlineDays && `Deadline warning: ${errors.deadlineDays}`}</FieldError>
         </Block>
 
-        <div className="flex flex-wrap items-center gap-3 max-md:sticky max-md:bottom-14 max-md:z-[5] max-md:-mx-4 max-md:border-t max-md:bg-background/95 max-md:px-4 max-md:py-3 max-md:backdrop-blur">
+        <div className="flex flex-wrap items-center gap-3 max-md:sticky max-md:bottom-14 max-md:z-[5] max-md:-mx-4 max-md:border-t max-md:bg-card/95 max-md:px-4 max-md:py-3 max-md:backdrop-blur">
           <Button type="submit" disabled={!dirty || !valid || saving}>
             {saving ? 'Saving…' : 'Save settings'}
           </Button>

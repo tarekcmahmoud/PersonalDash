@@ -88,7 +88,7 @@ export function AppShell() {
 
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-10 flex border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-10 flex border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
         {NAV_ITEMS.filter((i) => i.primary).map((item) => {
           const active = isActive(pathname, item.to)

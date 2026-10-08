@@ -124,7 +124,7 @@ function SortableRow({
   return (
     <div
       ref={setNodeRef}
-      className={cn('relative', isDragging && 'z-10 bg-background opacity-90 shadow-sm')}
+      className={cn('relative', isDragging && 'z-10 bg-card opacity-90 shadow-sm')}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
       {children({ handle, isFirst, isLast, move: onMove })}

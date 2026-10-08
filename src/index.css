@@ -14,7 +14,8 @@
  */
 :root {
   --radius: 0.5rem;
-  --background: oklch(1 0 0);
+  /* Grey page (zinc-100) so white cards stand out. */
+  --background: oklch(0.967 0.001 286.375);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.141 0.005 285.823);
@@ -24,7 +25,7 @@
   --primary-foreground: oklch(0.141 0.005 285.823);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
+  --muted: oklch(0.975 0.001 286.375);
   --muted-foreground: oklch(0.552 0.016 285.938);
   --accent: oklch(0.967 0.001 286.375);
   --accent-foreground: oklch(0.21 0.006 285.885);
@@ -117,6 +118,10 @@
     /* Yellow is a fill colour only: links stay foreground. */
     .cn-button-variant-link {
       @apply text-foreground;
+    }
+    /* Outline buttons are white surfaces, like cards, rather than page-coloured. */
+    .cn-button-variant-outline {
+      @apply bg-card;
     }
   }
 }

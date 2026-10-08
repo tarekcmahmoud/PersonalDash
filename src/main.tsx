@@ -23,7 +23,11 @@ createRoot(document.getElementById('root')!).render(
           <BrowserRouter>
             <App />
           </BrowserRouter>
-          <Toaster position="bottom-center" />
+          {/* On phones, keep toasts above the fixed bottom tab bar. */}
+          <Toaster
+            position="bottom-center"
+            mobileOffset={{ bottom: 'calc(72px + env(safe-area-inset-bottom))' }}
+          />
         </TooltipProvider>
       </QueryClientProvider>
     </ServicesProvider>
