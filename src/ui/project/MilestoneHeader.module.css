@@ -1,0 +1,19 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  min-width: 0;
+  padding-bottom: var(--base-size-4);
+  border-bottom: var(--borderWidth-thin) solid var(--borderColor-default);
+}
+
+.name {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--text-title-size-small);
+}
+
+.menu {
+  margin-left: auto;
+}
