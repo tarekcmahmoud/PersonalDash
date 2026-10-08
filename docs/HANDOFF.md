@@ -17,7 +17,12 @@ or later.
 - **Verified so far:** typecheck, lint, 509 unit tests and 15 Playwright tests (memory mode, desktop and phone)
   all pass. **But the app has never run against a real Supabase project or real Google APIs.** Those paths have
   only been checked in these ways:
-  - Supabase data layer: mappers have unit tests; `src/data/supabaseRepo.ts` is only typechecked.
+  - Supabase data layer: mappers have unit tests. `src/data/supabaseRepo.ts` now passes an integration test
+    (`src/data/supabaseRepo.local.test.ts`) against real PostgREST + Postgres with the five migrations. The stack
+    is in `supabase/local/`, and auth there is a fake gateway. The test covers first load, concurrent first loads,
+    `insertBundle`, `setDependencies`, cascades, the system-project guard, paging past 1000 rows and RLS between
+    two users. The UI was also smoke-tested in supabase mode against that stack: sign-in, capture, import,
+    settings and sign-out. It found one bug, now fixed: timestamps came back as `+00:00` strings.
   - SQL: validated on a local Postgres 16 with stubbed `auth`/`storage` schemas (recipe below).
   - Google Calendar code: tested against mocked `fetch` and a mocked `google` global only.
 - **GitHub:** works from cloud sessions. Vercel deploys from GitHub.

@@ -24,6 +24,7 @@ import {
   taskFromRow,
   taskToRow,
   templateFromRow,
+  timestampFromRow,
   templateToRow,
   weekFromRow,
   weekToRow,
@@ -154,5 +155,32 @@ describe('supabase mappers round-trip', () => {
     expect(s.workHours.mon).toEqual({ start: '08:00', end: '12:00' })
     expect(s.workHours.tue).toEqual(DEFAULT_SETTINGS.workHours.tue)
     expect(s.sizeHours).toEqual({ ...DEFAULT_SETTINGS.sizeHours, S: 3 })
+  })
+})
+
+describe('timestamps from Postgres', () => {
+  it('normalises timestamptz output to toISOString format', () => {
+    expect(timestampFromRow('2026-10-08T12:00:00.123+00:00')).toBe('2026-10-08T12:00:00.123Z')
+    expect(timestampFromRow('2026-10-08T12:00:00+00:00')).toBe('2026-10-08T12:00:00.000Z')
+    expect(timestampFromRow('2026-10-08T12:00:00.123456+00:00')).toBe('2026-10-08T12:00:00.123Z')
+  })
+
+  it('applies to every timestamp column', () => {
+    const row = { ...taskToRow(makeTask({ title: 'T' })), created_at: '2026-10-08T12:00:00+00:00' }
+    expect(taskFromRow({ ...row, completed_at: '2026-10-09T08:30:00.5+00:00' })).toMatchObject({
+      createdAt: '2026-10-08T12:00:00.000Z',
+      completedAt: '2026-10-09T08:30:00.500Z',
+    })
+    expect(
+      weekFromRow({
+        week_start: '2026-10-05',
+        capacity_override: null,
+        reviewed_at: '2026-10-08T09:00:00+00:00',
+      }),
+    ).toMatchObject({ reviewedAt: '2026-10-08T09:00:00.000Z' })
+    const template = templateToRow(makeTemplate({ name: 'N', outline: '' }))
+    expect(templateFromRow({ ...template, updated_at: '2026-10-08T12:00:00+00:00' }).updatedAt).toBe(
+      '2026-10-08T12:00:00.000Z',
+    )
   })
 })

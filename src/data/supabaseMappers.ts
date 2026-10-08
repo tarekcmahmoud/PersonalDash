@@ -113,6 +113,17 @@ export interface SettingsRow {
   gcal_calendar_id: string | null
 }
 
+/**
+ * Postgres returns timestamptz as '2026-10-08T12:00:00.123+00:00' (or without the fraction); the app writes
+ * and compares Date.toISOString() strings ('…T12:00:00.123Z'), so normalise on the way in.
+ */
+export function timestampFromRow(value: string): string {
+  return new Date(value).toISOString()
+}
+
+const optionalTimestampFromRow = (value: string | null): string | null =>
+  value === null ? null : timestampFromRow(value)
+
 // ---- projects ----------------------------------------------------------------------------------------
 
 export function projectToRow(p: Project): ProjectRow {
@@ -141,7 +152,7 @@ export function projectFromRow(r: ProjectRow): Project {
     rank: r.rank,
     weeklyMin: r.weekly_min,
     isSystem: r.is_system,
-    createdAt: r.created_at,
+    createdAt: timestampFromRow(r.created_at),
   }
 }
 
@@ -210,10 +221,10 @@ export function taskFromRow(r: TaskRow): Task {
     weekStart: r.week_start,
     pinnedDay: r.pinned_day,
     slipCount: r.slip_count,
-    completedAt: r.completed_at,
+    completedAt: optionalTimestampFromRow(r.completed_at),
     gcalEventId: r.gcal_event_id,
     gcalDirty: r.gcal_dirty,
-    createdAt: r.created_at,
+    createdAt: timestampFromRow(r.created_at),
   }
 }
 
@@ -244,7 +255,7 @@ export function templateToRow(t: Template): TemplateRow {
 }
 
 export function templateFromRow(r: TemplateRow): Template {
-  return { id: r.id, name: r.name, outline: r.outline, updatedAt: r.updated_at }
+  return { id: r.id, name: r.name, outline: r.outline, updatedAt: timestampFromRow(r.updated_at) }
 }
 
 // ---- resources ---------------------------------------------------------------------------------------
@@ -275,7 +286,7 @@ export function resourceFromRow(r: ResourceRow): Resource {
     imagePath: r.image_path,
     workstreamIds: r.workstream_ids ?? [],
     position: r.position,
-    createdAt: r.created_at,
+    createdAt: timestampFromRow(r.created_at),
   }
 }
 
@@ -286,7 +297,11 @@ export function weekToRow(w: WeekMeta): WeekRow {
 }
 
 export function weekFromRow(r: WeekRow): WeekMeta {
-  return { weekStart: r.week_start, capacityOverride: r.capacity_override, reviewedAt: r.reviewed_at }
+  return {
+    weekStart: r.week_start,
+    capacityOverride: r.capacity_override,
+    reviewedAt: optionalTimestampFromRow(r.reviewed_at),
+  }
 }
 
 // ---- settings ----------------------------------------------------------------------------------------
