@@ -24,3 +24,5 @@ summarized in `docs/` and the JSDoc on the contracts below.
   (no semicolons, single quotes, width 110).
 - Checks that must pass: `npm run typecheck`, `npm run lint`, `npm test`.
 - Run the app without a backend: `npm run dev:memory`.
+- End-to-end: `npm run e2e` (Playwright, desktop 1280px + phone 390px, memory mode). The e2e specs rely on
+  the demo data in `src/data/seed.ts` (Inbox items, last-week leftovers, the XL task) — update them together.
