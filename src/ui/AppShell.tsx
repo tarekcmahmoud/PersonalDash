@@ -1,5 +1,6 @@
 import { KebabHorizontalIcon } from '@primer/octicons-react'
-import { ActionList, ActionMenu, CounterLabel, NavList } from '@primer/react'
+import { ActionList, ActionMenu, CounterLabel, NavList, Spinner } from '@primer/react'
+import { Suspense } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useSnapshot } from '../data/hooks'
 import { CalendarReconnectBanner, CalendarSync } from '../integrations/gcal/CalendarSync'
@@ -48,7 +49,9 @@ export function AppShell() {
         <div className={styles.banner}>
           <CalendarReconnectBanner />
         </div>
-        <Outlet />
+        <Suspense fallback={<Spinner aria-label="Loading" />}>
+          <Outlet />
+        </Suspense>
       </main>
 
       <nav className={styles.bottomBar} aria-label="Main">

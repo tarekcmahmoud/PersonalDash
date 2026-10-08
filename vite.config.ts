@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  // The main chunk is mostly Primer React (~130 kB gzipped); secondary routes and the backend load on demand.
+  build: { chunkSizeWarningLimit: 700 },
   test: {
     globals: true,
     environment: 'jsdom',

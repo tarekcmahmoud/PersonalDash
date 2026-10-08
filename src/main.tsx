@@ -16,13 +16,15 @@ root.setAttribute('data-color-mode', 'auto')
 root.setAttribute('data-light-theme', 'light')
 root.setAttribute('data-dark-theme', 'dark')
 
+const services = await createServices()
+
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true } } })
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider colorMode="auto">
       <BaseStyles>
-        <ServicesProvider services={createServices()}>
+        <ServicesProvider services={services}>
           <QueryClientProvider client={queryClient}>
             <BrowserRouter>
               <App />

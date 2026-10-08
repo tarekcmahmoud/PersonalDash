@@ -1,17 +1,21 @@
+import { lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './ui/AppShell'
 import { RequireAuth } from './ui/RequireAuth'
-import { ImportPage } from './ui/routes/ImportPage'
 import { InboxPage } from './ui/routes/InboxPage'
 import { LoginPage } from './ui/routes/LoginPage'
 import { PlanPage } from './ui/routes/PlanPage'
 import { ProjectPage } from './ui/routes/ProjectPage'
 import { ProjectsPage } from './ui/routes/ProjectsPage'
-import { ReviewPage } from './ui/routes/ReviewPage'
-import { SettingsPage } from './ui/routes/SettingsPage'
-import { TemplatesPage } from './ui/routes/TemplatesPage'
 import { TodayPage } from './ui/routes/TodayPage'
 import { WeekPage } from './ui/routes/WeekPage'
+
+const ImportPage = lazy(() => import('./ui/routes/ImportPage').then((m) => ({ default: m.ImportPage })))
+const ReviewPage = lazy(() => import('./ui/routes/ReviewPage').then((m) => ({ default: m.ReviewPage })))
+const SettingsPage = lazy(() => import('./ui/routes/SettingsPage').then((m) => ({ default: m.SettingsPage })))
+const TemplatesPage = lazy(() =>
+  import('./ui/routes/TemplatesPage').then((m) => ({ default: m.TemplatesPage })),
+)
 
 export function App() {
   return (
