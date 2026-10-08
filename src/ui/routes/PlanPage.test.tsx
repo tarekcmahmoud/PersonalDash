@@ -16,11 +16,12 @@ describe('PlanPage', () => {
     // Seed: sitemap M + homepage L + revenue M + long run M + dentist S + one follow-up S = 22h of 31.5h.
     expect(screen.getByText('22 of 31.5h planned')).toBeInTheDocument()
 
-    await user.click(website.getByRole('checkbox', { name: /Design content page templates/ }))
+    // Workstreams run in parallel, so Build's first task is offered next to Design's.
+    await user.click(website.getByRole('checkbox', { name: /Set up staging environment/ }))
 
-    await waitFor(() => expect(screen.getByText('26 of 31.5h planned')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('23 of 31.5h planned')).toBeInTheDocument())
     expect(website.getByText('3 planned')).toBeInTheDocument()
-    expect(website.getByRole('checkbox', { name: /Design content page templates/ })).toBeChecked()
+    expect(website.getByRole('checkbox', { name: /Set up staging environment/ })).toBeChecked()
   })
 
   it('shows XL tasks as disabled with "Split first"', async () => {

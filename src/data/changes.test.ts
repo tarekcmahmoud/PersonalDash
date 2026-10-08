@@ -10,6 +10,7 @@ const emptySnap = (over: Partial<Snapshot> = {}): Snapshot => ({
   checklist: [],
   templates: [],
   weeks: [],
+  resources: [],
   settings: structuredClone(DEFAULT_SETTINGS),
   ...over,
 })
@@ -262,5 +263,37 @@ describe('applyChange', () => {
     for (const change of changes) applyChange(s, change)
     expect(s).toEqual(before)
     expect(s.tasks[0]!.title).toBe('Task one')
+  })
+})
+
+describe('resources', () => {
+  it('saves, deletes, and cascades with projects and workstreams', async () => {
+    const { makeResource } = await import('../domain/factories')
+    const project = makeProject({ name: 'P' })
+    const ws1 = makeMilestone({ projectId: project.id, name: 'Design' })
+    const ws2 = makeMilestone({ projectId: project.id, name: 'Build' })
+    const r1 = makeResource({
+      projectId: project.id,
+      url: 'https://a.example',
+      workstreamIds: [ws1.id, ws2.id],
+    })
+    const r2 = makeResource({ projectId: project.id, url: 'https://b.example' })
+    let s = emptySnap({ projects: [project], milestones: [ws1, ws2] })
+
+    s = applyChange(s, { kind: 'saveResources', resources: [r1, r2] })
+    expect(s.resources.map((r) => r.url)).toEqual(['https://a.example', 'https://b.example'])
+    s = applyChange(s, { kind: 'saveResources', resources: [{ ...r2, title: 'B' }] })
+    expect(s.resources.find((r) => r.id === r2.id)?.title).toBe('B')
+
+    // Deleting a workstream unlinks it from resources (the resource stays).
+    s = applyChange(s, { kind: 'deleteMilestone', id: ws1.id })
+    expect(s.resources.find((r) => r.id === r1.id)?.workstreamIds).toEqual([ws2.id])
+
+    s = applyChange(s, { kind: 'deleteResource', id: r2.id })
+    expect(s.resources.map((r) => r.id)).toEqual([r1.id])
+
+    // Deleting the project removes its resources.
+    s = applyChange(s, { kind: 'deleteProject', id: project.id })
+    expect(s.resources).toEqual([])
   })
 })

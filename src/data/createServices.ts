@@ -14,7 +14,8 @@ export async function createServices(): Promise<Services> {
   if (dataMode() === 'supabase') {
     const url = import.meta.env.VITE_SUPABASE_URL
     const key = import.meta.env.VITE_SUPABASE_ANON_KEY
-    if (!url || !key) throw new Error('VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set in supabase mode')
+    if (!url || !key)
+      throw new Error('VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set in supabase mode')
     const { createSupabaseServices } = await import('./supabaseRepo')
     return createSupabaseServices(url, key)
   }

@@ -1,5 +1,6 @@
 import {
   makeChecklistItem,
+  makeResource,
   makeMilestone,
   makeProject,
   makeSystemProject,
@@ -395,7 +396,66 @@ export function seedSnapshot(today: string): Snapshot {
     templates: [template],
     weeks: [],
     settings: structuredClone(DEFAULT_SETTINGS),
+    resources: websiteResources(website.id, { discovery: discovery.id, design: design.id, build: build.id }),
   }
+}
+
+/** A soft, offline placeholder image (SVG data URI) so seeded cards show what an image looks like. */
+const placeholderImage = (hue: number): string =>
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">` +
+      `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${hue} 80% 88%)"/>` +
+      `<stop offset="1" stop-color="hsl(${hue + 40} 70% 72%)"/></linearGradient></defs>` +
+      `<rect width="640" height="360" fill="url(#g)"/><circle cx="500" cy="90" r="60" fill="white" fill-opacity=".35"/></svg>`,
+  )
+
+/** Demo resources for the website project, linked to its workstreams (one project-wide). */
+function websiteResources(projectId: string, ws: { discovery: string; design: string; build: string }) {
+  return [
+    makeResource({
+      projectId,
+      position: 0,
+      url: 'https://example.com/client-brief',
+      title: 'Client brief',
+      description: 'Goals, audience and must-haves agreed at kickoff.',
+      workstreamIds: [ws.discovery],
+    }),
+    makeResource({
+      projectId,
+      position: 1,
+      url: 'https://example.com/brand-guidelines',
+      title: 'Brand guidelines',
+      description: 'Logo usage, colours and type scale for the new site.',
+      imageUrl: placeholderImage(45),
+      workstreamIds: [ws.design],
+    }),
+    makeResource({
+      projectId,
+      position: 2,
+      url: 'https://example.com/competitors',
+      title: 'Competitor moodboard',
+      description: 'Sites the client likes, with notes on what to borrow.',
+      imageUrl: placeholderImage(200),
+      workstreamIds: [ws.discovery, ws.design],
+    }),
+    makeResource({
+      projectId,
+      position: 3,
+      url: 'https://example.com/hosting',
+      title: 'Hosting dashboard',
+      description: 'Staging and production environments.',
+      workstreamIds: [ws.build],
+    }),
+    makeResource({
+      projectId,
+      position: 4,
+      url: 'https://drive.example.com/website-redesign',
+      title: '',
+      description: 'Shared project folder: contracts, invoices and assets.',
+      workstreamIds: [],
+    }),
+  ]
 }
 
 /** Empty snapshot: DEFAULT_SETTINGS + the system project only. */
@@ -409,5 +469,6 @@ export function emptySnapshot(): Snapshot {
     templates: [],
     weeks: [],
     settings: structuredClone(DEFAULT_SETTINGS),
+    resources: [],
   }
 }

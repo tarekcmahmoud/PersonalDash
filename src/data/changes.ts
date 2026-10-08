@@ -5,6 +5,7 @@ import type {
   ID,
   Milestone,
   Project,
+  Resource,
   Settings,
   Snapshot,
   Task,
@@ -19,10 +20,10 @@ import type {
  */
 export type Change =
   | { kind: 'saveProjects'; projects: Project[] }
-  /** Cascades: milestones, tasks (and their checklist + dependencies). System projects are never deleted. */
+  /** Cascades: milestones, tasks (and their checklist + dependencies), resources. System projects are never deleted. */
   | { kind: 'deleteProject'; id: ID }
   | { kind: 'saveMilestones'; milestones: Milestone[] }
-  /** Cascades: the milestone's tasks (and their checklist + dependencies). */
+  /** Cascades: the milestone's tasks (and their checklist + dependencies); removes it from resources' workstreamIds. */
   | { kind: 'deleteMilestone'; id: ID }
   | { kind: 'saveTasks'; tasks: Task[] }
   /** Cascades: checklist items, and dependencies where the task is either side. */
@@ -38,6 +39,9 @@ export type Change =
   | { kind: 'saveSettings'; settings: Settings }
   /** Insert new entities (outline import / new from template). */
   | { kind: 'insertBundle'; bundle: EntityBundle }
+  | { kind: 'saveResources'; resources: Resource[] }
+  /** Deletes the resource row only; deleting an uploaded image is a separate Repo.deleteImage call. */
+  | { kind: 'deleteResource'; id: ID }
 
 /** Replace items that share a key with an existing entry; append the rest in input order. */
 function upsertBy<T>(list: readonly T[], items: readonly T[], keyOf: (item: T) => string): T[] {
@@ -82,6 +86,7 @@ export function applyChange(snapshot: Snapshot, change: Change): Snapshot {
           ...snapshot,
           projects: snapshot.projects.filter((p) => p.id !== change.id),
           milestones: snapshot.milestones.filter((m) => m.projectId !== change.id),
+          resources: snapshot.resources.filter((r) => r.projectId !== change.id),
         },
         taskIds,
       )
@@ -96,7 +101,15 @@ export function applyChange(snapshot: Snapshot, change: Change): Snapshot {
     case 'deleteMilestone': {
       const taskIds = idsOf(snapshot.tasks.filter((t) => t.milestoneId === change.id))
       return dropTasks(
-        { ...snapshot, milestones: snapshot.milestones.filter((m) => m.id !== change.id) },
+        {
+          ...snapshot,
+          milestones: snapshot.milestones.filter((m) => m.id !== change.id),
+          resources: snapshot.resources.map((r) =>
+            r.workstreamIds.includes(change.id)
+              ? { ...r, workstreamIds: r.workstreamIds.filter((id) => id !== change.id) }
+              : r,
+          ),
+        },
         taskIds,
       )
     }
@@ -145,6 +158,12 @@ export function applyChange(snapshot: Snapshot, change: Change): Snapshot {
         checklist: [...snapshot.checklist, ...bundle.checklist],
       }
     }
+
+    case 'saveResources':
+      return { ...snapshot, resources: upsertBy(snapshot.resources, change.resources, (r) => r.id) }
+
+    case 'deleteResource':
+      return { ...snapshot, resources: snapshot.resources.filter((r) => r.id !== change.id) }
 
     default: {
       const _never: never = change

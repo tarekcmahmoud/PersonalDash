@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PlanContext } from '../domain/context'
-import type { ISODate, Snapshot, Task } from '../domain/types'
+import type { ISODate, Resource, Snapshot, Task } from '../domain/types'
 import { todayISO, weekStartOf } from '../domain/week'
 import { useCalendarEvents } from '../integrations/gcal/useCalendarEvents'
 import { applyChange, type Change } from './changes'
@@ -75,4 +75,20 @@ export function usePlanContext(weekStart?: ISODate): PlanContext | null {
   const ws = weekStart ?? weekStartOf(today)
   const events = useCalendarEvents(ws)
   return useMemo(() => (data ? { ...data, weekStart: ws, today, events } : null), [data, ws, today, events])
+}
+
+/**
+ * A displayable src for a resource image: the uploaded image (resolved through the Repo, cached ~50 min since
+ * signed URLs expire) or the pasted link. null while resolving or when there is no image.
+ */
+export function useImageSrc(resource: Pick<Resource, 'imagePath' | 'imageUrl'>): string | null {
+  const { repo } = useServices()
+  const path = resource.imagePath
+  const { data } = useQuery({
+    queryKey: ['image', path],
+    queryFn: () => repo.imageUrl(path!),
+    enabled: !!path,
+    staleTime: 50 * 60_000,
+  })
+  return path ? (data ?? null) : resource.imageUrl
 }

@@ -1,5 +1,5 @@
 import { newId, nowISO } from './ids'
-import type { ChecklistItem, Milestone, Project, Task, Template } from './types'
+import type { ChecklistItem, Milestone, Project, Resource, Task, Template } from './types'
 
 // Defaults for new entities. Callers pass whatever they know; ids/timestamps are generated.
 
@@ -63,4 +63,18 @@ export function makeSystemProject(): Project {
     isSystem: true,
     rank: 1_000_000,
   })
+}
+
+export function makeResource(r: Partial<Resource> & Pick<Resource, 'projectId' | 'url'>): Resource {
+  return {
+    id: newId(),
+    title: '',
+    description: '',
+    imageUrl: null,
+    imagePath: null,
+    workstreamIds: [],
+    position: 0,
+    createdAt: nowISO(),
+    ...r,
+  }
 }

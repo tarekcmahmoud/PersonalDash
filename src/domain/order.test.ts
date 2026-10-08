@@ -3,7 +3,9 @@ import {
   explicitBlockerIds,
   isReady,
   nextTask,
+  nextTasks,
   orderedProjectTasks,
+  projectWorkstreams,
   unfinishedBlockers,
   wouldCreateCycle,
 } from './order'
@@ -111,10 +113,19 @@ describe('unfinishedBlockers (implicit rule)', () => {
     expect(unfinishedBlockers(tasks[2]!, ctxOf(tasks))).toEqual([])
   })
 
-  it('the predecessor crosses milestone boundaries', () => {
-    const m = makeMilestone({ id: 'm1', projectId: P, name: 'm', position: 0 })
-    const tasks = [task('loose'), task('inMs', { milestoneId: 'm1' })]
-    expect(ids(unfinishedBlockers(tasks[1]!, ctxOf(tasks, [m])))).toEqual(['loose'])
+  it('workstreams run in parallel: the first task of a stream has no implicit predecessor', () => {
+    const m1 = makeMilestone({ id: 'm1', projectId: P, name: 'Design', position: 0 })
+    const m2 = makeMilestone({ id: 'm2', projectId: P, name: 'Build', position: 1 })
+    const tasks = [
+      task('loose'),
+      task('d1', { milestoneId: 'm1' }),
+      task('d2', { milestoneId: 'm1', position: 1 }),
+      task('b1', { milestoneId: 'm2' }),
+    ]
+    const ctx = ctxOf(tasks, [m1, m2])
+    expect(unfinishedBlockers(tasks[1]!, ctx)).toEqual([]) // d1: not blocked by 'loose'
+    expect(unfinishedBlockers(tasks[3]!, ctx)).toEqual([]) // b1: not blocked by d2
+    expect(ids(unfinishedBlockers(tasks[2]!, ctx))).toEqual(['d1']) // within a stream, order still holds
   })
 
   it('inbox tasks have no implicit predecessor', () => {
@@ -271,5 +282,38 @@ describe('explicitBlockerIds / wouldCreateCycle', () => {
 
   it('works with an empty graph', () => {
     expect(wouldCreateCycle('a', 'b', [])).toBe(false)
+  })
+})
+
+describe('workstreams', () => {
+  const m1 = makeMilestone({ id: 'm1', projectId: P, name: 'Design', position: 1 })
+  const m2 = makeMilestone({ id: 'm2', projectId: P, name: 'Build', position: 0 })
+  const empty = makeMilestone({ id: 'm3', projectId: P, name: 'Launch', position: 2 })
+
+  it('groups tasks by stream: loose first, then streams by position (empty ones included)', () => {
+    const tasks = [task('loose'), task('d1', { milestoneId: 'm1' }), task('b1', { milestoneId: 'm2' })]
+    const streams = projectWorkstreams(P, ctxOf(tasks, [m1, m2, empty]))
+    expect(streams.map((w) => [w.id, ids(w.tasks)])).toEqual([
+      [null, ['loose']],
+      ['m2', ['b1']],
+      ['m1', ['d1']],
+      ['m3', []],
+    ])
+    expect(projectWorkstreams(P, ctxOf([task('d1', { milestoneId: 'm1' })], [m1]))[0]!.id).toBe('m1')
+  })
+
+  it('has one next step per stream', () => {
+    const tasks = [
+      task('d1', { milestoneId: 'm1', status: 'done' }),
+      task('d2', { milestoneId: 'm1', position: 1 }),
+      task('b1', { milestoneId: 'm2', status: 'waiting' }),
+      task('b2', { milestoneId: 'm2', position: 1 }),
+    ]
+    const ctx = ctxOf(tasks, [m1, m2])
+    // Build's b2 waits behind the waiting b1, so only Design has a next step.
+    expect(ids(nextTasks(P, ctx))).toEqual(['d2'])
+    const ctx2 = ctxOf([...tasks, task('loose')], [m1, m2])
+    expect(ids(nextTasks(P, ctx2))).toEqual(['loose', 'd2'])
+    expect(nextTask(P, ctx2)?.id).toBe('loose')
   })
 })

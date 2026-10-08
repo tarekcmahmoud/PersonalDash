@@ -32,6 +32,10 @@ export interface Project {
   createdAt: ISODateTime
 }
 
+/**
+ * A workstream of a project (named "milestone" in code and storage for historical reasons; the UI says
+ * "workstream"). Workstreams run in PARALLEL: each has its own task order and its own next task.
+ */
 export interface Milestone {
   id: ID
   projectId: ID
@@ -162,6 +166,26 @@ export interface CalendarEvent {
   busy: boolean
 }
 
+/** A link saved on a project page (an article, doc, tool, folder…), shown as a card in the resources grid. */
+export interface Resource {
+  id: ID
+  projectId: ID
+  url: string
+  /** Optional; the UI falls back to the link's hostname. */
+  title: string
+  /** Short description (one or two sentences). */
+  description: string
+  /** Pasted image link (external). Ignored when imagePath is set. */
+  imageUrl: string | null
+  /** Uploaded image: storage path returned by Repo.uploadImage (display via Repo.imageUrl). */
+  imagePath: string | null
+  /** Linked workstreams (Milestone ids). Empty = project-wide. */
+  workstreamIds: ID[]
+  /** Order in the grid; lower first. */
+  position: number
+  createdAt: ISODateTime
+}
+
 /** Everything the app holds for the signed-in user. Data volumes are small, so the UI works off one snapshot. */
 export interface Snapshot {
   projects: Project[]
@@ -172,6 +196,7 @@ export interface Snapshot {
   templates: Template[]
   weeks: WeekMeta[]
   settings: Settings
+  resources: Resource[]
 }
 
 /** A set of new entities created together (e.g. an outline import). */

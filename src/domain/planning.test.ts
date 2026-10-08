@@ -20,6 +20,7 @@ function ctxOf(
     checklist: [],
     templates: [],
     weeks: [],
+    resources: [],
     settings: DEFAULT_SETTINGS,
     weekStart: WEEK,
     today: TODAY,
@@ -368,5 +369,21 @@ describe('buildPickList: ordering', () => {
     const projects = [proj('c', { rank: 3 }), proj('a', { rank: 1 })]
     buildPickList(ctxOf(projects))
     expect(projects.map((p) => p.id)).toEqual(['c', 'a'])
+  })
+})
+
+describe('buildPickList across parallel workstreams', () => {
+  it('interleaves streams so each stream’s next step comes first', async () => {
+    const { makeMilestone, makeProject, makeTask } = await import('./factories')
+    const project = makeProject({ id: 'p', name: 'P', rank: 1 })
+    const a = makeMilestone({ id: 'a', projectId: 'p', name: 'A', position: 0 })
+    const b = makeMilestone({ id: 'b', projectId: 'p', name: 'B', position: 1 })
+    const t = (id: string, milestoneId: string, position: number) =>
+      makeTask({ id, title: id, projectId: 'p', milestoneId, position, size: 'S' })
+    const tasks = [t('a1', 'a', 0), t('a2', 'a', 1), t('a3', 'a', 2), t('b1', 'b', 0), t('b2', 'b', 1)]
+    const [group] = buildPickList(ctxOf([project], tasks, { milestones: [a, b] }), { p: 4 })
+    expect(group!.candidates.map((c) => c.task.id)).toEqual(['a1', 'b1', 'a2', 'b2'])
+    expect(group!.candidates.find((c) => c.task.id === 'b1')!.selectable).toBe(true)
+    expect(group!.hasMore).toBe(true)
   })
 })

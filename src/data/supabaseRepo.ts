@@ -173,6 +173,7 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
       dependencies: dependencies.map(dependencyFromRow),
       checklist: checklist.map(checklistItemFromRow),
       templates: templates.map(templateFromRow),
+      resources: [], // TODO(resources): load from the resources table (migration 0004)
       weeks: weeks.map(weekFromRow),
       settings,
     }
@@ -258,6 +259,9 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
       }
       case 'insertBundle':
         return insertBundle(change.bundle)
+      case 'saveResources':
+      case 'deleteResource':
+        throw new Error('Supabase: resources are not supported yet') // TODO(resources)
       default: {
         const _exhaustive: never = change
         throw new Error(`Supabase: unsupported change ${JSON.stringify(_exhaustive)}`)
@@ -265,5 +269,8 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
     }
   }
 
-  return { loadSnapshot, apply }
+  const notYet = async (): Promise<never> => {
+    throw new Error('Supabase: image storage is not supported yet') // TODO(resources)
+  }
+  return { loadSnapshot, apply, uploadImage: notYet, imageUrl: notYet, deleteImage: notYet }
 }

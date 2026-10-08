@@ -13,6 +13,7 @@ import { seedSnapshot } from './seed'
 export function createMemoryRepo(initial?: Snapshot, opts?: { latencyMs?: number }): Repo {
   let state = initial ?? seedSnapshot(todayISO())
   const latencyMs = opts?.latencyMs ?? 0
+  const images = new Map<string, string>()
 
   const delay = async (): Promise<void> => {
     if (latencyMs > 0) await new Promise((resolve) => setTimeout(resolve, latencyMs))
@@ -27,7 +28,32 @@ export function createMemoryRepo(initial?: Snapshot, opts?: { latencyMs?: number
       await delay()
       state = applyChange(state, change)
     },
+    // Images live in this browser session only (object URLs), like the rest of memory mode.
+    async uploadImage(file) {
+      await delay()
+      checkImage(file)
+      const path = `memory/${crypto.randomUUID()}-${file.name}`
+      images.set(path, URL.createObjectURL(file))
+      return path
+    },
+    async imageUrl(path) {
+      const url = images.get(path)
+      if (!url) throw new Error(`No stored image at ${path}`)
+      return url
+    },
+    async deleteImage(path) {
+      const url = images.get(path)
+      if (url) URL.revokeObjectURL(url)
+      images.delete(path)
+    },
   }
+}
+
+/** Upload rules shared by every backend: images only, at most 5 MB. */
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+export function checkImage(file: File): void {
+  if (!file.type.startsWith('image/')) throw new Error('Only image files can be uploaded.')
+  if (file.size > MAX_IMAGE_BYTES) throw new Error('Images must be 5 MB or smaller.')
 }
 
 /**
