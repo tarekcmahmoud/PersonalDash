@@ -26,7 +26,7 @@ test('import the worked example outline into a new project', async ({ page }) =>
     await page.getByRole('radio', { name: 'Preview', exact: true }).click()
   }
   const preview = page.getByTestId('outline-preview')
-  await expect(preview).toContainText('4 milestones')
+  await expect(preview).toContainText('4 workstreams')
   await expect(preview).toContainText('Newsletter landing page')
 
   // The objective form is prefilled from the outline.
@@ -46,16 +46,17 @@ test('import the worked example outline into a new project', async ({ page }) =>
   // Lands on the new project page.
   await expect(page.getByRole('heading', { level: 1, name: 'Newsletter landing page' })).toBeVisible()
   await expect(page).toHaveURL(/\/projects\/[^/]+$/)
-  for (const milestone of ['Foundations', 'Content', 'Build', 'Launch']) {
-    await expect(page.getByRole('heading', { level: 2, name: milestone })).toBeVisible()
+  // On phones the workstreams pane is the default; the headings are the workstream cards.
+  for (const workstream of ['Setup', 'Content', 'Build', 'Launch']) {
+    await expect(page.getByText(workstream, { exact: true }).first()).toBeVisible()
   }
 
-  // The first task (outside any milestone) is the project's next step.
+  // Workstreams run in parallel: the loose first task, Setup and Content each have a next step; Build and
+  // Launch wait on tasks in other workstreams (after: links), so they have none yet.
   const first = page.getByTestId('task-row').filter({
     has: page.getByRole('button', { name: 'Write a one-paragraph pitch for the newsletter', exact: true }),
   })
   await expect(first).toHaveCount(1)
   await expect(first.getByText('Next', { exact: true })).toBeVisible()
-  // Only one task carries the label.
-  await expect(page.getByText('Next', { exact: true })).toHaveCount(1)
+  await expect(page.getByText('Next', { exact: true })).toHaveCount(3)
 })

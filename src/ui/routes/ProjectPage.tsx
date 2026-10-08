@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import { useApply, usePlanContext } from '../../data/hooks'
+import { useServices } from '../../data/services'
 import { projectHealth } from '../../domain/health'
 import { nextTasks, projectWorkstreams } from '../../domain/order'
 import type { ProjectStatus } from '../../domain/types'
@@ -40,6 +41,7 @@ export function ProjectPage() {
   const { projectId } = useParams()
   const ctx = usePlanContext()
   const apply = useApply()
+  const { repo } = useServices()
   const navigate = useNavigate()
   const { open } = useTaskParam()
   const [editing, setEditing] = useState(false)
@@ -93,7 +95,10 @@ export function ProjectPage() {
     void apply({ kind: 'saveProjects', projects: [{ ...project, status }] })
 
   const remove = async () => {
+    // Uploaded resource images live in storage, outside the project's rows: remove them too (best effort).
+    const images = resources.flatMap((r) => (r.imagePath ? [r.imagePath] : []))
     await apply({ kind: 'deleteProject', id: project.id })
+    await Promise.allSettled(images.map((path) => repo.deleteImage(path)))
     navigate('/projects')
   }
 
