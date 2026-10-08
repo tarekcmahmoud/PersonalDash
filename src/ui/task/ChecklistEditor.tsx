@@ -1,9 +1,10 @@
-import { ChevronDownIcon, ChevronUpIcon, TrashIcon } from '@primer/octicons-react'
-import { Checkbox, IconButton, TextInput } from '@primer/react'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { useState } from 'react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { makeChecklistItem } from '../../domain/factories'
 import type { ChecklistItem, ID } from '../../domain/types'
-import styles from './TaskDialog.module.css'
+import { RowMenu } from '../project/RowMenu'
 
 /** Add, toggle, rename, delete and reorder checklist items. Fully controlled; the dialog saves them. */
 export function ChecklistEditor({
@@ -33,49 +34,43 @@ export function ChecklistEditor({
   }
 
   return (
-    <div className={styles.checklist}>
+    <div className="grid gap-1">
       {items.map((item, index) => (
-        <div key={item.id} className={styles.checkItem}>
-          <label className={styles.checkBox}>
+        <div key={item.id} className="group flex items-center gap-2">
+          <label className="-ml-1 flex size-8 shrink-0 cursor-pointer items-center justify-center">
             <Checkbox
               checked={item.done}
-              onChange={() => patch(item.id, { done: !item.done })}
+              onCheckedChange={() => patch(item.id, { done: !item.done })}
               aria-label={`Done: ${item.text}`}
             />
           </label>
-          <TextInput
-            className={styles.checkText}
-            block
+          <Input
             value={item.text}
             aria-label={`Checklist item ${index + 1}`}
+            className="h-8 border-transparent bg-transparent px-2 shadow-none hover:border-input focus-visible:border-ring dark:bg-transparent"
             onChange={(e) => patch(item.id, { text: e.target.value })}
           />
-          <IconButton
-            icon={ChevronUpIcon}
-            variant="invisible"
-            aria-label={`Move up: ${item.text}`}
-            disabled={index === 0}
-            onClick={() => move(index, -1)}
-          />
-          <IconButton
-            icon={ChevronDownIcon}
-            variant="invisible"
-            aria-label={`Move down: ${item.text}`}
-            disabled={index === items.length - 1}
-            onClick={() => move(index, 1)}
-          />
-          <IconButton
-            icon={TrashIcon}
-            variant="invisible"
-            aria-label={`Delete: ${item.text}`}
-            onClick={() => onChange(items.filter((i) => i.id !== item.id))}
+          <RowMenu
+            label={`Checklist item actions: ${item.text}`}
+            controls={{
+              isFirst: index === 0,
+              isLast: index === items.length - 1,
+              move: (delta) => move(index, delta),
+            }}
+            extra={
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={() => onChange(items.filter((i) => i.id !== item.id))}
+              >
+                Delete item
+              </DropdownMenuItem>
+            }
           />
         </div>
       ))}
-      <TextInput
-        block
+      <Input
         value={text}
-        placeholder="Add a checklist item and press Enter"
+        placeholder="Add a checklist item, then Enter"
         aria-label="New checklist item"
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {

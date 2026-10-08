@@ -1,10 +1,10 @@
-import { XIcon } from '@primer/octicons-react'
-import { IconButton, Select } from '@primer/react'
-import { InlineMessage } from '@primer/react/experimental'
+import { X } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 import { orderedProjectTasks, wouldCreateCycle } from '../../domain/order'
 import type { Dependency, ID, Milestone, Task } from '../../domain/types'
-import styles from './TaskDialog.module.css'
 
 interface Props {
   task: Task
@@ -60,52 +60,59 @@ export function BlockedByEditor({
   }
 
   return (
-    <div className={styles.blockers}>
+    <div className="grid gap-2">
       {value.length === 0 ? (
-        <p className={styles.hint}>
+        <p className="text-xs text-muted-foreground">
           No explicit blockers: this task simply follows the previous task in the project.
         </p>
       ) : (
-        <ul className={styles.blockerList}>
+        <ul className="grid gap-0.5">
           {value.map((id) => {
             const t = byId.get(id)
             return (
-              <li key={id} className={styles.blockerItem}>
-                <span className={t?.status === 'done' ? styles.doneText : undefined}>
+              <li key={id} className="flex items-center justify-between gap-2 text-sm">
+                <span
+                  className={cn(
+                    'min-w-0 truncate',
+                    t?.status === 'done' && 'text-muted-foreground line-through',
+                  )}
+                >
                   {t?.title ?? 'Unknown task'}
                 </span>
-                <IconButton
-                  icon={XIcon}
-                  variant="invisible"
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground"
                   aria-label={`Remove blocker: ${t?.title ?? id}`}
                   onClick={() => {
                     setError(null)
                     onChange(value.filter((v) => v !== id))
                   }}
-                />
+                >
+                  <X />
+                </Button>
               </li>
             )
           })}
         </ul>
       )}
-      <Select
-        block
-        value=""
-        aria-label="Add a blocker"
-        disabled={candidates.length === 0}
-        onChange={(e) => add(e.target.value)}
-      >
-        <Select.Option value="">Add a blocker…</Select.Option>
-        {candidates.map((t) => (
-          <Select.Option key={t.id} value={t.id}>
-            {milestoneName(t) ? `${milestoneName(t)} · ${t.title}` : t.title}
-          </Select.Option>
-        ))}
+      <Select value="" onValueChange={add} disabled={candidates.length === 0}>
+        <SelectTrigger aria-label="Add a blocker" className="w-full">
+          <SelectValue placeholder="Add a blocker…" />
+        </SelectTrigger>
+        <SelectContent>
+          {candidates.map((t) => (
+            <SelectItem key={t.id} value={t.id}>
+              {milestoneName(t) ? `${milestoneName(t)} · ${t.title}` : t.title}
+            </SelectItem>
+          ))}
+        </SelectContent>
       </Select>
       {error && (
-        <InlineMessage variant="critical" role="alert">
+        <p role="alert" className="text-sm text-destructive">
           {error}
-        </InlineMessage>
+        </p>
       )}
     </div>
   )

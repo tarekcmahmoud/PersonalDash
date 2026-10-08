@@ -72,7 +72,7 @@ describe('InboxPage', () => {
     const snapshot = structuredClone(seed)
     snapshot.tasks = snapshot.tasks.filter((t) => t.projectId !== null)
     renderWithApp(<InboxPage />, { snapshot })
-    expect(await screen.findByText('Inbox zero')).toBeInTheDocument()
+    expect(await screen.findByText('Inbox zero. Nothing waiting to be filed.')).toBeInTheDocument()
   })
 
   it('opens the task dialog via the ?task= param', async () => {

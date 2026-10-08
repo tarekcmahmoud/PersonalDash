@@ -30,17 +30,54 @@ describe('ProjectPage', () => {
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
     expect(headings).toEqual(['Discovery', 'Design', 'Build'])
 
-    // Exactly one "Next" label, on the first ready task.
+    // Exactly one grey "Next", on the first ready task.
     expect(screen.getAllByText('Next')).toHaveLength(1)
     expect(within(rowOf('Draft sitemap')).getByText('Next')).toBeInTheDocument()
-    expect(within(rowOf('Draft sitemap')).queryByText(/Blocked by/)).not.toBeInTheDocument()
+    expect(within(rowOf('Draft sitemap')).queryByText(/After:/)).not.toBeInTheDocument()
 
-    // The following task waits for its predecessor.
-    expect(within(rowOf('Design homepage')).getByText('Blocked by: Draft sitemap')).toBeInTheDocument()
-    expect(rowOf('Design homepage').className).toMatch(/muted/)
+    // The following task waits for its predecessor: muted, with a grey note.
+    expect(within(rowOf('Design homepage')).getByText('After: Draft sitemap')).toBeInTheDocument()
+    expect(rowOf('Design homepage')).toHaveClass('opacity-50')
 
     // Done tasks are collapsed per group.
-    expect(screen.getByText('3 done').closest('details')).not.toHaveAttribute('open')
+    expect(screen.getByRole('button', { name: '3 done' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('button', { name: 'Kickoff call with client' })).not.toBeInTheDocument()
+  })
+
+  it('has no visible status/edit/delete buttons, only a … menu', async () => {
+    const user = userEvent.setup()
+    renderPage({ route })
+    await screen.findByRole('heading', { level: 1, name: 'Client website redesign' })
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Project actions' }))
+    expect(await screen.findByRole('menuitem', { name: 'Edit project…' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Delete project…' })).toBeInTheDocument()
+  })
+
+  it('changes the project status from the … menu', async () => {
+    const user = userEvent.setup()
+    const { snapshot } = renderPage({ route })
+    await user.click(await screen.findByRole('button', { name: 'Project actions' }))
+    await user.click(await screen.findByRole('menuitemradio', { name: 'On hold' }))
+    await waitFor(async () => {
+      expect((await snapshot()).projects.find((p) => p.id === website.id)!.status).toBe('on_hold')
+    })
+  })
+
+  it('edits the project from the … menu', async () => {
+    const user = userEvent.setup()
+    const { snapshot } = renderPage({ route })
+    await user.click(await screen.findByRole('button', { name: 'Project actions' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit project…' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Edit project' })
+    const name = within(dialog).getByRole('textbox', { name: 'Name' })
+    await user.clear(name)
+    await user.type(name, 'Website v2')
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(async () => {
+      expect((await snapshot()).projects.find((p) => p.id === website.id)!.name).toBe('Website v2')
+    })
   })
 
   it('lists explicit blockers by title', async () => {
@@ -48,7 +85,7 @@ describe('ProjectPage', () => {
     renderPage({ route: `/projects/${designer.id}` })
     await screen.findByRole('heading', { level: 1, name: 'Hire a designer' })
     expect(
-      within(rowOf('Review applications and shortlist')).getByText('Blocked by: Publish job post'),
+      within(rowOf('Review applications and shortlist')).getByText('After: Publish job post'),
     ).toBeInTheDocument()
   })
 
@@ -72,9 +109,12 @@ describe('ProjectPage', () => {
     expect(screen.getByTestId('location')).toHaveTextContent(`task=${sitemap.id}`)
   })
 
-  it('adds a task from the quick-add input at the end of its milestone', async () => {
+  it('adds a task from the inline "Add task" row at the end of its milestone', async () => {
     const user = userEvent.setup()
     const { snapshot } = renderPage({ route })
+    expect(await screen.findByRole('button', { name: 'Add task to Design' })).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'New task in Design' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Add task to Design' }))
     const input = await screen.findByRole('textbox', { name: 'New task in Design' })
     await user.type(input, 'Review mockups{Enter}')
 
@@ -85,10 +125,20 @@ describe('ProjectPage', () => {
     })
   })
 
-  it('reorders open tasks within a group with the move buttons', async () => {
+  it('cancels the inline add row with Escape', async () => {
     const user = userEvent.setup()
     const { snapshot } = renderPage({ route })
-    await user.click(await screen.findByRole('button', { name: 'Move up: Design homepage' }))
+    await user.click(await screen.findByRole('button', { name: 'Add task to Design' }))
+    await user.type(await screen.findByRole('textbox', { name: 'New task in Design' }), 'Nope{Escape}')
+    expect(screen.queryByRole('textbox', { name: 'New task in Design' })).not.toBeInTheDocument()
+    expect((await snapshot()).tasks.some((t) => t.title === 'Nope')).toBe(false)
+  })
+
+  it('reorders open tasks within a group with the row menu', async () => {
+    const user = userEvent.setup()
+    const { snapshot } = renderPage({ route })
+    await user.click(await screen.findByRole('button', { name: 'Task actions: Design homepage' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Move up' }))
 
     await waitFor(async () => {
       const tasks = (await snapshot()).tasks
@@ -102,15 +152,44 @@ describe('ProjectPage', () => {
     const system = seed.projects.find((p) => p.isSystem)!
     renderPage({ route: `/projects/${system.id}` })
     await screen.findByRole('heading', { level: 1, name: 'Admin / Misc' })
-    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Project actions' }))
+    expect(await screen.findByRole('menuitem', { name: 'Edit project…' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Delete project…' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitemradio', { name: 'On hold' })).not.toBeInTheDocument()
+  })
+
+  it('renames and deletes a milestone from its menu', async () => {
+    const user = userEvent.setup()
+    const { snapshot } = renderPage({ route })
+    await user.click(await screen.findByRole('button', { name: 'Milestone actions: Design' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Rename / edit…' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Edit milestone' })
+    const name = within(dialog).getByRole('textbox', { name: 'Name' })
+    await user.clear(name)
+    await user.type(name, 'UI design')
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(async () => {
+      expect((await snapshot()).milestones.some((m) => m.name === 'UI design')).toBe(true)
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Milestone actions: Build' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete milestone…' }))
+    await user.click(
+      await within(await screen.findByRole('alertdialog')).findByRole('button', { name: 'Delete milestone' }),
+    )
+    await waitFor(async () => {
+      expect((await snapshot()).milestones.some((m) => m.name === 'Build')).toBe(false)
+    })
   })
 
   it('deletes a project after confirmation and goes back to the list', async () => {
     const user = userEvent.setup()
     const { snapshot } = renderPage({ route })
-    await user.click(await screen.findByRole('button', { name: 'Delete' }))
-    await user.click(await screen.findByRole('button', { name: 'Delete project' }))
+    await user.click(await screen.findByRole('button', { name: 'Project actions' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete project…' }))
+    await user.click(
+      await within(await screen.findByRole('alertdialog')).findByRole('button', { name: 'Delete project' }),
+    )
     await waitFor(async () => {
       expect((await snapshot()).projects.some((p) => p.id === website.id)).toBe(false)
     })

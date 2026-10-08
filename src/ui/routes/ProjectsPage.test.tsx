@@ -11,31 +11,45 @@ afterEach(() => unfreezeToday())
 
 describe('ProjectsPage', () => {
   it('lists seeded projects grouped by status with next step and counts', async () => {
+    const user = userEvent.setup()
     renderWithApp(<ProjectsPage />, { route: '/projects' })
 
     expect(await screen.findByRole('link', { name: 'Client website redesign' })).toHaveAttribute(
       'href',
       expect.stringMatching(/^\/projects\/.+/),
     )
-    const active = screen.getByRole('region', { name: /^Active/ })
-    expect(within(active).getByRole('link', { name: 'Quarterly board report' })).toBeInTheDocument()
-    expect(within(active).getByRole('link', { name: 'Admin / Misc' })).toBeInTheDocument()
-    expect(within(active).queryByRole('link', { name: 'Kitchen renovation' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Quarterly board report' })).toBeInTheDocument()
+    // The system project comes last among the active ones.
+    const names = screen.getAllByTestId('project-row').map((r) => within(r).getByRole('link').textContent)
+    expect(names.at(-1)).toBe('Admin / Misc')
+    expect(within(screen.getAllByTestId('project-row').at(-1)!).getByText('System')).toBeInTheDocument()
 
-    const hold = screen.getByRole('region', { name: /^On hold/ })
-    expect(within(hold).getByRole('link', { name: 'Kitchen renovation' })).toBeInTheDocument()
+    // On hold is a collapsed group.
+    expect(screen.queryByRole('link', { name: 'Kitchen renovation' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /On hold/ }))
+    expect(await screen.findByRole('link', { name: 'Kitchen renovation' })).toBeInTheDocument()
 
     const website = screen.getByRole('link', { name: 'Client website redesign' }).closest('[data-testid]')!
-    expect(within(website as HTMLElement).getByText('Draft sitemap')).toBeInTheDocument()
-    expect(within(website as HTMLElement).getByText(/\d+ open · 3 done/)).toBeInTheDocument()
+    expect(within(website as HTMLElement).getByText('Next: Draft sitemap')).toBeInTheDocument()
+    expect(within(website as HTMLElement).getByText(/^\d+ open$/)).toBeInTheDocument()
   })
 
-  it('shows the over-cap banner only when active projects exceed the cap', async () => {
+  it('has one primary action and puts import and templates in the … menu', async () => {
+    const user = userEvent.setup()
+    renderWithApp(<ProjectsPage />, { route: '/projects', path: '/projects' })
+    expect(await screen.findByRole('button', { name: 'New project' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Import breakdown' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'More actions' }))
+    expect(await screen.findByRole('menuitem', { name: 'Import breakdown' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'New from template' })).toBeInTheDocument()
+  })
+
+  it('shows a quiet over-cap line only when active projects exceed the cap', async () => {
     const snapshot = seedSnapshot(TEST_TODAY)
     snapshot.settings.activeCap = 3 // seed has 4 active (non-system) projects
     const { unmount } = renderWithApp(<ProjectsPage />, { snapshot })
     expect(
-      await screen.findByText('You have 4 active projects (cap 3). Consider putting one on hold.'),
+      await screen.findByText('4 active projects — more than your cap of 3. Consider putting one on hold.'),
     ).toBeInTheDocument()
     unmount()
 
@@ -46,18 +60,23 @@ describe('ProjectsPage', () => {
     expect(screen.queryByText(/Consider putting one on hold/)).not.toBeInTheDocument()
   })
 
-  it('collapses done projects into a details section', async () => {
+  it('collapses done projects into a group', async () => {
+    const user = userEvent.setup()
     const snapshot = seedSnapshot(TEST_TODAY)
     snapshot.projects.push(makeProject({ name: 'Old shipped thing', status: 'done', rank: 9 }))
     renderWithApp(<ProjectsPage />, { snapshot })
-    const summary = await screen.findByText('Done (1)')
-    expect(summary.closest('details')).not.toHaveAttribute('open')
+    const toggle = await screen.findByRole('button', { name: /Done/ })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('link', { name: 'Old shipped thing' })).not.toBeInTheDocument()
+    await user.click(toggle)
+    expect(await screen.findByRole('link', { name: 'Old shipped thing' })).toBeInTheDocument()
   })
 
-  it('reorders active projects with the move buttons and rewrites ranks', async () => {
+  it('reorders active projects with the row menu and rewrites ranks', async () => {
     const user = userEvent.setup()
     const { snapshot } = renderWithApp(<ProjectsPage />)
-    await user.click(await screen.findByRole('button', { name: 'Move down: Client website redesign' }))
+    await user.click(await screen.findByRole('button', { name: 'Project actions: Client website redesign' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Move down' }))
 
     await waitFor(async () => {
       const ranks = Object.fromEntries((await snapshot()).projects.map((p) => [p.name, p.rank]))

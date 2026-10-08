@@ -1,4 +1,3 @@
-import { Details, Label } from '@primer/react'
 import type { ReactNode } from 'react'
 import { useApply, useUpdateTasks } from '../../data/hooks'
 import { useTaskActions } from '../../data/taskActions'
@@ -7,16 +6,17 @@ import { makeTask } from '../../domain/factories'
 import { unfinishedBlockers } from '../../domain/order'
 import type { Project, Task, TaskSize } from '../../domain/types'
 import { TaskRow } from '../components/TaskRow'
+import { AddTaskRow } from './AddTaskRow'
+import { CollapsibleGroup } from './CollapsibleGroup'
 import { endPosition, renumberGroup, type TaskGroupData } from './ordering'
-import { QuickAddTask } from './QuickAddTask'
-import { SortableList } from './SortableList'
-import styles from './TaskGroup.module.css'
+import { RowMenu } from './RowMenu'
+import { SortableList, type SortableControls } from './SortableList'
 
 interface Props {
   project: Project
   group: TaskGroupData
   ctx: PlanContext
-  /** The project's next task id, highlighted with a "Next" label. */
+  /** The project's next task id, marked with a grey "Next". */
   nextId: string | null
   /** Heading (milestone header or plain title). */
   header?: ReactNode
@@ -56,7 +56,7 @@ export function TaskGroup({ project, group, ctx, nextId, header, onOpenTask }: P
     return { done: items.filter((c) => c.done).length, total: items.length }
   }
 
-  const renderRow = (task: Task, controls?: ReactNode) => {
+  const renderRow = (task: Task, controls?: SortableControls) => {
     const blockers = task.status === 'done' ? [] : unfinishedBlockers(task, ctx)
     const blocked = blockers.length > 0
     return (
@@ -64,39 +64,43 @@ export function TaskGroup({ project, group, ctx, nextId, header, onOpenTask }: P
         task={task}
         checklist={checklistOf(task.id)}
         muted={blocked}
-        note={blocked ? `Blocked by: ${blockers.map((b) => b.title).join(', ')}` : undefined}
+        note={blocked ? `After: ${blockers.map((b) => b.title).join(', ')}` : undefined}
+        meta={task.id === nextId ? ['Next'] : []}
         onToggleDone={(t) => void actions.toggleDone(t)}
         onOpen={(t) => onOpenTask(t)}
-        trailing={
-          <>
-            {task.id === nextId && <Label variant="success">Next</Label>}
-            {controls}
-          </>
+        actions={
+          controls && (
+            <>
+              {controls.handle}
+              <RowMenu label={`Task actions: ${task.title}`} controls={controls} />
+            </>
+          )
         }
       />
     )
   }
 
   return (
-    <section className={styles.group} aria-label={group.milestone?.name ?? 'Tasks without a milestone'}>
+    <section className="mb-8" aria-label={group.milestone?.name ?? 'Tasks without a milestone'}>
       {header}
-      {open.length === 0 && done.length === 0 && <p className={styles.empty}>No tasks yet.</p>}
       <SortableList
+        className="divide-y"
         items={open}
         onReorder={reorder}
         label={(t) => t.title}
-        renderItem={(task, controls) => <div className={styles.row}>{renderRow(task, controls)}</div>}
+        renderItem={renderRow}
       />
-      <QuickAddTask groupName={groupName} onAdd={add} />
+      <div className="mt-1">
+        <AddTaskRow groupName={groupName} onAdd={add} />
+      </div>
       {done.length > 0 && (
-        <Details className={styles.done}>
-          <Details.Summary className={styles.summary}>{`${done.length} done`}</Details.Summary>
-          {done.map((t) => (
-            <div key={t.id} className={styles.row}>
-              {renderRow(t)}
-            </div>
-          ))}
-        </Details>
+        <CollapsibleGroup label={`${done.length} done`} className="mt-1">
+          <div className="divide-y">
+            {done.map((t) => (
+              <div key={t.id}>{renderRow(t)}</div>
+            ))}
+          </div>
+        </CollapsibleGroup>
       )}
     </section>
   )
