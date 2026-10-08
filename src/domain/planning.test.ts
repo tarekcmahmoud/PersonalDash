@@ -21,6 +21,7 @@ function ctxOf(
     templates: [],
     weeks: [],
     resources: [],
+    people: [],
     settings: DEFAULT_SETTINGS,
     weekStart: WEEK,
     today: TODAY,

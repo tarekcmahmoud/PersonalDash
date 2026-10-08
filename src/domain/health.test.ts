@@ -17,6 +17,7 @@ function ctxOf(projects: Project[], tasks: Task[] = [], settings = DEFAULT_SETTI
     templates: [],
     weeks: [],
     resources: [],
+    people: [],
     settings,
     weekStart: WEEK,
     today: TODAY,

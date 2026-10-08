@@ -49,6 +49,19 @@ describe('TodayPage', () => {
     expect(today.getByRole('button', { name: 'Received' })).toBeInTheDocument()
   })
 
+  it('shows a delegated follow-up due today, with Done', async () => {
+    const user = userEvent.setup()
+    const snapshot = seedSnapshot(todayISO())
+    const delegated = snapshot.tasks.find((t) => t.assigneeId !== null)!
+    delegated.followUpDate = todayISO()
+    renderApp(<TodayPage />, { snapshot })
+
+    const today = await section('Today')
+    expect(today.getByText('Follow up: Priya Shah re Design content page templates')).toBeInTheDocument()
+    await user.click(today.getByRole('button', { name: 'Done' }))
+    await waitFor(() => expect(screen.queryByText(/Follow up: Priya Shah/)).not.toBeInTheDocument())
+  })
+
   it('marks a follow-up received', async () => {
     const user = userEvent.setup()
     const snapshot = seedSnapshot(todayISO())

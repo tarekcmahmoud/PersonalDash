@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { receiveWaiting, snoozeFollowUp } from '../domain/followups'
 import { nowISO } from '../domain/ids'
+import { delegateTask, takeBackTask } from '../domain/delegation'
 import { completeTask, reopenTask } from '../domain/review'
 import type { ISODate, Task } from '../domain/types'
 import { weekStartOf } from '../domain/week'
@@ -32,6 +33,11 @@ export function useTaskActions() {
         update(t, { status: 'waiting', waitingOn, followUpDate }),
       snoozeFollowUp: (t: Task, date: ISODate) => update(t, snoozeFollowUp(t, date)),
       received: (t: Task) => update(t, receiveWaiting(t)),
+      /** Hand the task to a person, to be followed up on `followUpDate`. */
+      delegate: (t: Task, personId: string, followUpDate: ISODate | null) =>
+        update(t, delegateTask(t, personId, followUpDate)),
+      /** Make a delegated task yours again. */
+      takeBack: (t: Task) => update(t, takeBackTask(t)),
     }),
     [update],
   )

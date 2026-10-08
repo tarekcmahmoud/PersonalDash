@@ -1,5 +1,5 @@
 import { format, parseISO } from 'date-fns'
-import { Clock } from 'lucide-react'
+import { Clock, UserRound } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Task } from '../../domain/types'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -12,6 +12,8 @@ export interface TaskRowProps {
   task: Task
   /** Shown as grey metadata. */
   projectName?: string
+  /** Name of the person the task is delegated to (task.assigneeId); "Delegated" when omitted. */
+  assigneeName?: string
   /** Shows "done/total" as grey metadata when total > 0. */
   checklist?: { done: number; total: number }
   /** When given, renders a checkbox (checked = status done). */
@@ -30,6 +32,8 @@ export interface TaskRowProps {
   note?: ReactNode
   /** Hide the pinned-day metadata (e.g. inside a day column). */
   hideDay?: boolean
+  /** Hide the delegated-to metadata (e.g. in a list grouped by person). */
+  hideAssignee?: boolean
   /** Tighter row for narrow board columns (from the `xl` breakpoint): small checkbox, overlaid actions. */
   compact?: boolean
   className?: string
@@ -38,12 +42,14 @@ export interface TaskRowProps {
 const Dot = () => <span className="text-muted-foreground/50">·</span>
 
 /**
- * One task line: checkbox · title · grey metadata (project, size, day, checklist, waiting) · hover actions.
+ * One task line: checkbox · title · grey metadata (project, size, day, checklist, waiting, delegated) · hover
+ * actions.
  * Colour only for attention: XL size and repeated slips.
  */
 export function TaskRow({
   task,
   projectName,
+  assigneeName,
   checklist,
   onToggleDone,
   onOpen,
@@ -53,6 +59,7 @@ export function TaskRow({
   muted,
   note,
   hideDay,
+  hideAssignee,
   compact,
   className,
 }: TaskRowProps) {
@@ -75,6 +82,14 @@ export function TaskRow({
       <span key="w" className="inline-flex items-center gap-1">
         <Clock className="size-3" aria-hidden />
         {task.waitingOn ? `Waiting on ${task.waitingOn}` : 'Waiting'}
+        {task.followUpDate && ` · ${format(parseISO(task.followUpDate), 'MMM d')}`}
+      </span>,
+    )
+  if (task.assigneeId && !done && !hideAssignee)
+    items.push(
+      <span key="a" className="inline-flex min-w-0 items-center gap-1">
+        <UserRound className="size-3 shrink-0" aria-hidden />
+        <span className="truncate">{assigneeName ?? 'Delegated'}</span>
         {task.followUpDate && ` · ${format(parseISO(task.followUpDate), 'MMM d')}`}
       </span>,
     )

@@ -145,6 +145,47 @@ describe('ProjectPage', () => {
     })
   })
 
+  it('lists collaborators and adds a new one from the Collaborators dialog', async () => {
+    const user = userEvent.setup()
+    const { snapshot } = renderPage({ route })
+    await screen.findByRole('heading', { level: 1, name: 'Client website redesign' })
+    await user.click(screen.getByRole('button', { name: 'With Sam Lee and Priya Shah' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Collaborators' })
+    await user.type(within(dialog).getByRole('textbox', { name: 'Add a person' }), 'Ana Ruiz{Enter}')
+    await waitFor(() => expect(within(dialog).getByText('Ana Ruiz')).toBeInTheDocument())
+    const snap = await snapshot()
+    const ana = snap.people.find((p) => p.name === 'Ana Ruiz')!
+    expect(snap.projects.find((p) => p.id === website.id)!.collaboratorIds).toContain(ana.id)
+
+    await user.click(within(dialog).getByRole('button', { name: 'Remove Sam Lee' }))
+    const list = within(dialog).getByRole('list', { name: 'Collaborators' })
+    await waitFor(() => expect(within(list).queryByText('Sam Lee')).not.toBeInTheDocument())
+    // Sam is still someone you work with, so they are offered to add back.
+    expect(within(dialog).getByRole('button', { name: 'Sam Lee' })).toBeInTheDocument()
+  })
+
+  it('delegates a task from its … menu and shows who has it', async () => {
+    const user = userEvent.setup()
+    const { snapshot } = renderPage({ route })
+    await screen.findByRole('heading', { level: 1, name: 'Client website redesign' })
+    // The seeded delegated task names its person.
+    expect(within(rowOf('Design content page templates')).getByText('Priya Shah')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Task actions: Draft sitemap' }))
+    // Open the submenu with the keyboard (jsdom doesn't do Radix's pointer-driven submenus); Sam Lee is first.
+    ;(await screen.findByRole('menuitem', { name: 'Delegate to…' })).focus()
+    await user.keyboard('{ArrowRight}')
+    expect(await screen.findByRole('menuitem', { name: 'Sam Lee' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(within(rowOf('Draft sitemap')).getByText('Sam Lee')).toBeInTheDocument())
+    expect((await snapshot()).tasks.find((t) => t.id === sitemap.id)!.weekStart).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Task actions: Draft sitemap' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Take back' }))
+    await waitFor(() => expect(within(rowOf('Draft sitemap')).queryByText('Sam Lee')).not.toBeInTheDocument())
+  })
+
   it('has no visible status/edit/delete buttons, only a … menu', async () => {
     const user = userEvent.setup()
     renderPage({ route })

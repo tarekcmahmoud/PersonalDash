@@ -1,5 +1,5 @@
 import { newId, nowISO } from './ids'
-import type { ChecklistItem, Milestone, Project, Resource, Task, Template } from './types'
+import type { ChecklistItem, Milestone, Person, Project, Resource, Task, Template } from './types'
 
 // Defaults for new entities. Callers pass whatever they know; ids/timestamps are generated.
 
@@ -13,9 +13,14 @@ export function makeProject(p: Partial<Project> & Pick<Project, 'name'>): Projec
     rank: 0,
     weeklyMin: null,
     isSystem: false,
+    collaboratorIds: [],
     createdAt: nowISO(),
     ...p,
   }
+}
+
+export function makePerson(p: Partial<Person> & Pick<Person, 'name'>): Person {
+  return { id: newId(), createdAt: nowISO(), ...p }
 }
 
 export function makeMilestone(m: Partial<Milestone> & Pick<Milestone, 'projectId' | 'name'>): Milestone {
@@ -34,6 +39,7 @@ export function makeTask(t: Partial<Task> & Pick<Task, 'title'>): Task {
     status: 'todo',
     waitingOn: null,
     followUpDate: null,
+    assigneeId: null,
     weekStart: null,
     pinnedDay: null,
     slipCount: 0,

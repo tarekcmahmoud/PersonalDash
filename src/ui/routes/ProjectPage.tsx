@@ -41,6 +41,7 @@ import { TaskGroup } from '../project/TaskGroup'
 import { useFocus, useProjectPane, type ProjectPane } from '../project/useProjectView'
 import { TaskDndProvider } from '../project/TaskDnd'
 import { NO_GROUP, type TaskDrop } from '../project/taskDndContext'
+import { CollaboratorsDialog } from '../project/CollaboratorsDialog'
 import { TaskDialogHost } from '../task/TaskDialogHost'
 import { useTaskParam } from '../task/useTaskParam'
 
@@ -57,6 +58,7 @@ export function ProjectPage() {
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [addingMilestone, setAddingMilestone] = useState(false)
+  const [editingCollaborators, setEditingCollaborators] = useState(false)
   const [pane, setPane] = useProjectPane()
   // Focus mode works on workstreams (a workstream's substreams come with it).
   const workstreamIds =
@@ -237,6 +239,7 @@ export function ProjectPage() {
             </>
           )}
           <DropdownMenuItem onSelect={() => setEditing(true)}>Edit project…</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setEditingCollaborators(true)}>Collaborators…</DropdownMenuItem>
           {!project.isSystem && (
             <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
               Delete project…
@@ -247,11 +250,25 @@ export function ProjectPage() {
     </>
   )
 
+  const collaborators = project.collaboratorIds
+    .map((id) => ctx.people.find((p) => p.id === id)?.name)
+    .filter((name): name is string => !!name)
   const description = (
-    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-      <ProjectObjective project={project} />
-      <ProjectSignal flags={projectHealth(project, ctx)} />
-    </div>
+    <>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+        <ProjectObjective project={project} />
+        <ProjectSignal flags={projectHealth(project, ctx)} />
+      </div>
+      {collaborators.length > 0 && (
+        <Button
+          variant="link"
+          className="h-auto p-0 text-left text-sm font-normal whitespace-normal text-muted-foreground"
+          onClick={() => setEditingCollaborators(true)}
+        >
+          {`With ${listNames(collaborators)}`}
+        </Button>
+      )}
+    </>
   )
 
   const paneClass = (name: ProjectPane) => cn('min-w-0', pane !== name && 'max-lg:hidden')
@@ -390,6 +407,13 @@ export function ProjectPage() {
       </div>
 
       {editing && <ProjectFormDialog project={project} onClose={() => setEditing(false)} />}
+      {editingCollaborators && (
+        <CollaboratorsDialog
+          project={project}
+          people={ctx.people}
+          onClose={() => setEditingCollaborators(false)}
+        />
+      )}
       {addingMilestone && (
         <MilestoneDialog
           projectId={project.id}
@@ -409,4 +433,9 @@ export function ProjectPage() {
       <TaskDialogHost />
     </Page>
   )
+}
+
+/** "Sam", "Sam and Priya", "Sam, Priya and Ana". */
+function listNames(names: string[]): string {
+  return names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
 }

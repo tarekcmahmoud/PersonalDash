@@ -235,4 +235,39 @@ describe('TaskDialog', () => {
       expect((await snapshot()).tasks.some((t) => t.id === task('Draft sitemap').id)).toBe(false)
     })
   })
+
+  it('delegates a task to a collaborator with a follow-up date, taking it out of the week', async () => {
+    const user = userEvent.setup()
+    // "Draft sitemap" is planned this week in the website project (collaborators: Sam Lee, Priya Shah).
+    const { dialog, snapshot } = await openDialog('Draft sitemap')
+    expect(within(dialog).queryByLabelText('Follow up on')).not.toBeInTheDocument()
+
+    await pick(user, within(dialog).getByRole('combobox', { name: 'Assigned to' }), 'Sam Lee')
+    // The Day field gives way to a follow-up date, three days out by default.
+    expect(within(dialog).queryByRole('combobox', { name: 'Day' })).not.toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Follow up on')).toHaveValue(addDaysISO(TEST_TODAY, 3))
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    await waitFor(async () => {
+      const saved = (await snapshot()).tasks.find((t) => t.id === task('Draft sitemap').id)!
+      expect(saved).toMatchObject({
+        assigneeId: seed.people.find((p) => p.name === 'Sam Lee')!.id,
+        followUpDate: addDaysISO(TEST_TODAY, 3),
+        weekStart: null,
+        pinnedDay: null,
+      })
+    })
+  })
+
+  it('takes a delegated task back', async () => {
+    const user = userEvent.setup()
+    const { dialog, snapshot } = await openDialog('Design content page templates')
+    expect(within(dialog).getByRole('combobox', { name: 'Assigned to' })).toHaveTextContent('Priya Shah')
+    await pick(user, within(dialog).getByRole('combobox', { name: 'Assigned to' }), 'Me')
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(async () => {
+      const saved = (await snapshot()).tasks.find((t) => t.id === task('Design content page templates').id)!
+      expect(saved).toMatchObject({ assigneeId: null, followUpDate: null })
+    })
+  })
 })

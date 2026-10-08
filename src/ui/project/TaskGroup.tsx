@@ -1,13 +1,21 @@
 import { Plus } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
-import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useApply, useUpdateTasks } from '../../data/hooks'
 import { useTaskActions } from '../../data/taskActions'
 import type { PlanContext } from '../../domain/context'
 import { makeTask } from '../../domain/factories'
 import { explicitBlockerIds, streamLabel, unfinishedBlockers } from '../../domain/order'
-import type { Project, Task, TaskSize } from '../../domain/types'
+import { FIRST_FOLLOW_UP_DAYS } from '../../domain/delegation'
+import type { Person, Project, Task, TaskSize } from '../../domain/types'
+import { addDaysISO } from '../../domain/week'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { TaskRow } from '../components/TaskRow'
@@ -59,6 +67,11 @@ export function TaskGroup({
   children,
 }: Props) {
   const actions = useTaskActions()
+  // Delegation: the project's collaborators, and names for delegated rows.
+  const collaborators = project.collaboratorIds
+    .map((id) => ctx.people.find((p) => p.id === id))
+    .filter((p): p is Person => p !== undefined)
+  const personName = (id: string) => ctx.people.find((p) => p.id === id)?.name
   const apply = useApply()
   const updateTasks = useUpdateTasks()
   const groupName = group.milestone?.name ?? 'the project'
@@ -139,6 +152,7 @@ export function TaskGroup({
     return (
       <TaskRow
         task={task}
+        assigneeName={task.assigneeId ? personName(task.assigneeId) : undefined}
         checklist={checklistOf(task.id)}
         muted={blocked}
         note={linkNote(task, blockers)}
@@ -161,6 +175,36 @@ export function TaskGroup({
                           {`Stop waiting for “${b.title}”`}
                         </DropdownMenuItem>
                       ))}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Delegate to…</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="max-w-64">
+                          {collaborators.length === 0 ? (
+                            <DropdownMenuItem disabled>No collaborators yet</DropdownMenuItem>
+                          ) : (
+                            collaborators.map((p) => (
+                              <DropdownMenuItem
+                                key={p.id}
+                                disabled={task.assigneeId === p.id}
+                                onSelect={() =>
+                                  void actions.delegate(
+                                    task,
+                                    p.id,
+                                    addDaysISO(ctx.today, FIRST_FOLLOW_UP_DAYS),
+                                  )
+                                }
+                              >
+                                <span className="truncate">{p.name}</span>
+                              </DropdownMenuItem>
+                            ))
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                      {task.assigneeId && (
+                        <DropdownMenuItem onSelect={() => void actions.takeBack(task)}>
+                          Take back
+                        </DropdownMenuItem>
+                      )}
                     </>
                   )
                 }

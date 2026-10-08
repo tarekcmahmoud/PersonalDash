@@ -20,6 +20,8 @@ import {
   dependencyToRow,
   milestoneFromRow,
   milestoneToRow,
+  personFromRow,
+  personToRow,
   projectFromRow,
   projectToRow,
   resourceFromRow,
@@ -35,6 +37,7 @@ import {
   type ChecklistItemRow,
   type DependencyRow,
   type MilestoneRow,
+  type PersonRow,
   type ProjectRow,
   type ResourceRow,
   type SettingsRow,
@@ -158,18 +161,29 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
   }
 
   async function loadSnapshot(): Promise<Snapshot> {
-    const [projects, milestones, tasks, dependencies, checklist, templates, resources, weeks, settingsRow] =
-      await Promise.all([
-        fetchAll<ProjectRow>('projects', ['id']),
-        fetchAll<MilestoneRow>('milestones', ['id']),
-        fetchAll<TaskRow>('tasks', ['id']),
-        fetchAll<DependencyRow>('task_dependencies', ['task_id', 'blocked_by_task_id']),
-        fetchAll<ChecklistItemRow>('checklist_items', ['id']),
-        fetchAll<TemplateRow>('templates', ['id']),
-        fetchAll<ResourceRow>('resources', ['id']),
-        fetchAll<WeekRow>('weeks', ['week_start']),
-        fetchSettingsRow(),
-      ])
+    const [
+      projects,
+      milestones,
+      tasks,
+      dependencies,
+      checklist,
+      templates,
+      resources,
+      weeks,
+      people,
+      settingsRow,
+    ] = await Promise.all([
+      fetchAll<ProjectRow>('projects', ['id']),
+      fetchAll<MilestoneRow>('milestones', ['id']),
+      fetchAll<TaskRow>('tasks', ['id']),
+      fetchAll<DependencyRow>('task_dependencies', ['task_id', 'blocked_by_task_id']),
+      fetchAll<ChecklistItemRow>('checklist_items', ['id']),
+      fetchAll<TemplateRow>('templates', ['id']),
+      fetchAll<ResourceRow>('resources', ['id']),
+      fetchAll<WeekRow>('weeks', ['week_start']),
+      fetchAll<PersonRow>('people', ['id']),
+      fetchSettingsRow(),
+    ])
 
     const settings = settingsRow ? settingsFromRow(settingsRow) : await ensureSettings()
     const projectList = projects.map(projectFromRow)
@@ -184,6 +198,7 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
       templates: templates.map(templateFromRow),
       resources: resources.map(resourceFromRow),
       weeks: weeks.map(weekFromRow),
+      people: people.map(personFromRow),
       settings,
     }
   }
@@ -272,6 +287,11 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
         return upsert('resources', change.resources.map(resourceToRow), 'id')
       case 'deleteResource':
         return deleteById('resources', change.id)
+      case 'savePeople':
+        return upsert('people', change.people.map(personToRow), 'id')
+      case 'deletePerson':
+        // The database removes them from projects' collaborator_ids (trigger) and unassigns their tasks (FK).
+        return deleteById('people', change.id)
       default: {
         const _exhaustive: never = change
         throw new Error(`Supabase: unsupported change ${JSON.stringify(_exhaustive)}`)

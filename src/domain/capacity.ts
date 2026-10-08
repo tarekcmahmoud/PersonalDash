@@ -7,11 +7,12 @@ export function sizeHours(size: TaskSize, settings: Settings): number {
   return settings.sizeHours[size]
 }
 
-/** Sum of sizeHours over tasks that are not done, plus followUpCount × S hours. */
+/** Sum of sizeHours over your tasks (not done, not delegated), plus followUpCount × S hours. */
 export function plannedHours(tasks: Task[], settings: Settings, followUpCount: number): number {
   let total = followUpCount * settings.sizeHours.S
   for (const t of tasks) {
-    if (t.status !== 'done') total += sizeHours(t.size, settings)
+    // A delegated task is someone else's work; only its follow-up costs you time.
+    if (t.status !== 'done' && t.assigneeId === null) total += sizeHours(t.size, settings)
   }
   return total
 }

@@ -18,6 +18,7 @@ const emptySnap = (over: Partial<Snapshot> = {}): Snapshot => ({
   templates: [],
   weeks: [],
   resources: [],
+  people: [],
   settings: structuredClone(DEFAULT_SETTINGS),
   ...over,
 })

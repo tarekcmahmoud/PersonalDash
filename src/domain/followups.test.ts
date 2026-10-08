@@ -15,7 +15,7 @@ describe('followUpsForWeek', () => {
     const t = waiting('Contract', '2026-10-07', 'Legal')
     const items = followUpsForWeek([t], WEEK, TODAY)
     expect(items).toEqual([
-      { task: t, date: '2026-10-07', overdue: false, label: 'Follow up: Legal re Contract' },
+      { task: t, kind: 'waiting', date: '2026-10-07', overdue: false, label: 'Follow up: Legal re Contract' },
     ])
   })
 

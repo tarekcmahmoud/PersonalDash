@@ -4,6 +4,7 @@ import type {
   EntityBundle,
   ID,
   Milestone,
+  Person,
   Project,
   Resource,
   Settings,
@@ -45,6 +46,9 @@ export type Change =
   | { kind: 'saveResources'; resources: Resource[] }
   /** Deletes the resource row only; deleting an uploaded image is a separate Repo.deleteImage call. */
   | { kind: 'deleteResource'; id: ID }
+  | { kind: 'savePeople'; people: Person[] }
+  /** Removes the person from every project's collaborators; their tasks become yours again (assigneeId null). */
+  | { kind: 'deletePerson'; id: ID }
 
 /** Replace items that share a key with an existing entry; append the rest in input order. */
 function upsertBy<T>(list: readonly T[], items: readonly T[], keyOf: (item: T) => string): T[] {
@@ -172,6 +176,21 @@ export function applyChange(snapshot: Snapshot, change: Change): Snapshot {
 
     case 'deleteResource':
       return { ...snapshot, resources: snapshot.resources.filter((r) => r.id !== change.id) }
+
+    case 'savePeople':
+      return { ...snapshot, people: upsertBy(snapshot.people, change.people, (p) => p.id) }
+
+    case 'deletePerson':
+      return {
+        ...snapshot,
+        people: snapshot.people.filter((p) => p.id !== change.id),
+        projects: snapshot.projects.map((p) =>
+          p.collaboratorIds.includes(change.id)
+            ? { ...p, collaboratorIds: p.collaboratorIds.filter((id) => id !== change.id) }
+            : p,
+        ),
+        tasks: snapshot.tasks.map((t) => (t.assigneeId === change.id ? { ...t, assigneeId: null } : t)),
+      }
 
     default: {
       const _never: never = change

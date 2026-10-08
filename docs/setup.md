@@ -26,14 +26,14 @@ Supabase stores your data and handles sign-in. The free tier is enough for perso
    database password. Save that password in a password manager. The app does not need it. Pick the region
    closest to you, then click **Create new project**. Wait a minute or two for it to finish.
 3. In the left sidebar, click **SQL Editor**, then **New query**.
-4. The database setup is split into six short files in `supabase/migrations/`: `0001_core_tables.sql`,
+4. The database setup is split into seven short files in `supabase/migrations/`: `0001_core_tables.sql`,
    `0002_more_tables.sql`, `0003_security.sql`, `0004_resources.sql`, `0005_storage.sql` (storage for the images
-   on resource cards) and `0006_substreams.sql` (substreams inside workstreams). Run them **in this order**, one
-   at a time. Open the file on
+   on resource cards), `0006_substreams.sql` (substreams inside workstreams) and `0007_collaborators.sql` (people
+   you delegate tasks to). Run them **in this order**, one at a time. Open the file on
    GitHub and click **Copy raw file** (the copy icon above the file). Paste it into an empty query, click **Run**
    with nothing selected, then do the next file. Each file checks that the previous one ran, and every file is
-   safe to run again. Parts 3 to 6 each end with a short summary table (part 3 lists 8 tables, each with security
-   turned on). If you set the database up before part 6 existed, run just part 6.
+   safe to run again. Parts 3 to 7 each end with a short summary table (part 3 lists 8 tables, each with security
+   turned on). If you set the database up before a part existed, run just the parts you're missing, in order.
 5. In the left sidebar, click **Authentication**, then **Users**. Click **Add user**, then **Create new user**.
    Enter your email address and a password. Tick **Auto Confirm User**, then click **Create user**. This account
    is the only one the app will ever have.
@@ -147,7 +147,7 @@ Vercel later, open the project, go to **Deployments**, open the menu (⋯) on th
 - **"Invalid login credentials".** The email or password does not match the user in Supabase. Check both for typos.
   Under **Authentication → Users**, confirm your user exists. To change the password, open the user there.
 - **Errors that mention "row-level security", "new row violates row-level security policy", or "permission
-  denied".** The database migration has probably not run. Run the six files in `supabase/migrations/` in order in the SQL Editor
+  denied".** The database migration has probably not run. Run the seven files in `supabase/migrations/` in order in the SQL Editor
   (section 1, step 4). Also make sure you are signed in.
 - **Google "origin mismatch" error (Error 400: origin_mismatch).** The address you are using is missing from
   **Authorized JavaScript origins**. Add it exactly, with `https://` or `http://`, no trailing slash, and the port

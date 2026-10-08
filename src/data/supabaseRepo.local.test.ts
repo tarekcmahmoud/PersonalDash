@@ -4,7 +4,7 @@
  */
 import { createClient } from '@supabase/supabase-js'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { makeChecklistItem, makeMilestone, makeProject, makeTask } from '../domain/factories'
+import { makeChecklistItem, makeMilestone, makePerson, makeProject, makeTask } from '../domain/factories'
 import type { Snapshot, Task } from '../domain/types'
 import { applyChange, type Change } from './changes'
 import type { Repo } from './repo'
@@ -54,6 +54,7 @@ function sorted(s: Snapshot): Snapshot {
     tasks: byId(s.tasks),
     checklist: byId(s.checklist),
     templates: byId(s.templates),
+    people: byId(s.people),
     resources: byId(s.resources).map((r) => ({ ...r, workstreamIds: [...r.workstreamIds].sort() })),
     dependencies: [...s.dependencies].sort((a, b) =>
       `${a.taskId}${a.blockedByTaskId}`.localeCompare(`${b.taskId}${b.blockedByTaskId}`),
@@ -91,6 +92,8 @@ describe.skipIf(!URL)('supabaseRepo against a local Supabase stack', () => {
     const seedSystem = seed.projects.find((p) => p.isSystem)!
     const system = expected.projects.find((p) => p.isSystem)!
     const tasks = seed.tasks.map((t) => (t.projectId === seedSystem.id ? { ...t, projectId: system.id } : t))
+    // Delegated demo tasks reference these people.
+    await step({ kind: 'savePeople', people: seed.people })
     await step({
       kind: 'insertBundle',
       bundle: {
@@ -167,6 +170,17 @@ describe.skipIf(!URL)('supabaseRepo against a local Supabase stack', () => {
         makeTask({ title: 'In stream', projectId: project.id, milestoneId: milestone.id }),
       ],
     })
+  })
+
+  it('stores people, collaborators and delegated tasks; deleting a person unassigns their tasks', async () => {
+    const person = makePerson({ name: 'Delegate' })
+    await step({ kind: 'savePeople', people: [person] })
+    const project = expected.projects.find((p) => !p.isSystem)!
+    await step({ kind: 'saveProjects', projects: [{ ...project, collaboratorIds: [person.id] }] })
+    const task = expected.tasks.find((t) => t.projectId === project.id && t.status === 'todo')!
+    await step({ kind: 'saveTasks', tasks: [{ ...task, assigneeId: person.id, followUpDate: '2026-10-12' }] })
+    await step({ kind: 'savePeople', people: [{ ...person, name: 'Renamed' }] })
+    await step({ kind: 'deletePerson', id: person.id })
   })
 
   it('refuses to delete the system project', async () => {

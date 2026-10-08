@@ -9,6 +9,7 @@ import { ProjectPage } from './ui/routes/ProjectPage'
 import { ProjectsPage } from './ui/routes/ProjectsPage'
 import { TodayPage } from './ui/routes/TodayPage'
 import { WeekPage } from './ui/routes/WeekPage'
+import { DelegatedPage } from './ui/routes/DelegatedPage'
 
 const ImportPage = lazy(() => import('./ui/routes/ImportPage').then((m) => ({ default: m.ImportPage })))
 const ReviewPage = lazy(() => import('./ui/routes/ReviewPage').then((m) => ({ default: m.ReviewPage })))
@@ -35,6 +36,7 @@ export function App() {
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="projects/:projectId" element={<ProjectPage />} />
         <Route path="inbox" element={<InboxPage />} />
+        <Route path="delegated" element={<DelegatedPage />} />
         <Route path="templates" element={<TemplatesPage />} />
         <Route path="import" element={<ImportPage />} />
         <Route path="settings" element={<SettingsPage />} />

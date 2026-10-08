@@ -44,7 +44,10 @@ export function tasksInWeek(tasks: Task[], weekStart: ISODate): Task[] {
  * so every parallel stream's next step shows up first.
  */
 function interleaveStreams(projectId: string, ctx: PlanContext): Task[] {
-  const streams = projectWorkstreams(projectId, ctx).map((w) => w.tasks.filter((t) => t.status === 'todo'))
+  // Delegated tasks are someone else's to do, so they aren't yours to plan.
+  const streams = projectWorkstreams(projectId, ctx).map((w) =>
+    w.tasks.filter((t) => t.status === 'todo' && t.assigneeId === null),
+  )
   const out: Task[] = []
   for (let i = 0; streams.some((s) => i < s.length); i++) for (const s of streams) if (s[i]) out.push(s[i]!)
   return out
@@ -56,7 +59,8 @@ function interleaveStreams(projectId: string, ctx: PlanContext): Task[] {
  *   1. projects with a 'below_min' flag first,
  *   2. then projects with a hard targetDate within settings.deadlineWarningDays (or overdue), soonest first,
  *   3. then by rank ascending.
- * Candidates are the project's 'todo' tasks interleaved across workstreams (see interleaveStreams).
+ * Candidates are the project's own (not delegated) 'todo' tasks interleaved across workstreams (see
+ * interleaveStreams).
  * `depth` overrides PICK_LIST_DEPTH (used when the user expands a project).
  *
  * A candidate that is already planned is reported as planned, selectable, reason null, whatever its

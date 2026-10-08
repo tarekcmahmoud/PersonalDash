@@ -2,6 +2,7 @@ import {
   makeChecklistItem,
   makeResource,
   makeMilestone,
+  makePerson,
   makeProject,
   makeSystemProject,
   makeTask,
@@ -23,6 +24,10 @@ export function seedSnapshot(today: string): Snapshot {
   // A completion timestamp on a day of last week.
   const doneLastWeek = (dayOffset: number): string => `${addDaysISO(lastWeek, dayOffset)}T16:00:00.000Z`
 
+  // --- People you delegate to ---------------------------------------------------------------------------
+  const sam = makePerson({ name: 'Sam Lee' })
+  const priya = makePerson({ name: 'Priya Shah' })
+
   // --- 1. Client website redesign (hard deadline in 9 days) -------------------------------------------
   const system = makeSystemProject()
   const website = makeProject({
@@ -31,6 +36,7 @@ export function seedSnapshot(today: string): Snapshot {
     targetDate: addDaysISO(today, 9),
     dateKind: 'hard',
     rank: 1,
+    collaboratorIds: [sam.id, priya.id],
   })
   const discovery = makeMilestone({
     projectId: website.id,
@@ -102,12 +108,15 @@ export function seedSnapshot(today: string): Snapshot {
     weekStart: ws,
     pinnedDay: today,
   })
+  // Delegated to a collaborator, followed up in two weeks (outside the weeks the demo's numbers cover).
   const contentTemplates = makeTask({
     projectId: website.id,
     milestoneId: design.id,
     title: 'Design content page templates',
     size: 'M',
     position: 2,
+    assigneeId: priya.id,
+    followUpDate: addDaysISO(today, 15),
   })
   const stagingSetup = makeTask({
     projectId: website.id,
@@ -448,6 +457,7 @@ export function seedSnapshot(today: string): Snapshot {
     weeks: [],
     settings: structuredClone(DEFAULT_SETTINGS),
     resources: websiteResources(website.id, { discovery: discovery.id, design: design.id, build: build.id }),
+    people: [sam, priya],
   }
 }
 
@@ -541,5 +551,6 @@ export function emptySnapshot(): Snapshot {
     weeks: [],
     settings: structuredClone(DEFAULT_SETTINGS),
     resources: [],
+    people: [],
   }
 }

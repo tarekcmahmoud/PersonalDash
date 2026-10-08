@@ -29,6 +29,18 @@ export interface Project {
   weeklyMin: number | null
   /** The permanent Admin/Misc project: never flagged as neglected, cannot be deleted. */
   isSystem: boolean
+  /** People working on the project with you (Person ids), who tasks can be delegated to. */
+  collaboratorIds: ID[]
+  createdAt: ISODateTime
+}
+
+/**
+ * Someone you delegate tasks to. Only a name in your app: they never sign in. One list for all projects, so the
+ * same person can collaborate on several.
+ */
+export interface Person {
+  id: ID
+  name: string
   createdAt: ISODateTime
 }
 
@@ -69,8 +81,13 @@ export interface Task {
   status: TaskStatus
   /** Who/what we are waiting on (status = 'waiting'). */
   waitingOn: string | null
-  /** When to follow up on a waiting task. */
+  /** When to follow up on a waiting or delegated task. */
   followUpDate: ISODate | null
+  /**
+   * Delegated to this Person (null = yours). A delegated task is theirs to do: it stays todo until they're done,
+   * isn't planned into your weeks or counted against your capacity, and is chased through followUpDate.
+   */
+  assigneeId: ID | null
   /** Monday of the week this task is planned in; null = not planned. */
   weekStart: ISODate | null
   /** Optional day (within weekStart's week) the task is pinned to. */
@@ -204,6 +221,7 @@ export interface Snapshot {
   weeks: WeekMeta[]
   settings: Settings
   resources: Resource[]
+  people: Person[]
 }
 
 /** A set of new entities created together (e.g. an outline import). */

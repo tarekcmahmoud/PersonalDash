@@ -36,6 +36,15 @@ describe('PlanPage', () => {
     expect(screen.getByText('Plan the week')).toBeInTheDocument()
   })
 
+  it("doesn't offer delegated tasks for planning", async () => {
+    const user = userEvent.setup()
+    renderApp(<PlanPage />)
+    const website = await group('Client website redesign')
+    await user.click(website.getByRole('button', { name: /Show more tasks/ }))
+    await website.findByText('Split first')
+    expect(website.queryByText('Design content page templates')).not.toBeInTheDocument()
+  })
+
   it('shows XL tasks as disabled with "Split first"', async () => {
     const user = userEvent.setup()
     renderApp(<PlanPage />)

@@ -10,10 +10,11 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import { useApply, useSnapshot } from '../../data/hooks'
 import { nowISO } from '../../domain/ids'
-import { explicitBlockerIds, orderedMilestones, streamLabel } from '../../domain/order'
+import { explicitBlockerIds, orderedMilestones } from '../../domain/order'
+import { FIRST_FOLLOW_UP_DAYS } from '../../domain/delegation'
 import { completeTask, reopenTask } from '../../domain/review'
 import type { ChecklistItem, ID, ISODate, Task, TaskSize, TaskStatus } from '../../domain/types'
-import { todayISO, weekDays, weekStartOf } from '../../domain/week'
+import { addDaysISO, todayISO, weekDays, weekStartOf } from '../../domain/week'
 import { CollapsibleGroup } from '../project/CollapsibleGroup'
 import { ConfirmDialog } from '../project/ConfirmDialog'
 import { endPosition } from '../project/ordering'
@@ -70,6 +71,14 @@ function Field({
 
 const NO_PROJECT = 'inbox'
 const NO_MILESTONE = 'none'
+const ME = 'me'
+/**
+ * Dropdowns whose options can be long (projects, workstreams, people): the list opens below the field, no wider
+ * than it, and long names are cut off with "…" instead of widening it past the dialog's grid.
+ */
+const FIT_FIELD = 'w-(--radix-select-trigger-width) max-w-(--radix-select-trigger-width)'
+const FIT_ITEM = '*:[span]:last:min-w-0'
+const fitText = (text: string) => <span className="truncate">{text}</span>
 
 /** Edit one task: details, location, status/waiting, day, and (collapsed) checklist, links (waits for), split. */
 export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void }) {
@@ -100,6 +109,7 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
   const [status, setStatus] = useState<TaskStatus>(task.status)
   const [waitingOn, setWaitingOn] = useState(task.waitingOn ?? '')
   const [followUpDate, setFollowUpDate] = useState<ISODate>(task.followUpDate ?? '')
+  const [assigneeId, setAssigneeId] = useState<ID | null>(task.assigneeId)
   const [day, setDay] = useState<DayChoice>(initialDay)
   const [checklist, setChecklist] = useState<ChecklistItem[]>(savedChecklist)
   const [blockedBy, setBlockedBy] = useState<ID[]>(savedBlockers)
@@ -122,6 +132,17 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
 
   const titleError = submitted && !title.trim() ? 'A task needs a title.' : null
   const planned = day !== 'unplanned'
+  // Delegation: to the chosen project's collaborators (and whoever it is delegated to already).
+  const delegated = assigneeId !== null
+  const collaboratorIds = data.projects.find((p) => p.id === projectId)?.collaboratorIds ?? []
+  const assignable = data.people.filter((p) => collaboratorIds.includes(p.id) || p.id === task.assigneeId)
+
+  const onAssigneeChange = (value: string) => {
+    const id = value === ME ? null : value
+    setAssigneeId(id)
+    if (id && !followUpDate) setFollowUpDate(addDaysISO(todayISO(), FIRST_FOLLOW_UP_DAYS))
+    if (id && status === 'waiting') setStatus('todo')
+  }
 
   const onProjectChange = (value: string) => {
     setProjectId(value === NO_PROJECT ? null : value)
@@ -151,8 +172,14 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
         ...(moved ? { position: endPosition(data.tasks, projectId, milestoneId) } : {}),
         ...statusPatch,
         waitingOn: status === 'waiting' ? waitingOn.trim() || null : null,
-        followUpDate: status === 'waiting' ? followUpDate || null : null,
-        ...(day !== initialDay ? dayPatch(task, day, dayWeek) : {}),
+        followUpDate: status === 'waiting' || delegated ? followUpDate || null : null,
+        assigneeId,
+        // A delegated task leaves your weeks; otherwise the Day choice applies.
+        ...(delegated
+          ? { weekStart: null, pinnedDay: null }
+          : day !== initialDay
+            ? dayPatch(task, day, dayWeek)
+            : {}),
       }
       await apply({ kind: 'saveTasks', tasks: [{ ...task, ...patch }] })
 
@@ -256,11 +283,11 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
                 <SelectTrigger id={`${uid}-project`} className="w-full">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" className={FIT_FIELD}>
                   <SelectItem value={NO_PROJECT}>Inbox</SelectItem>
                   {projects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
+                    <SelectItem key={p.id} value={p.id} className={FIT_ITEM}>
+                      {fitText(p.name)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -275,16 +302,54 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
                 <SelectTrigger id={`${uid}-milestone`} className="w-full">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" className={FIT_FIELD}>
                   <SelectItem value={NO_MILESTONE}>No workstream</SelectItem>
+                  {/* Substreams follow their workstream, indented, by name only. */}
                   {milestones.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {streamLabel(m, milestones)}
+                    <SelectItem key={m.id} value={m.id} className={cn(FIT_ITEM, m.parentId && 'pl-6')}>
+                      {fitText(m.name)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
+
+            {projectId && (
+              <>
+                <Field label="Assigned to" htmlFor={`${uid}-assignee`}>
+                  <Select value={assigneeId ?? ME} onValueChange={onAssigneeChange}>
+                    <SelectTrigger id={`${uid}-assignee`} className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper" className={FIT_FIELD}>
+                      <SelectItem value={ME}>Me</SelectItem>
+                      {assignable.map((p) => (
+                        <SelectItem key={p.id} value={p.id} className={FIT_ITEM}>
+                          {fitText(p.name)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {assignable.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Add collaborators to the project to delegate its tasks.
+                    </p>
+                  )}
+                </Field>
+                {delegated ? (
+                  <Field label="Follow up on" htmlFor={`${uid}-delegated-followup`}>
+                    <Input
+                      id={`${uid}-delegated-followup`}
+                      type="date"
+                      value={followUpDate}
+                      onChange={(e) => setFollowUpDate(e.target.value)}
+                    />
+                  </Field>
+                ) : (
+                  <div className="max-sm:hidden" />
+                )}
+              </>
+            )}
 
             <Field label="Status" htmlFor={`${uid}-status`}>
               <Select value={status} onValueChange={(v) => setStatus(v as TaskStatus)}>
@@ -293,37 +358,39 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todo">To do</SelectItem>
-                  <SelectItem value="waiting">Waiting</SelectItem>
+                  {!delegated && <SelectItem value="waiting">Waiting</SelectItem>}
                   <SelectItem value="done">Done</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
-            <Field
-              label="Day"
-              htmlFor={`${uid}-day`}
-              hint={
-                planned && dayWeek !== weekStartOf(todayISO())
-                  ? `Week of ${format(parseISO(dayWeek), 'MMM d')}`
-                  : undefined
-              }
-            >
-              <Select value={day} onValueChange={(v) => setDay(v as DayChoice)}>
-                <SelectTrigger id={`${uid}-day`} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="week">{planned ? 'No day' : 'This week, no day'}</SelectItem>
-                  {weekDays(dayWeek).map((d) => (
-                    <SelectItem key={d} value={d}>
-                      {format(parseISO(d), 'EEE MMM d')}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="unplanned">Not planned</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
+            {!delegated && (
+              <Field
+                label="Day"
+                htmlFor={`${uid}-day`}
+                hint={
+                  planned && dayWeek !== weekStartOf(todayISO())
+                    ? `Week of ${format(parseISO(dayWeek), 'MMM d')}`
+                    : undefined
+                }
+              >
+                <Select value={day} onValueChange={(v) => setDay(v as DayChoice)}>
+                  <SelectTrigger id={`${uid}-day`} className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">{planned ? 'No day' : 'This week, no day'}</SelectItem>
+                    {weekDays(dayWeek).map((d) => (
+                      <SelectItem key={d} value={d}>
+                        {format(parseISO(d), 'EEE MMM d')}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="unplanned">Not planned</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
 
-            {status === 'waiting' && (
+            {status === 'waiting' && !delegated && (
               <>
                 <Field label="Waiting on" htmlFor={`${uid}-waiting`}>
                   <Input

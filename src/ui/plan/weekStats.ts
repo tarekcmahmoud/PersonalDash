@@ -16,7 +16,7 @@ export interface WeekStats {
 /** Planned tasks, follow-ups, capacity and planned hours of ctx.weekStart. */
 export function weekStats(ctx: PlanContext): WeekStats {
   const planned = tasksInWeek(ctx.tasks, ctx.weekStart)
-  const followUps = followUpsForWeek(ctx.tasks, ctx.weekStart, ctx.today)
+  const followUps = followUpsForWeek(ctx.tasks, ctx.weekStart, ctx.today, ctx.people)
   const override = ctx.weeks.find((w) => w.weekStart === ctx.weekStart)?.capacityOverride ?? null
   const capacity = weekCapacity(ctx.weekStart, ctx.settings, ctx.events, override)
   return { planned, followUps, capacity, hours: plannedHours(planned, ctx.settings, followUps.length) }

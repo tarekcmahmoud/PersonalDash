@@ -1,6 +1,6 @@
--- PersonalDash database setup — PART 6 of 6: substreams (a workstream inside a workstream)
+-- PersonalDash database setup — PART 6 of 7: substreams (a workstream inside a workstream)
 --
--- Run the parts in order (0001 to 0006) in Supabase > SQL Editor > New query: paste ONE whole part,
+-- Run the parts in order (0001 to 0007) in Supabase > SQL Editor > New query: paste ONE whole part,
 -- click Run with nothing selected, then do the next part. Each part is short so it can't get cut off, and each
 -- is safe to run again (anything that already exists is skipped).
 --

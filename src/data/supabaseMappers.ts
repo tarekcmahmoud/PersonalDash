@@ -4,6 +4,7 @@ import {
   type DateKind,
   type Dependency,
   type Milestone,
+  type Person,
   type Project,
   type ProjectStatus,
   type Resource,
@@ -31,6 +32,14 @@ export interface ProjectRow {
   rank: number
   weekly_min: number | null
   is_system: boolean
+  /** supabase/migrations/0007_collaborators.sql */
+  collaborator_ids: string[]
+  created_at: string
+}
+
+export interface PersonRow {
+  id: string
+  name: string
   created_at: string
 }
 
@@ -57,6 +66,8 @@ export interface TaskRow {
   status: TaskStatus
   waiting_on: string | null
   follow_up_date: string | null
+  /** supabase/migrations/0007_collaborators.sql */
+  assignee_id: string | null
   week_start: string | null
   pinned_day: string | null
   slip_count: number
@@ -139,6 +150,7 @@ export function projectToRow(p: Project): ProjectRow {
     rank: p.rank,
     weekly_min: p.weeklyMin,
     is_system: p.isSystem,
+    collaborator_ids: p.collaboratorIds,
     created_at: p.createdAt,
   }
 }
@@ -154,6 +166,7 @@ export function projectFromRow(r: ProjectRow): Project {
     rank: r.rank,
     weeklyMin: r.weekly_min,
     isSystem: r.is_system,
+    collaboratorIds: r.collaborator_ids ?? [],
     createdAt: timestampFromRow(r.created_at),
   }
 }
@@ -199,6 +212,7 @@ export function taskToRow(t: Task): TaskRow {
     status: t.status,
     waiting_on: t.waitingOn,
     follow_up_date: t.followUpDate,
+    assignee_id: t.assigneeId,
     week_start: t.weekStart,
     pinned_day: t.pinnedDay,
     slip_count: t.slipCount,
@@ -222,6 +236,7 @@ export function taskFromRow(r: TaskRow): Task {
     status: r.status,
     waitingOn: r.waiting_on,
     followUpDate: r.follow_up_date,
+    assigneeId: r.assignee_id ?? null,
     weekStart: r.week_start,
     pinnedDay: r.pinned_day,
     slipCount: r.slip_count,
@@ -292,6 +307,16 @@ export function resourceFromRow(r: ResourceRow): Resource {
     position: r.position,
     createdAt: timestampFromRow(r.created_at),
   }
+}
+
+// ---- people ------------------------------------------------------------------------------------------
+
+export function personToRow(p: Person): PersonRow {
+  return { id: p.id, name: p.name, created_at: p.createdAt }
+}
+
+export function personFromRow(r: PersonRow): Person {
+  return { id: r.id, name: r.name, createdAt: timestampFromRow(r.created_at) }
 }
 
 // ---- weeks -------------------------------------------------------------------------------------------

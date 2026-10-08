@@ -3,21 +3,21 @@ import { Clock } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { useTaskActions } from '../../data/taskActions'
 import type { FollowUpItem } from '../../domain/followups'
-import { addDaysISO } from '../../domain/week'
 import { useTaskLink } from '../task/useTaskParam'
+import { FollowUpAgain } from './FollowUpAgain'
 
-/** One line: "Follow up: X re Y" + grey date. "Still waiting…" (new date) and "Received" appear on hover. */
+/**
+ * One line: "Follow up: X re Y" + grey date. On hover: "Still waiting…" (new date) and "Received" for a task you
+ * wait on; "Follow up again…" and "Done" for a delegated one.
+ */
 export function FollowUpRow({ item, today }: { item: FollowUpItem; today: string }) {
   const actions = useTaskActions()
   const taskLink = useTaskLink()
   const [open, setOpen] = useState(false)
-  const [date, setDate] = useState(() => addDaysISO(today, 7))
-
+  const delegated = item.kind === 'delegated'
   const dateText = format(parseISO(item.date), 'MMM d')
 
   return (
@@ -48,41 +48,19 @@ export function FollowUpRow({ item, today }: { item: FollowUpItem; today: string
           open && 'md:opacity-100',
         )}
       >
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="xs" className="h-8 text-muted-foreground md:h-6">
-              Still waiting…
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="flex w-auto items-center gap-2 p-3">
-            <Input
-              type="date"
-              aria-label="New follow-up date"
-              value={date}
-              min={today}
-              className="h-8 w-40"
-              onChange={(e) => setDate(e.target.value)}
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!date}
-              onClick={() => {
-                void actions.snoozeFollowUp(item.task, date)
-                setOpen(false)
-              }}
-            >
-              Save
-            </Button>
-          </PopoverContent>
-        </Popover>
+        <FollowUpAgain
+          task={item.task}
+          today={today}
+          label={delegated ? 'Follow up again…' : 'Still waiting…'}
+          onOpenChange={setOpen}
+        />
         <Button
           variant="ghost"
           size="xs"
           className="h-8 text-muted-foreground md:h-6"
-          onClick={() => void actions.received(item.task)}
+          onClick={() => void (delegated ? actions.toggleDone(item.task) : actions.received(item.task))}
         >
-          Received
+          {delegated ? 'Done' : 'Received'}
         </Button>
       </div>
     </div>
