@@ -1,8 +1,9 @@
 'use client'
 
-import { CircleCheckIcon, InfoIcon, Loader2Icon, OctagonXIcon, TriangleAlertIcon } from 'lucide-react'
 import { useColorScheme } from '@/lib/theme'
 import { Toaster as Sonner, type ToasterProps } from 'sonner'
+
+import { CircleCheckIcon, InfoIcon, Loader2Icon, OctagonXIcon, TriangleAlertIcon } from 'lucide-react'
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const theme = useColorScheme()
@@ -26,6 +27,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
           '--border-radius': 'var(--radius)',
         } as React.CSSProperties
       }
+      toastOptions={{
+        classNames: {
+          toast: 'cn-toast',
+        },
+      }}
       {...props}
     />
   )

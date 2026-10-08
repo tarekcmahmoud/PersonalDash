@@ -14,8 +14,9 @@ summarized in `docs/` and the JSDoc on the contracts below.
 
 - `src/domain/` is pure TypeScript: no React, no I/O, no `Date.now()` inside logic (pass `today`/`now` in).
   Dates are local `'YYYY-MM-DD'` strings; use helpers in `src/domain/week.ts`.
-- UI uses **shadcn/ui** (Radix + Tailwind v4). Kit components live in `src/components/ui/` (vendored from the
-  shadcn new-york-v4 registry; import as `@/components/ui/button` etc.), `cn()` from `@/lib/utils`, icons from
+- UI uses **shadcn/ui** (Radix + Tailwind v4) in the **Rhea** style. Kit components live in `src/components/ui/`
+  (vendored from shadcn's `bases/radix` registry; their `cn-*` classes are styled by `src/styles/style-rhea.css`,
+  kept pristine — app overrides go in `src/index.css`; import as `@/components/ui/button` etc.), `cn()` from `@/lib/utils`, icons from
   `lucide-react`, toasts via `toast()` from `sonner`. Style with Tailwind classes only (no CSS modules, no
   inline colours). Tokens are in `src/index.css`. **Primer is being removed — never import `@primer/*`.**
 - **Design rules (calm, greyscale-first):**
@@ -25,8 +26,10 @@ summarized in `docs/` and the JSDoc on the contracts below.
     below weekly minimum, XL, repeated slips). Nothing else is coloured. No coloured badges/labels.
   - Yellow accent `primary` is a FILL only (primary button, focus ring, active nav, progress, checked
     checkbox) — never text. Links: foreground + underline on hover (`Button variant="link"`).
-  - No boxes: separate sections with a heading + whitespace (`Section` from `src/ui/components/Page.tsx`)
-    and hairline row dividers (`divide-y`). No bordered cards (dialogs/popovers excepted).
+  - Boxes where they help: group related content in a `Card` (`@/components/ui/card`; Rhea's soft card: faint
+    ring + shadow, rounded) — e.g. a project's candidates on Plan, a day column on Week, a settings section, a
+    dialog section. Don't box single rows, don't nest boxes, and keep rows inside a box divided by hairlines
+    (`divide-y`). Simple lists can still be plain sections (`Section` from `src/ui/components/Page.tsx`).
   - At most one primary (`variant="default"`) button per screen; others `ghost`/`outline`/`link`.
   - Task rows: use `TaskRow` (one line, grey metadata, `actions` revealed on hover on desktop, always visible
     on touch). Project health: `ProjectSignal` (one signal max). Capacity: `CapacityLine`/`CapacityBar`.

@@ -114,14 +114,14 @@ export function TaskRow({
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
           {title}
-          <span className="ml-auto inline-flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+          <span className="ml-auto inline-flex min-w-0 items-center gap-x-1.5 text-xs whitespace-nowrap text-muted-foreground">
             {items.flatMap((item, i) => (i === 0 ? [item] : [<Dot key={`dot${i}`} />, item]))}
           </span>
         </div>
         {note && <div className="text-xs text-muted-foreground">{note}</div>}
       </div>
       {rowActions && (
-        <div className="-my-1 flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+        <div className="-my-1 flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 md:has-[[data-state=open]]:opacity-100 [@media(hover:none)]:opacity-100">
           {rowActions}
         </div>
       )}

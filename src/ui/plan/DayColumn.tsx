@@ -101,7 +101,7 @@ export function DayColumn({
 
       {tasks.length > 0 && (
         // Columns are narrow: keep each row's grey metadata on one line, left-aligned under the title.
-        <div className="divide-y [&_.ml-auto]:ml-0 [&_.ml-auto]:flex-nowrap">
+        <div className="divide-y">
           {tasks.map((task) => (
             <TaskRow
               key={task.id}
