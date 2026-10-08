@@ -10,5 +10,7 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     css: false,
+    // Primer React ships .css imports from node_modules; let Vite transform them instead of Node.
+    server: { deps: { inline: [/@primer\/react/] } },
   },
 })
