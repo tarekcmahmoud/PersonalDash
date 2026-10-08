@@ -1,0 +1,126 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-16);
+  min-width: 0;
+}
+
+.help {
+  margin: 0;
+  font-size: var(--text-body-size-medium);
+  color: var(--fgColor-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--base-size-4);
+}
+
+.copyWrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--base-size-8);
+}
+
+.copyStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--base-size-4);
+  color: var(--fgColor-success);
+  font-size: var(--text-body-size-small);
+}
+
+.cheatsheet summary {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  cursor: pointer;
+  color: var(--fgColor-accent);
+  font-weight: var(--base-text-weight-semibold);
+  list-style: none;
+}
+
+.cheatsheet summary::-webkit-details-marker {
+  display: none;
+}
+
+.cheatsheet summary::before {
+  content: '';
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 7px;
+  border-color: transparent transparent transparent currentcolor;
+  transition: transform 0.1s;
+}
+
+.cheatsheet[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.code {
+  margin: var(--base-size-8) 0;
+  padding: var(--base-size-12);
+  overflow-x: auto;
+  background: var(--bgColor-muted);
+  border-radius: var(--borderRadius-medium);
+  font-family: var(--fontStack-monospace);
+  font-size: var(--text-body-size-small);
+  line-height: 1.5;
+}
+
+.small {
+  margin: 0;
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
+}
+
+.objective {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-16);
+  padding: var(--base-size-16);
+  border: var(--borderWidth-thin) solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-muted);
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--text-title-size-small);
+  font-weight: var(--base-text-weight-semibold);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--base-size-16);
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.flash {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--base-size-8);
+}
+
+@media (max-width: 767px) {
+  .objective {
+    padding: var(--base-size-12);
+  }
+
+  .fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .actions > * {
+    flex: 1 1 100%;
+  }
+}
