@@ -19,6 +19,7 @@ import { MilestoneDialog } from './MilestoneDialog'
 import { endPosition, renumberGroup, type TaskGroupData } from './ordering'
 import { RowMenu } from './RowMenu'
 import { SortableList, type SortableControls } from './SortableList'
+import { NO_GROUP, useTaskDropList } from './taskDndContext'
 import { DIMMED_CLASSES } from './useProjectView'
 
 interface Props {
@@ -67,6 +68,9 @@ export function TaskGroup({
   const workstream = !nested && group.milestone?.parentId === null ? group.milestone : null
   const [addingSubstream, setAddingSubstream] = useState(false)
   const substreams = workstream ? ctx.milestones.filter((m) => m.parentId === workstream.id) : []
+  // Drag and drop (inside the project page's TaskDndProvider): this list's id, and the card as its drop target.
+  const listId = group.milestone?.id ?? NO_GROUP
+  const { setNodeRef: setDropRef, isTarget: isDropTarget } = useTaskDropList(listId)
   // The list element, as state: the rails measure it once it is attached.
   const [listEl, setListEl] = useState<HTMLDivElement | null>(null)
   const inList = new Set(open.map((t) => t.id))
@@ -168,13 +172,40 @@ export function TaskGroup({
     )
   }
 
+  const addRow = (
+    <AddTaskRow
+      groupName={groupName}
+      onAdd={add}
+      extra={
+        workstream && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={`Add substream to ${workstream.name}`}
+            className="h-8 px-2 font-normal text-muted-foreground"
+            onClick={() => setAddingSubstream(true)}
+          >
+            <Plus /> Add substream
+          </Button>
+        )
+      }
+    />
+  )
+
   return (
     <section aria-label={group.milestone?.name ?? 'Tasks without a workstream'}>
       <Card
+        ref={setDropRef}
         data-testid={nested ? 'substream-card' : 'workstream-card'}
         data-dimmed={dimmed}
+        data-drop-target={isDropTarget || undefined}
         size={nested ? 'sm' : 'default'}
-        className={cn('gap-2', nested ? 'bg-muted/40 shadow-none' : DIMMED_CLASSES)}
+        className={cn(
+          'gap-2 transition-shadow',
+          nested ? 'bg-muted/40 shadow-none' : DIMMED_CLASSES,
+          isDropTarget && 'ring-2 ring-foreground/20',
+        )}
       >
         {header && <CardHeader>{header}</CardHeader>}
         <CardContent>
@@ -183,31 +214,15 @@ export function TaskGroup({
             <SortableList
               className="divide-y"
               items={open}
+              list={listId}
               onReorder={reorder}
               label={(t) => t.title}
               renderItem={renderRow}
             />
           </div>
-          <div className="mt-1">
-            <AddTaskRow
-              groupName={groupName}
-              onAdd={add}
-              extra={
-                workstream && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`Add substream to ${workstream.name}`}
-                    className="h-8 px-2 font-normal text-muted-foreground"
-                    onClick={() => setAddingSubstream(true)}
-                  >
-                    <Plus /> Add substream
-                  </Button>
-                )
-              }
-            />
-          </div>
+          {/* With substreams, the workstream's own "Add task" sits below the last substream card. */}
+          {children && <div className="mt-3 flex flex-col gap-3">{children}</div>}
+          <div className={children ? 'mt-3' : 'mt-1'}>{addRow}</div>
           {done.length > 0 && (
             <CollapsibleGroup label={`${done.length} done`} className="mt-1">
               <div className="divide-y">
@@ -217,7 +232,6 @@ export function TaskGroup({
               </div>
             </CollapsibleGroup>
           )}
-          {children && <div className="mt-3 flex flex-col gap-3">{children}</div>}
         </CardContent>
         {addingSubstream && workstream && (
           <MilestoneDialog

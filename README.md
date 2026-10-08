@@ -16,7 +16,8 @@ A weekly planner for people running many projects at once. PersonalDash helps yo
   links can start any time. Imported outlines are linked in order. Each task has a size
   (S, M, L, XL); an XL task is too big to schedule, so split it first.
 - **Substreams**: a workstream can hold smaller tracks (for example Website inside Branding & Communication),
-  shown as cards inside its card, each with its own next step.
+  shown as cards inside its card, each with its own next step. Drag tasks between a workstream, its substreams
+  and other workstreams.
 - **Workstream focus mode** on the project page.
 - **Resources** per project (links with images, descriptions and linked workstreams).
 - **Inbox** for tasks you haven't placed yet.

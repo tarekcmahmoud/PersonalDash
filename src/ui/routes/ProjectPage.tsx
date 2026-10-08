@@ -34,11 +34,13 @@ import { ProjectObjective } from '../components/ProjectObjective'
 import { ConfirmDialog } from '../project/ConfirmDialog'
 import { MilestoneDialog } from '../project/MilestoneDialog'
 import { MilestoneHeader } from '../project/MilestoneHeader'
-import { sortedResources } from '../project/ordering'
+import { moveIntoGroup, renumberGroup, sortedResources } from '../project/ordering'
 import { ProjectFormDialog } from '../project/ProjectFormDialog'
 import { ResourcesPane } from '../project/ResourcesPane'
 import { TaskGroup } from '../project/TaskGroup'
 import { useFocus, useProjectPane, type ProjectPane } from '../project/useProjectView'
+import { TaskDndProvider } from '../project/TaskDnd'
+import { NO_GROUP, type TaskDrop } from '../project/taskDndContext'
 import { TaskDialogHost } from '../task/TaskDialogHost'
 import { useTaskParam } from '../task/useTaskParam'
 
@@ -115,6 +117,26 @@ export function ProjectPage() {
   const taskCount = ctx.tasks.filter((t) => t.projectId === project.id).length
 
   const onOpenTask = (t: Task) => (linking ? completeLink(t) : open(t.id))
+
+  /** A dragged task was dropped: reorder within its list, or move it into another list before `beforeId`. */
+  const dropTask = ({ taskId, from, to, beforeId }: TaskDrop) => {
+    const task = ctx.tasks.find((t) => t.id === taskId)
+    if (!task) return
+    const target = to === NO_GROUP ? null : to
+    const group = tasksOf(target)
+    if (from !== to) {
+      void apply({ kind: 'saveTasks', tasks: moveIntoGroup(group, task, target, beforeId) })
+      return
+    }
+    const open = group.filter((t) => t.status !== 'done')
+    const at = open.findIndex((t) => t.id === taskId)
+    const toIndex = beforeId === null ? open.length - 1 : open.findIndex((t) => t.id === beforeId)
+    if (at === -1 || toIndex === -1 || at === toIndex) return
+    const reordered = [...open]
+    reordered.splice(toIndex, 0, ...reordered.splice(at, 1))
+    const changed = renumberGroup(group, reordered)
+    if (changed.length > 0) void apply({ kind: 'saveTasks', tasks: changed })
+  }
 
   /** Finishes "Waits for…": `linking` waits for `target` from now on (loops are refused). */
   const completeLink = (target: Task) => {
@@ -287,65 +309,67 @@ export function ProjectPage() {
               </Button>
             </div>
           )}
-          {showLoose && (
-            <TaskGroup
-              project={project}
-              group={{ milestone: null, tasks: tasksOf(null) }}
-              ctx={ctx}
-              nextIds={nextIds}
-              dimmed={focusId !== null}
-              onOpenTask={onOpenTask}
-              onStartLink={setLinking}
-              header={
-                hasWorkstreams ? (
-                  <h3 className="min-h-8 content-center text-base font-medium">No workstream</h3>
-                ) : undefined
-              }
-            />
-          )}
-          {tree.map(({ milestone, substreams }) => (
-            <TaskGroup
-              key={milestone.id}
-              project={project}
-              group={{ milestone, tasks: tasksOf(milestone.id) }}
-              ctx={ctx}
-              nextIds={nextIds}
-              dimmed={focusId !== null && milestone.id !== focusId}
-              onOpenTask={onOpenTask}
-              onStartLink={setLinking}
-              header={
-                <MilestoneHeader
-                  milestone={milestone}
-                  siblings={milestones}
-                  substreams={substreams}
-                  taskCount={[milestone, ...substreams].reduce((n, m) => n + tasksOf(m.id).length, 0)}
-                  focused={milestone.id === focusId}
-                  onToggleFocus={() => (milestone.id === focusId ? exitFocus() : setFocus(milestone.id))}
-                />
-              }
-            >
-              {substreams.length > 0 &&
-                substreams.map((sub) => (
-                  <TaskGroup
-                    key={sub.id}
-                    nested
-                    project={project}
-                    group={{ milestone: sub, tasks: tasksOf(sub.id) }}
-                    ctx={ctx}
-                    nextIds={nextIds}
-                    onOpenTask={onOpenTask}
-                    onStartLink={setLinking}
-                    header={
-                      <MilestoneHeader
-                        milestone={sub}
-                        siblings={substreams}
-                        taskCount={tasksOf(sub.id).length}
-                      />
-                    }
+          <TaskDndProvider tasks={ctx.tasks} onDrop={dropTask}>
+            {showLoose && (
+              <TaskGroup
+                project={project}
+                group={{ milestone: null, tasks: tasksOf(null) }}
+                ctx={ctx}
+                nextIds={nextIds}
+                dimmed={focusId !== null}
+                onOpenTask={onOpenTask}
+                onStartLink={setLinking}
+                header={
+                  hasWorkstreams ? (
+                    <h3 className="min-h-8 content-center text-base font-medium">No workstream</h3>
+                  ) : undefined
+                }
+              />
+            )}
+            {tree.map(({ milestone, substreams }) => (
+              <TaskGroup
+                key={milestone.id}
+                project={project}
+                group={{ milestone, tasks: tasksOf(milestone.id) }}
+                ctx={ctx}
+                nextIds={nextIds}
+                dimmed={focusId !== null && milestone.id !== focusId}
+                onOpenTask={onOpenTask}
+                onStartLink={setLinking}
+                header={
+                  <MilestoneHeader
+                    milestone={milestone}
+                    siblings={milestones}
+                    substreams={substreams}
+                    taskCount={[milestone, ...substreams].reduce((n, m) => n + tasksOf(m.id).length, 0)}
+                    focused={milestone.id === focusId}
+                    onToggleFocus={() => (milestone.id === focusId ? exitFocus() : setFocus(milestone.id))}
                   />
-                ))}
-            </TaskGroup>
-          ))}
+                }
+              >
+                {substreams.length > 0 &&
+                  substreams.map((sub) => (
+                    <TaskGroup
+                      key={sub.id}
+                      nested
+                      project={project}
+                      group={{ milestone: sub, tasks: tasksOf(sub.id) }}
+                      ctx={ctx}
+                      nextIds={nextIds}
+                      onOpenTask={onOpenTask}
+                      onStartLink={setLinking}
+                      header={
+                        <MilestoneHeader
+                          milestone={sub}
+                          siblings={substreams}
+                          taskCount={tasksOf(sub.id).length}
+                        />
+                      }
+                    />
+                  ))}
+              </TaskGroup>
+            ))}
+          </TaskDndProvider>
           <Button
             variant="ghost"
             size="sm"
