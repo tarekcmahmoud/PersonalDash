@@ -67,13 +67,14 @@ export function TaskRow({
   return (
     <div data-testid="task-row" data-status={task.status} className={cx(styles.row, muted && styles.muted)}>
       {onToggleDone && (
-        <div className={styles.checkbox}>
+        // The label widens the tap target to 32px around the 16px checkbox.
+        <label className={styles.checkbox}>
           <Checkbox
             checked={done}
             onChange={() => onToggleDone?.(task)}
             aria-label={`Mark "${task.title}" done`}
           />
-        </div>
+        </label>
       )}
       <div className={styles.body}>
         <div className={styles.titleLine}>

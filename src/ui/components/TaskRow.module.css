@@ -8,7 +8,13 @@
 
 .checkbox {
   flex-shrink: 0;
-  padding-top: var(--base-size-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--base-size-32);
+  height: var(--base-size-32);
+  margin: calc(var(--base-size-4) * -1) calc(var(--base-size-8) * -1) 0;
+  cursor: pointer;
 }
 
 .body {
