@@ -59,7 +59,7 @@ function toAuthUser(user: User | null | undefined): AuthUser | null {
 
 /**
  * Supabase-backed Repo + AuthService (email/password). Maps camelCase domain fields to the snake_case
- * columns of supabase/migrations/0001_init.sql. Every row carries user_id = the signed-in user; RLS enforces it.
+ * columns of supabase/migrations/*.sql. Every row carries user_id = the signed-in user; RLS enforces it.
  */
 export function createSupabaseServices(url: string, anonKey: string): Services {
   const client = createClient(url, anonKey)

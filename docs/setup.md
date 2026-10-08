@@ -26,10 +26,11 @@ Supabase stores your data and handles sign-in. The free tier is enough for perso
    database password. Save that password in a password manager. The app does not need it. Pick the region
    closest to you, then click **Create new project**. Wait a minute or two for it to finish.
 3. In the left sidebar, click **SQL Editor**, then **New query**.
-4. Open `supabase/migrations/0001_init.sql` on GitHub and click **Copy raw file** (the copy icon above the file),
-   so you get the whole file. Paste it into the SQL Editor and click **Run** with nothing selected (a selection
-   runs only that part). This creates the tables and security rules. The script is safe to run again: anything
-   that already exists is skipped. A "syntax error at or near ;" means only part of the file was pasted.
+4. The database setup is split into three short files in `supabase/migrations/`: `0001_core_tables.sql`,
+   `0002_more_tables.sql` and `0003_security.sql`. Run them **in this order**, one at a time. Open the file on
+   GitHub and click **Copy raw file** (the copy icon above the file). Paste it into an empty query, click **Run**
+   with nothing selected, then do the next file. Each file checks that the previous one ran, and every file is
+   safe to run again. The last one ends with a summary listing 8 tables, each with security turned on.
 5. In the left sidebar, click **Authentication**, then **Users**. Click **Add user**, then **Create new user**.
    Enter your email address and a password. Tick **Auto Confirm User**, then click **Create user**. This account
    is the only one the app will ever have.
@@ -143,7 +144,7 @@ Vercel later, open the project, go to **Deployments**, open the menu (⋯) on th
 - **"Invalid login credentials".** The email or password does not match the user in Supabase. Check both for typos.
   Under **Authentication → Users**, confirm your user exists. To change the password, open the user there.
 - **Errors that mention "row-level security", "new row violates row-level security policy", or "permission
-  denied".** The database migration has probably not run. Run `supabase/migrations/0001_init.sql` in the SQL Editor
+  denied".** The database migration has probably not run. Run the three files in `supabase/migrations/` in order in the SQL Editor
   (section 1, step 4). Also make sure you are signed in.
 - **Google "origin mismatch" error (Error 400: origin_mismatch).** The address you are using is missing from
   **Authorized JavaScript origins**. Add it exactly, with `https://` or `http://`, no trailing slash, and the port

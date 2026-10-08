@@ -17,7 +17,7 @@ import {
   type WorkWindow,
 } from '../domain/types'
 
-// Row shapes of supabase/migrations/0001_init.sql (without user_id, which the database fills with
+// Row shapes of supabase/migrations/*.sql (without user_id, which the database fills with
 // auth.uid() on insert). Dates come back as 'YYYY-MM-DD', timestamps as ISO strings, jsonb as objects.
 
 export interface ProjectRow {
