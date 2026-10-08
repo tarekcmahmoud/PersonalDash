@@ -10,7 +10,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import { usePlanContext, useSnapshot } from '../../data/hooks'
 import { CapacityLine } from '../components/CapacityBar'
-import { Page } from '../components/Page'
+import { Page, SIDE_PANE_SCROLL } from '../components/Page'
 import { weekStats } from '../plan/weekStats'
 import { TodayColumn } from '../today/TodayColumn'
 import { TodayResources } from '../today/TodayResources'
@@ -122,7 +122,7 @@ export function TodayPage() {
           </div>
           <TodayColumn ctx={ctx} />
         </section>
-        <div data-pane="resources" className={paneClass('resources')}>
+        <div data-pane="resources" className={cn(paneClass('resources'), SIDE_PANE_SCROLL)}>
           <TodayResources ctx={ctx} />
         </div>
       </div>

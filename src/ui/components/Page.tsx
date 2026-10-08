@@ -53,6 +53,14 @@ export function Page({
   )
 }
 
+/**
+ * The right-hand pane of a two-column page (Project, Today) on desktop: it stays in view while the page (the
+ * left column) scrolls, and scrolls on its own when it is taller than the window. The 4px padding keeps the
+ * cards' outlines from being clipped. Phones show one pane at a time, so nothing changes there.
+ */
+export const SIDE_PANE_SCROLL =
+  'lg:sticky lg:top-6 lg:-m-1 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:overscroll-contain lg:p-1 lg:[scrollbar-width:thin]'
+
 /** A titled section: small grey heading + content, no card. Prefer `CardSection` for grouped content. */
 export function Section({
   title,

@@ -29,7 +29,7 @@ import {
 } from '../../domain/order'
 import type { ProjectStatus, Task } from '../../domain/types'
 import { ProjectSignal } from '../components/HealthBadges'
-import { Page } from '../components/Page'
+import { Page, SIDE_PANE_SCROLL } from '../components/Page'
 import { ProjectObjective } from '../components/ProjectObjective'
 import { ConfirmDialog } from '../project/ConfirmDialog'
 import { MilestoneDialog } from '../project/MilestoneDialog'
@@ -380,7 +380,11 @@ export function ProjectPage() {
           </Button>
         </section>
 
-        <div data-pane="resources" data-active={pane === 'resources'} className={paneClass('resources')}>
+        <div
+          data-pane="resources"
+          data-active={pane === 'resources'}
+          className={cn(paneClass('resources'), SIDE_PANE_SCROLL)}
+        >
           <ResourcesPane project={project} resources={resources} workstreams={allStreams} focusId={focusId} />
         </div>
       </div>
