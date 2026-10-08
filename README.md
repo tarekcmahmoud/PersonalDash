@@ -26,7 +26,7 @@ A weekly planner for people running many projects at once. PersonalDash helps yo
 
 ## Tech stack
 
-Vite, React, TypeScript, GitHub Primer React, Supabase (Postgres, Auth and Row Level Security), Google Calendar
+Vite, React, TypeScript, shadcn/ui (Radix + Tailwind CSS, Rhea style), Supabase (Postgres, Auth and Row Level Security), Google Calendar
 API, Vitest, Testing Library and Playwright.
 
 ## Quick start
@@ -62,7 +62,7 @@ in Supabase and deploy it online, follow [docs/setup.md](docs/setup.md).
 - `src/domain/`: planning logic as pure TypeScript (no React, no I/O).
 - `src/data/`: storage, with in-memory and Supabase repositories, change objects and hooks.
 - `src/integrations/gcal/`: Google Calendar integration.
-- `src/ui/`: screens and components, built with Primer React.
+- `src/ui/`: screens and app components; `src/components/ui/`: the vendored shadcn/ui kit (Rhea style).
 - `supabase/migrations/`: database schema, including Row Level Security policies.
 - `docs/`: setup and format documentation.
 
