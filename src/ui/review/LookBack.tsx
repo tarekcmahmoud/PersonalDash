@@ -1,5 +1,6 @@
 import { ChevronRight } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import type { WeekRetro } from '../../domain/review'
 import type { ID, Project } from '../../domain/types'
@@ -45,26 +46,32 @@ export function LookBack({ retro, projects }: { retro: WeekRetro; projects: Proj
     <div>
       <StepIntro title="Look back">{sentence}</StepIntro>
 
-      <div className="divide-y">
-        {doneByProject.map((group) => (
-          <Group
-            key={group.projectId ?? 'inbox'}
-            name={nameOf.get(group.projectId) ?? 'Inbox'}
-            count={group.tasks.length}
-          >
-            {group.tasks.map((t) => (
-              <li key={t.id}>{t.title}</li>
-            ))}
-          </Group>
-        ))}
-        {untouched.length > 0 && (
-          <Group name="No progress" count={untouched.length}>
-            {untouched.map((p) => (
-              <li key={p.id}>{p.name}</li>
-            ))}
-          </Group>
-        )}
-      </div>
+      {(doneByProject.length > 0 || untouched.length > 0) && (
+        <Card size="sm" className="py-2">
+          <CardContent>
+            <div className="divide-y">
+              {doneByProject.map((group) => (
+                <Group
+                  key={group.projectId ?? 'inbox'}
+                  name={nameOf.get(group.projectId) ?? 'Inbox'}
+                  count={group.tasks.length}
+                >
+                  {group.tasks.map((t) => (
+                    <li key={t.id}>{t.title}</li>
+                  ))}
+                </Group>
+              ))}
+              {untouched.length > 0 && (
+                <Group name="No progress" count={untouched.length}>
+                  {untouched.map((p) => (
+                    <li key={p.id}>{p.name}</li>
+                  ))}
+                </Group>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

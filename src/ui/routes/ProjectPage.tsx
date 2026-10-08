@@ -122,36 +122,38 @@ export function ProjectPage() {
   const hasMilestones = milestones.length > 0
   return (
     <Page title={project.name} description={description} actions={actions}>
-      {groups
-        // An empty milestone-less group only clutters a project that is organised in milestones.
-        .filter((group) => group.milestone || group.tasks.length > 0 || !hasMilestones)
-        .map((group) => (
-          <TaskGroup
-            key={group.milestone?.id ?? 'none'}
-            project={project}
-            group={group}
-            ctx={ctx}
-            nextId={next?.id ?? null}
-            onOpenTask={(t) => open(t.id)}
-            header={
-              group.milestone ? (
-                <MilestoneHeader
-                  milestone={group.milestone}
-                  siblings={milestones}
-                  taskCount={group.tasks.length}
-                />
-              ) : undefined
-            }
-          />
-        ))}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="-ml-2 px-2 font-normal text-muted-foreground"
-        onClick={() => setAddingMilestone(true)}
-      >
-        <Plus /> Add milestone
-      </Button>
+      <div className="flex flex-col gap-4">
+        {groups
+          // An empty milestone-less group only clutters a project that is organised in milestones.
+          .filter((group) => group.milestone || group.tasks.length > 0 || !hasMilestones)
+          .map((group) => (
+            <TaskGroup
+              key={group.milestone?.id ?? 'none'}
+              project={project}
+              group={group}
+              ctx={ctx}
+              nextId={next?.id ?? null}
+              onOpenTask={(t) => open(t.id)}
+              header={
+                group.milestone ? (
+                  <MilestoneHeader
+                    milestone={group.milestone}
+                    siblings={milestones}
+                    taskCount={group.tasks.length}
+                  />
+                ) : undefined
+              }
+            />
+          ))}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="self-start px-2 font-normal text-muted-foreground"
+          onClick={() => setAddingMilestone(true)}
+        >
+          <Plus /> Add milestone
+        </Button>
+      </div>
 
       {editing && <ProjectFormDialog project={project} onClose={() => setEditing(false)} />}
       {addingMilestone && (

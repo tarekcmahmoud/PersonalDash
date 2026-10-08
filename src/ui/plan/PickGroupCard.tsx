@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { taskHref, useTaskActions } from '../../data/taskActions'
 import type { PickCandidate, PickGroup } from '../../domain/planning'
@@ -28,56 +29,62 @@ export function PickGroupCard({
   const { project } = group
 
   return (
-    <section aria-label={project.name} className="py-4 first:pt-0 last:pb-0">
-      <header className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-        <h3 className="min-w-0 text-sm font-medium">
-          <Link to={`/projects/${project.id}`} className="underline-offset-4 hover:underline">
-            {project.name}
-          </Link>
-        </h3>
-        <ProjectSignal flags={group.flags} />
-        <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+    <Card role="region" aria-label={project.name} size="sm" className="gap-2">
+      <CardHeader>
+        <CardTitle className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <h3 className="min-w-0">
+            <Link to={`/projects/${project.id}`} className="underline-offset-4 hover:underline">
+              {project.name}
+            </Link>
+          </h3>
+          <ProjectSignal flags={group.flags} />
+        </CardTitle>
+        <CardAction className="text-xs text-muted-foreground tabular-nums">
           {group.plannedCount} planned
-        </span>
-      </header>
+        </CardAction>
+      </CardHeader>
 
-      {group.candidates.length === 0 && <p className="py-1 text-sm text-muted-foreground">No open tasks.</p>}
-      <div>
-        {group.candidates.map((c) => (
-          <div key={c.task.id} className="flex items-start gap-2">
-            {/* The label widens the tap target to 32px around the checkbox, like TaskRow's own. */}
-            <label className="mt-0.5 -ml-2 flex size-8 shrink-0 cursor-pointer items-center justify-center">
-              <Checkbox
-                checked={c.planned}
-                disabled={!c.selectable}
-                aria-label={`Plan "${c.task.title}" this week`}
-                onCheckedChange={() =>
-                  void (c.planned ? actions.unplan(c.task) : actions.plan(c.task, weekStart))
-                }
+      <CardContent>
+        {group.candidates.length === 0 && (
+          <p className="py-1 text-sm text-muted-foreground">No open tasks.</p>
+        )}
+        <div className="divide-y">
+          {group.candidates.map((c) => (
+            <div key={c.task.id} className="flex items-start gap-2">
+              {/* The label widens the tap target to 32px around the checkbox, like TaskRow's own. */}
+              <label className="mt-0.5 -ml-2 flex size-8 shrink-0 cursor-pointer items-center justify-center">
+                <Checkbox
+                  checked={c.planned}
+                  disabled={!c.selectable}
+                  aria-label={`Plan "${c.task.title}" this week`}
+                  onCheckedChange={() =>
+                    void (c.planned ? actions.unplan(c.task) : actions.plan(c.task, weekStart))
+                  }
+                />
+              </label>
+              <TaskRow
+                className="min-w-0 flex-1"
+                task={c.task}
+                muted={!c.selectable}
+                note={reasonText(c)}
+                onOpen={(t) => navigate(taskHref(t))}
               />
-            </label>
-            <TaskRow
-              className="min-w-0 flex-1"
-              task={c.task}
-              muted={!c.selectable}
-              note={reasonText(c)}
-              onOpen={(t) => navigate(taskHref(t))}
-            />
-          </div>
-        ))}
-      </div>
+            </div>
+          ))}
+        </div>
 
-      {group.hasMore && (
-        <Button
-          variant="link"
-          size="sm"
-          className="-ml-1 text-xs text-muted-foreground"
-          onClick={onShowMore}
-          aria-label={`Show more tasks for ${project.name}`}
-        >
-          Show more
-        </Button>
-      )}
-    </section>
+        {group.hasMore && (
+          <Button
+            variant="link"
+            size="sm"
+            className="-ml-2 text-xs text-muted-foreground"
+            onClick={onShowMore}
+            aria-label={`Show more tasks for ${project.name}`}
+          >
+            Show more
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   )
 }

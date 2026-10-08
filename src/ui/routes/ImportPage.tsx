@@ -7,7 +7,7 @@ import { makeProject, makeTemplate } from '../../domain/factories'
 import { activeProjectCount, isOverActiveCap } from '../../domain/health'
 import { docToBundle, parseOutline, type OutlineDoc, type ParseResult } from '../../domain/outline'
 import type { DateKind, ProjectStatus } from '../../domain/types'
-import { Page, Section } from '../components/Page'
+import { CardSection, Page } from '../components/Page'
 import { BREAKDOWN_PROMPT, copyText } from '../outline/breakdownPrompt'
 import { OutlineEditor } from '../outline/OutlineEditor'
 import { cn } from '@/lib/utils'
@@ -220,12 +220,13 @@ function ImportForm({ initial }: { initial: ImportLocationState }) {
         value={text}
         onChange={setText}
         onParse={setParsed}
-        previewClassName="lg:max-h-[34rem] lg:overflow-y-auto lg:pr-2"
+        previewClassName="lg:max-h-[34rem] lg:overflow-y-auto"
+        previewCard
       />
 
-      <Section title="Objective" className="mt-10 mb-0 border-t pt-6">
-        <div className="mt-3 max-w-xl">
-          <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
+      <CardSection title="Objective" className="mt-4">
+        <div>
+          <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
             <Field id="project-name" label="Project name" error={errorFor('name')} className="sm:col-span-2">
               <Input
                 id="project-name"
@@ -335,7 +336,7 @@ function ImportForm({ initial }: { initial: ImportLocationState }) {
             <p className="mt-2 text-xs text-muted-foreground">Fix the errors above to continue.</p>
           )}
         </div>
-      </Section>
+      </CardSection>
     </Page>
   )
 }

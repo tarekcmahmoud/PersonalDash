@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { parseOutline, type ParseResult } from '../../domain/outline'
+import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
@@ -20,6 +21,7 @@ export function OutlineEditor({
   onParse,
   label = 'Outline',
   previewClassName,
+  previewCard = false,
   placeholder = '# Project name\noutcome: Done when …\ntarget: 2026-12-31 soft\n\n## Milestone\n- First task [S]',
 }: {
   value: string
@@ -30,6 +32,8 @@ export function OutlineEditor({
   placeholder?: string
   /** Extra classes for the preview pane (e.g. a max height on desktop). */
   previewClassName?: string
+  /** Show the preview inside a card (full pages; dialogs keep it plain). */
+  previewCard?: boolean
 }) {
   const [parsed, setParsed] = useState<ParseResult>(() => parseOutline(value))
   const [tab, setTab] = useState<'edit' | 'preview'>('edit')
@@ -66,6 +70,11 @@ export function OutlineEditor({
 
   const hasText = value.trim() !== ''
   const issues = hasText ? parsed.issues : []
+  const preview = hasText ? (
+    <OutlinePreview doc={parsed.doc} />
+  ) : (
+    <p className="text-sm text-muted-foreground">Paste or type an outline to see the plan here.</p>
+  )
 
   return (
     <div data-tab={tab}>
@@ -104,14 +113,16 @@ export function OutlineEditor({
           <IssueList issues={issues} onJumpToLine={jumpToLine} />
         </div>
         <div
-          className={cn('min-w-0', tab === 'edit' && 'max-lg:hidden', previewClassName)}
+          className={cn('min-w-0', tab === 'edit' && 'max-lg:hidden', !previewCard && previewClassName)}
           aria-label="Preview"
           role="region"
         >
-          {hasText ? (
-            <OutlinePreview doc={parsed.doc} />
+          {previewCard ? (
+            <Card size="sm" className="gap-0 py-0">
+              <CardContent className={cn('py-4', previewClassName)}>{preview}</CardContent>
+            </Card>
           ) : (
-            <p className="text-sm text-muted-foreground">Paste or type an outline to see the plan here.</p>
+            preview
           )}
         </div>
       </div>

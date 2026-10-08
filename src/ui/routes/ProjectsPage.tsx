@@ -13,7 +13,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useApply, usePlanContext } from '../../data/hooks'
 import { activeProjectCount, isOverActiveCap } from '../../domain/health'
 import type { Project } from '../../domain/types'
-import { Page, Section } from '../components/Page'
+import { Card, CardContent } from '@/components/ui/card'
+import { CardSection, Page } from '../components/Page'
 import { CollapsibleGroup } from '../project/CollapsibleGroup'
 import { ProjectFormDialog } from '../project/ProjectFormDialog'
 import { ProjectRow } from '../project/ProjectRow'
@@ -84,46 +85,56 @@ export function ProjectsPage() {
         </p>
       )}
 
-      <Section title="Active" count={active.length}>
-        {active.length === 0 ? (
-          <p className="py-2 text-sm text-muted-foreground">
-            No active projects. Create one, or reactivate a project below.
-          </p>
-        ) : (
-          <SortableList
-            className="divide-y"
-            items={active}
-            onReorder={(items) => void reorder(items)}
-            label={(p) => p.name}
-            renderItem={(p, controls) => <ProjectRow project={p} ctx={ctx} controls={controls} />}
-          />
-        )}
-        {system && (
-          <div className="border-t">
-            <ProjectRow project={system} ctx={ctx} />
-          </div>
-        )}
-      </Section>
+      <div className="flex flex-col gap-4">
+        <CardSection title="Active" count={active.length}>
+          {active.length === 0 ? (
+            <p className="py-2 text-sm text-muted-foreground">
+              No active projects. Create one, or reactivate a project below.
+            </p>
+          ) : (
+            <SortableList
+              className="divide-y"
+              items={active}
+              onReorder={(items) => void reorder(items)}
+              label={(p) => p.name}
+              renderItem={(p, controls) => <ProjectRow project={p} ctx={ctx} controls={controls} />}
+            />
+          )}
+          {system && (
+            <div className="border-t">
+              <ProjectRow project={system} ctx={ctx} />
+            </div>
+          )}
+        </CardSection>
 
-      {onHold.length > 0 && (
-        <CollapsibleGroup heading label="On hold" count={onHold.length} className="mb-6">
-          <div className="divide-y">
-            {onHold.map((p) => (
-              <ProjectRow key={p.id} project={p} ctx={ctx} />
-            ))}
-          </div>
-        </CollapsibleGroup>
-      )}
+        {onHold.length > 0 && (
+          <Card size="sm" className="py-2">
+            <CardContent>
+              <CollapsibleGroup heading label="On hold" count={onHold.length}>
+                <div className="divide-y">
+                  {onHold.map((p) => (
+                    <ProjectRow key={p.id} project={p} ctx={ctx} />
+                  ))}
+                </div>
+              </CollapsibleGroup>
+            </CardContent>
+          </Card>
+        )}
 
-      {done.length > 0 && (
-        <CollapsibleGroup heading label="Done" count={done.length} className="mb-6">
-          <div className="divide-y">
-            {done.map((p) => (
-              <ProjectRow key={p.id} project={p} ctx={ctx} />
-            ))}
-          </div>
-        </CollapsibleGroup>
-      )}
+        {done.length > 0 && (
+          <Card size="sm" className="py-2">
+            <CardContent>
+              <CollapsibleGroup heading label="Done" count={done.length}>
+                <div className="divide-y">
+                  {done.map((p) => (
+                    <ProjectRow key={p.id} project={p} ctx={ctx} />
+                  ))}
+                </div>
+              </CollapsibleGroup>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {creating && (
         <ProjectFormDialog

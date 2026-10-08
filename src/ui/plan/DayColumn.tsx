@@ -5,6 +5,7 @@ import { taskHref, useTaskActions } from '../../data/taskActions'
 import { plannedHours } from '../../domain/capacity'
 import type { FollowUpItem } from '../../domain/followups'
 import type { CalendarEvent, ISODate, Settings, Task } from '../../domain/types'
+import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { formatHours } from '../components/format'
 import { TaskRow } from '../components/TaskRow'
@@ -52,13 +53,19 @@ export function DayColumn({
   else if (capacity > 0) hoursText = `${formatHours(capacity)}h free`
 
   return (
-    <section
-      className={cn('flex min-w-0 flex-col gap-2 py-3', className)}
+    <Card
+      size="sm"
+      role="region"
+      className={cn(
+        'min-w-0 gap-2 rounded-2xl xl:[--card-spacing:--spacing(3)]',
+        isToday && 'ring-2 ring-primary/40',
+        className,
+      )}
       aria-label={day ? format(parseISO(day), 'EEEE MMMM d') : 'This week, any day'}
       data-day={day ?? 'any'}
       data-today={isToday ? '' : undefined}
     >
-      <header className="flex items-baseline justify-between gap-2 md:flex-col md:items-start md:justify-start md:gap-0.5">
+      <header className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 px-(--card-spacing) md:flex-col md:items-start md:justify-start md:gap-0.5">
         <h2
           className={cn(
             'flex items-center gap-1.5 text-sm font-medium',
@@ -84,10 +91,10 @@ export function DayColumn({
         )}
       </header>
 
-      <MeetingList events={meetings} compact />
+      <MeetingList events={meetings} compact className="px-(--card-spacing)" />
 
       {followUps.length > 0 && (
-        <ul className="flex flex-col gap-1">
+        <ul className="flex flex-col gap-1 px-(--card-spacing)">
           {followUps.map((item) => (
             <li key={item.task.id} className="flex items-start gap-1.5 text-xs text-muted-foreground">
               <Clock className="mt-0.5 size-3 shrink-0" aria-hidden />
@@ -100,13 +107,14 @@ export function DayColumn({
       )}
 
       {tasks.length > 0 && (
-        // Columns are narrow: keep each row's grey metadata on one line, left-aligned under the title.
-        <div className="divide-y">
+        // Columns are narrow: `compact` rows put the grey metadata under the title.
+        <div className="divide-y px-(--card-spacing)">
           {tasks.map((task) => (
             <TaskRow
               key={task.id}
               task={task}
               hideDay
+              compact
               projectName={task.projectId ? projectNames.get(task.projectId) : 'Inbox'}
               onToggleDone={(t) => void actions.toggleDone(t)}
               onOpen={(t) => navigate(taskHref(t))}
@@ -115,7 +123,11 @@ export function DayColumn({
           ))}
         </div>
       )}
-      {empty && <p className="hidden text-xs text-muted-foreground/60 md:block">Nothing planned</p>}
-    </section>
+      {empty && (
+        <p className="hidden px-(--card-spacing) text-xs text-muted-foreground/60 md:block">
+          Nothing planned
+        </p>
+      )}
+    </Card>
   )
 }

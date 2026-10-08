@@ -30,6 +30,8 @@ export interface TaskRowProps {
   note?: ReactNode
   /** Hide the pinned-day metadata (e.g. inside a day column). */
   hideDay?: boolean
+  /** Tighter row for narrow board columns (from the `xl` breakpoint): small checkbox, overlaid actions. */
+  compact?: boolean
   className?: string
 }
 
@@ -51,6 +53,7 @@ export function TaskRow({
   muted,
   note,
   hideDay,
+  compact,
   className,
 }: TaskRowProps) {
   const done = task.status === 'done'
@@ -99,11 +102,21 @@ export function TaskRow({
     <div
       data-testid="task-row"
       data-status={task.status}
-      className={cn('group flex min-h-10 items-start gap-2 py-1.5', muted && 'opacity-50', className)}
+      className={cn(
+        'group flex min-h-10 items-start gap-2 py-1.5',
+        compact && 'relative xl:min-h-8 xl:gap-1.5',
+        muted && 'opacity-50',
+        className,
+      )}
     >
       {onToggleDone && (
         // The label widens the tap target to 32px around the checkbox.
-        <label className="-my-1 -ml-2 flex size-8 shrink-0 cursor-pointer items-center justify-center">
+        <label
+          className={cn(
+            '-my-1 -ml-2 flex size-8 shrink-0 cursor-pointer items-center justify-center',
+            compact && 'xl:-my-0.5 xl:-ml-1 xl:size-6',
+          )}
+        >
           <Checkbox
             checked={done}
             onCheckedChange={() => onToggleDone(task)}
@@ -114,14 +127,24 @@ export function TaskRow({
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
           {title}
-          <span className="ml-auto inline-flex min-w-0 items-center gap-x-1.5 text-xs whitespace-nowrap text-muted-foreground">
+          <span
+            className={cn(
+              'ml-auto inline-flex min-w-0 items-center gap-x-1.5 text-xs whitespace-nowrap text-muted-foreground',
+              compact && 'xl:ml-0',
+            )}
+          >
             {items.flatMap((item, i) => (i === 0 ? [item] : [<Dot key={`dot${i}`} />, item]))}
           </span>
         </div>
         {note && <div className="text-xs text-muted-foreground">{note}</div>}
       </div>
       {rowActions && (
-        <div className="-my-1 flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 md:has-[[data-state=open]]:opacity-100 [@media(hover:none)]:opacity-100">
+        <div
+          className={cn(
+            '-my-1 flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 md:has-[[data-state=open]]:opacity-100 [@media(hover:none)]:opacity-100',
+            compact && 'xl:absolute xl:top-1 xl:right-0 xl:my-0 xl:rounded-md xl:bg-card',
+          )}
+        >
           {rowActions}
         </div>
       )}

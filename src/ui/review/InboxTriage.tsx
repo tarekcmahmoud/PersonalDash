@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { useApply, useSnapshot } from '../../data/hooks'
 import type { Task } from '../../domain/types'
 import { TaskRow } from '../components/TaskRow'
@@ -35,25 +36,29 @@ export function InboxTriage() {
       </StepIntro>
 
       {inbox.length > 0 && (
-        <ul className="divide-y">
-          {inbox.map((task) => (
-            <li key={task.id} className="flex flex-wrap items-center gap-x-3 py-1">
-              <TaskRow className="min-w-0 flex-1 basis-64" task={task} />
-              <div className="flex shrink-0 items-center gap-1 pb-1 sm:pb-0">
-                <FileToMenu task={task} />
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-muted-foreground"
-                  aria-label={`Delete ${task.title}`}
-                  onClick={() => setDeleting(task)}
-                >
-                  <Trash2 />
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <Card size="sm" className="py-2">
+          <CardContent>
+            <ul className="divide-y">
+              {inbox.map((task) => (
+                <li key={task.id} className="flex flex-wrap items-center gap-x-3 py-1">
+                  <TaskRow className="min-w-0 flex-1 basis-64" task={task} />
+                  <div className="flex shrink-0 items-center gap-1 pb-1 sm:pb-0">
+                    <FileToMenu task={task} />
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-muted-foreground"
+                      aria-label={`Delete ${task.title}`}
+                      onClick={() => setDeleting(task)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
 
       <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>

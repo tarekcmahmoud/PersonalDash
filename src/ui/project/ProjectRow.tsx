@@ -28,10 +28,7 @@ export function ProjectRow({
   const flags = projectHealth(project, ctx).filter((f) => f.kind !== 'no_next_step')
 
   return (
-    <div data-testid="project-row" className="group flex items-start gap-1 py-3 md:gap-1">
-      <div className="mt-0.5 -ml-7 hidden w-6 shrink-0 justify-center opacity-100 transition-opacity md:flex md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 [@media(hover:none)]:opacity-100">
-        {controls?.handle}
-      </div>
+    <div data-testid="project-row" className="group flex items-start gap-1 py-3">
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-baseline gap-3">
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
@@ -60,6 +57,12 @@ export function ProjectRow({
           </p>
         )}
       </div>
+      {!controls && <div aria-hidden className="w-8 shrink-0 md:w-6" />}
+      {controls && (
+        <div className="-my-0.5 hidden w-6 shrink-0 justify-center opacity-100 transition-opacity md:flex md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+          {controls.handle}
+        </div>
+      )}
       {controls && (
         <RowMenu label={`Project actions: ${project.name}`} controls={controls} className="-my-1 md:hidden" />
       )}

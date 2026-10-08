@@ -45,7 +45,7 @@ export function WeekPicker({ weekStart }: { weekStart: ISODate }) {
     <div>
       <CapacitySummary ctx={ctx} />
 
-      <div className="divide-y">
+      <div className="flex flex-col gap-4">
         {groups.map((group) => (
           <PickGroupCard
             key={group.project.id}
@@ -62,7 +62,7 @@ export function WeekPicker({ weekStart }: { weekStart: ISODate }) {
       </div>
 
       {(followUps.length > 0 || inboxCount > 0) && (
-        <p className="mt-8 text-sm text-muted-foreground">
+        <p className="mt-6 text-sm text-muted-foreground">
           {followUps.length > 0 && (
             <Link to="/" className={linkClass}>
               {followUps.length} {followUps.length === 1 ? 'follow-up' : 'follow-ups'} due

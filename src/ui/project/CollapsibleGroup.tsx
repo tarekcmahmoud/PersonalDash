@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 /**
  * A quiet, collapsed-by-default group: a grey toggle line ("On hold 2", "3 done") that reveals its content.
- * Use `heading` for a section-style (uppercase) toggle, otherwise it is a plain small grey line.
+ * Use `heading` for a card-title-style toggle, otherwise it is a plain small grey line.
  */
 export function CollapsibleGroup({
   label,
@@ -28,7 +28,7 @@ export function CollapsibleGroup({
       <CollapsibleTrigger
         className={cn(
           '-ml-1 flex min-h-8 cursor-pointer items-center gap-1 rounded-sm px-1 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50',
-          heading ? 'text-xs font-medium tracking-wide uppercase' : 'text-sm',
+          heading ? 'text-base font-medium text-foreground' : 'text-sm',
         )}
       >
         <ChevronRight

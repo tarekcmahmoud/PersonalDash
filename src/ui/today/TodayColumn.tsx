@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { taskHref, useTaskActions } from '../../data/taskActions'
 import type { PlanContext } from '../../domain/context'
 import type { Task } from '../../domain/types'
-import { Section } from '../components/Page'
+import { Card, CardContent } from '@/components/ui/card'
+import { CardSection } from '../components/Page'
 import { TaskRow } from '../components/TaskRow'
 import { eventsOnDay } from '../plan/events'
 import { FollowUpRow } from '../plan/FollowUpRow'
@@ -50,9 +51,9 @@ export function TodayColumn({ ctx }: { ctx: PlanContext }) {
   )
 
   return (
-    <>
+    <div className="flex flex-col gap-4">
       {(todayHasContent || !nothingPlanned) && (
-        <Section title="Today">
+        <CardSection title="Today">
           {meetings.length > 0 && <MeetingList events={meetings} className="mb-2" />}
           <div className="divide-y">
             {pinnedToday.map((t) => row(t, { hideDay: true }))}
@@ -75,31 +76,35 @@ export function TodayColumn({ ctx }: { ctx: PlanContext }) {
             )}
           </div>
           {!todayHasContent && <p className="text-sm text-muted-foreground">Nothing pinned for today.</p>}
-        </Section>
+        </CardSection>
       )}
 
       {nothingPlanned && (
-        <section className="mb-8 flex flex-col items-start gap-3">
-          <p className="text-sm text-muted-foreground">Nothing planned this week yet.</p>
-          <Button asChild>
-            <Link to="/plan">Plan the week</Link>
-          </Button>
+        <section>
+          <Card>
+            <CardContent className="flex flex-col items-start gap-3">
+              <p className="text-sm text-muted-foreground">Nothing planned this week yet.</p>
+              <Button asChild>
+                <Link to="/plan">Plan the week</Link>
+              </Button>
+            </CardContent>
+          </Card>
         </section>
       )}
 
       {(unpinned.length > 0 || laterPinned.length > 0) && (
-        <Section title="Later this week">
+        <CardSection title="Later this week">
           {unpinned.length > 0 && <div className="divide-y">{unpinned.map((t) => row(t))}</div>}
           {laterDays.map((d) => (
-            <div key={d} className="mt-3">
+            <div key={d} className="mt-3 first:mt-0">
               <h3 className="text-xs font-medium text-muted-foreground">{format(parseISO(d), 'EEE')}</h3>
               <div className="divide-y">
                 {laterPinned.filter((t) => t.pinnedDay === d).map((t) => row(t, { hideDay: true }))}
               </div>
             </div>
           ))}
-        </Section>
+        </CardSection>
       )}
-    </>
+    </div>
   )
 }
