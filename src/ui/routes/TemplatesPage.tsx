@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -291,67 +292,75 @@ export function TemplatesPage() {
           … menu.
         </p>
       ) : (
-        <ul className="divide-y border-y" aria-label="Templates">
-          {rows.map(({ template, stats }) => (
-            <li
-              key={template.id}
-              aria-label={template.name}
-              className="group flex min-h-14 items-center gap-3 py-2"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">{template.name}</div>
-                <div className="truncate text-xs text-muted-foreground">
-                  {stats ? statsText(stats) : <span className="text-destructive">Outline has errors</span>}
-                  {updatedText(template.updatedAt) && <> · updated {updatedText(template.updatedAt)}</>}
-                </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-1 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 md:has-[[data-state=open]]:opacity-100 [@media(hover:none)]:opacity-100">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!stats}
-                  onClick={() =>
-                    navigate('/import', { state: { outline: template.outline, templateId: template.id } })
-                  }
+        <Card size="sm" className="py-2">
+          <CardContent>
+            <ul className="divide-y" aria-label="Templates">
+              {rows.map(({ template, stats }) => (
+                <li
+                  key={template.id}
+                  aria-label={template.name}
+                  className="group flex min-h-14 items-center gap-3 py-2"
                 >
-                  Use
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{template.name}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {stats ? (
+                        statsText(stats)
+                      ) : (
+                        <span className="text-destructive">Outline has errors</span>
+                      )}
+                      {updatedText(template.updatedAt) && <> · updated {updatedText(template.updatedAt)}</>}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 md:has-[[data-state=open]]:opacity-100 [@media(hover:none)]:opacity-100">
                     <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`More actions for ${template.name}`}
-                      className="data-[state=open]:bg-accent"
-                    >
-                      <MoreHorizontal />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onSelect={() =>
-                        setEditor({
-                          templateId: template.id,
-                          title: `Edit "${template.name}"`,
-                          text: template.outline,
-                        })
+                      variant="outline"
+                      size="sm"
+                      disabled={!stats}
+                      onClick={() =>
+                        navigate('/import', { state: { outline: template.outline, templateId: template.id } })
                       }
                     >
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem disabled={busy} onSelect={() => duplicate(template)}>
-                      Duplicate
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(template)}>
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </li>
-          ))}
-        </ul>
+                      Use
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`More actions for ${template.name}`}
+                          className="data-[state=open]:bg-accent"
+                        >
+                          <MoreHorizontal />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            setEditor({
+                              templateId: template.id,
+                              title: `Edit "${template.name}"`,
+                              text: template.outline,
+                            })
+                          }
+                        >
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem disabled={busy} onSelect={() => duplicate(template)}>
+                          Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(template)}>
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
 
       {picking && (

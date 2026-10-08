@@ -9,9 +9,10 @@ import { WEEKDAYS } from '../../domain/types'
 import { preloadGis } from '../../integrations/gcal/auth'
 import { requestSync, useSyncStatus } from '../../integrations/gcal/syncControl'
 import { useGcalConnection, type GcalStatus } from '../../integrations/gcal/useGcalConnection'
-import { Page, Section } from '../components/Page'
+import { Page } from '../components/Page'
 import { draftFromSettings, fmtHours, parseDraft, SIZE_KEYS, type SettingsDraft } from './SettingsPage.form'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -28,12 +29,28 @@ const DAY_LABELS: Record<Weekday, { short: string; long: string }> = {
   sun: { short: 'Sun', long: 'Sunday' },
 }
 
-/** A settings block: small heading, hairline above (except the first), generous whitespace. */
-function Block({ title, children }: { title: string; children: ReactNode }) {
+/** A settings block: a card with the section title, an optional grey description, and its fields. */
+function Block({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description?: ReactNode
+  children: ReactNode
+}) {
   return (
-    <Section title={title} className="mb-0 border-t py-6 first:border-t-0 first:pt-0">
-      <div className="mt-3 grid gap-4">{children}</div>
-    </Section>
+    <section>
+      <Card className="gap-4 max-sm:[--card-spacing:--spacing(4)]">
+        <CardHeader>
+          <CardTitle>
+            <h2>{title}</h2>
+          </CardTitle>
+          {description && <CardDescription>{description}</CardDescription>}
+        </CardHeader>
+        <CardContent className="grid gap-4">{children}</CardContent>
+      </Card>
+    </section>
   )
 }
 
@@ -139,10 +156,18 @@ function SettingsForm({ settings, children }: { settings: Settings; children?: R
   }
 
   return (
-    <div>
-      <form id="settings-form" onSubmit={onSubmit} aria-label="Planning settings" noValidate>
-        <Block title="Working hours">
-          <Help>The hours you can work each day. Days that are off add no capacity.</Help>
+    <div className="flex flex-col gap-4">
+      <form
+        id="settings-form"
+        className="flex flex-col gap-4"
+        onSubmit={onSubmit}
+        aria-label="Planning settings"
+        noValidate
+      >
+        <Block
+          title="Working hours"
+          description="The hours you can work each day. Days that are off add no capacity."
+        >
           <div className="divide-y divide-border/60">
             {WEEKDAYS.map((d) => {
               const day = draft.days[d]
@@ -227,8 +252,10 @@ function SettingsForm({ settings, children }: { settings: Settings; children?: R
           )}
         </Block>
 
-        <Block title="Task sizes">
-          <Help>How many hours a task of each size counts for when planning a week.</Help>
+        <Block
+          title="Task sizes"
+          description="How many hours a task of each size counts for when planning a week."
+        >
           <div className="flex flex-wrap gap-x-8 gap-y-3">
             {SIZE_KEYS.map((k) => (
               <div key={k} className="flex items-center gap-2">
@@ -297,7 +324,7 @@ function SettingsForm({ settings, children }: { settings: Settings; children?: R
           <FieldError>{errors.deadlineDays && `Deadline warning: ${errors.deadlineDays}`}</FieldError>
         </Block>
 
-        <div className="flex flex-wrap items-center gap-3 md:pb-6 max-md:sticky max-md:bottom-14 max-md:z-[5] max-md:-mx-4 max-md:border-t max-md:bg-background/95 max-md:px-4 max-md:py-3 max-md:backdrop-blur">
+        <div className="flex flex-wrap items-center gap-3 max-md:sticky max-md:bottom-14 max-md:z-[5] max-md:-mx-4 max-md:border-t max-md:bg-background/95 max-md:px-4 max-md:py-3 max-md:backdrop-blur">
           <Button type="submit" disabled={!dirty || !valid || saving}>
             {saving ? 'Saving…' : 'Save settings'}
           </Button>
@@ -376,17 +403,15 @@ function GoogleCalendarSection() {
   }
 
   return (
-    <Block title="Google Calendar">
+    <Block
+      title="Google Calendar"
+      description="Reads your primary calendar to show events in Today and Week, and counts busy meetings against your weekly capacity. Tasks pinned to a day are written as all-day events, only to a separate calendar named “PersonalDash”. Your other calendars are never changed."
+    >
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
         {label.attention && <span className="size-1.5 rounded-full bg-warning" aria-hidden />}
         <span>{label.text}</span>
         {conn.busy && <span className="text-muted-foreground/60">· waiting for Google…</span>}
       </p>
-      <Help>
-        Reads your primary calendar to show events in Today and Week, and counts busy meetings against your
-        weekly capacity. Tasks pinned to a day are written as all-day events, only to a separate calendar
-        named “PersonalDash”. Your other calendars are never changed.
-      </Help>
       {status === 'not_configured' && (
         <Help>
           <span className="font-mono text-xs">VITE_GOOGLE_CLIENT_ID</span> is missing. See{' '}

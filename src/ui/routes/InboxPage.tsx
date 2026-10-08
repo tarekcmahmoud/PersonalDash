@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useApply, useSnapshot } from '../../data/hooks'
@@ -73,16 +74,22 @@ export function InboxPage() {
           <Skeleton className="h-8" />
           <Skeleton className="h-8" />
         </div>
-      ) : openTasks.length === 0 ? (
-        <p className="py-2 text-sm text-muted-foreground">Inbox zero. Nothing waiting to be filed.</p>
       ) : (
-        <div className="divide-y">{openTasks.map((t) => row(t, true))}</div>
-      )}
+        <Card size="sm" className="py-2">
+          <CardContent>
+            {openTasks.length === 0 ? (
+              <p className="py-2 text-sm text-muted-foreground">Inbox zero. Nothing waiting to be filed.</p>
+            ) : (
+              <div className="divide-y">{openTasks.map((t) => row(t, true))}</div>
+            )}
 
-      {doneTasks.length > 0 && (
-        <CollapsibleGroup label={`${doneTasks.length} done`} className="mt-4">
-          <div className="divide-y">{doneTasks.map((t) => row(t, false))}</div>
-        </CollapsibleGroup>
+            {doneTasks.length > 0 && (
+              <CollapsibleGroup label={`${doneTasks.length} done`} className="mt-1">
+                <div className="divide-y">{doneTasks.map((t) => row(t, false))}</div>
+              </CollapsibleGroup>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       <TaskDialogHost />

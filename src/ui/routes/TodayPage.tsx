@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePlanContext, useSnapshot } from '../../data/hooks'
 import { CapacityLine } from '../components/CapacityBar'
@@ -66,12 +67,14 @@ export function TodayPage() {
       }
     >
       {showReviewNudge && (
-        <p className="-mt-2 mb-8 text-sm text-muted-foreground">
-          New week — review last week and plan this one.{' '}
-          <Button asChild variant="link" className="h-auto p-0 text-sm">
-            <Link to="/review">Start weekly review →</Link>
-          </Button>
-        </p>
+        <Card size="sm" className="mb-4 bg-muted/40 py-3 shadow-none">
+          <p className="px-4 text-sm text-muted-foreground">
+            New week — review last week and plan this one.{' '}
+            <Button asChild variant="link" className="h-auto p-0 text-sm">
+              <Link to="/review">Start weekly review →</Link>
+            </Button>
+          </p>
+        </Card>
       )}
       <TodayColumn ctx={ctx} />
     </Page>

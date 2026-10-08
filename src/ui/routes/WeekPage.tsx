@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePlanContext, useSnapshot } from '../../data/hooks'
@@ -11,30 +10,14 @@ import { useWeekParam } from '../plan/useWeekParam'
 import { WeekSwitcher } from '../plan/WeekSwitcher'
 import { weekStats } from '../plan/weekStats'
 
-// Six columns fit at once (any-day + five days); the board scrolls sideways for the rest.
-const COLUMN = 'md:w-[max(184px,calc(100%/6))] md:shrink-0 md:border-l md:px-3 md:py-2'
-
 /**
- * Week board: a "this week, any day" column followed by Monday to Sunday, separated by hairlines.
- * On phones it is a vertical list of day sections. Tasks move between days via the hover "Move to…" menu.
+ * Week board: a card for "this week, any day" followed by one per day, Monday to Sunday. Eight columns at
+ * 1280px and up, four or two on narrower screens, a vertical list on phones. Tasks move between days via the hover "Move to…" menu.
  */
 export function WeekPage() {
   const { weekStart, setWeek, resetWeek, isCurrentWeek } = useWeekParam()
   const ctx = usePlanContext(weekStart)
   const { isError, error } = useSnapshot()
-  const boardRef = useRef<HTMLDivElement>(null)
-  const loaded = ctx !== null
-
-  // On wide screens the board scrolls sideways in whole columns: show yesterday and today next to "Any day".
-  useEffect(() => {
-    const board = boardRef.current
-    const today = board?.querySelector<HTMLElement>('[data-today]')
-    const anyDay = board?.querySelector<HTMLElement>('[data-day="any"]')
-    if (!board || !today || !anyDay || board.scrollWidth <= board.clientWidth) return
-    const columnWidth = anyDay.offsetWidth
-    const todayIndex = Math.round(today.offsetLeft / columnWidth) - 1 // 0 = Monday
-    board.scrollLeft = Math.max(0, todayIndex - 1) * columnWidth
-  }, [loaded, weekStart])
 
   const body = (() => {
     if (isError)
@@ -60,12 +43,8 @@ export function WeekPage() {
     const followUpDay = (date: string): string => (date < weekStart ? ctx.today : date)
 
     return (
-      <div
-        ref={boardRef}
-        className="relative flex flex-col divide-y border-t md:flex-row md:divide-y-0 md:overflow-x-auto"
-      >
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
         <DayColumn
-          className={`${COLUMN} md:sticky md:left-0 md:z-10 md:border-l-0 md:bg-background md:pl-0`}
           weekStart={weekStart}
           day={null}
           tasks={planned.filter((t) => t.pinnedDay === null || !days.includes(t.pinnedDay))}
@@ -78,7 +57,6 @@ export function WeekPage() {
         {days.map((day) => (
           <DayColumn
             key={day}
-            className={COLUMN}
             weekStart={weekStart}
             day={day}
             isToday={todayInWeek && day === ctx.today}

@@ -15,7 +15,7 @@ interface Props {
   taskCount: number
 }
 
-/** Milestone heading: name (medium weight), grey target date, and a hover `…` menu (edit, move, delete). */
+/** Milestone heading (a card header): name, grey target date, and a hover `…` menu (edit, move, delete). */
 export function MilestoneHeader({ milestone, siblings, taskCount }: Props) {
   const apply = useApply()
   const [editing, setEditing] = useState(false)
@@ -31,7 +31,7 @@ export function MilestoneHeader({ milestone, siblings, taskCount }: Props) {
   }
 
   return (
-    <div className="group mb-1 flex min-h-8 items-center gap-3 border-b pb-1">
+    <div className="group flex min-h-8 items-center gap-3">
       <h2 className="min-w-0 truncate text-base font-medium">{milestone.name}</h2>
       {milestone.targetDate && (
         <span className="shrink-0 text-xs text-muted-foreground">

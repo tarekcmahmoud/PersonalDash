@@ -29,7 +29,7 @@ function TaskItem({ task }: { task: OutlineTask }) {
 const targetText = (date: ISODate, kind: DateKind | null) =>
   `${kind === 'hard' ? 'Deadline' : 'Target'} ${formatDate(date)}`
 
-/** Read-only rendering of a parsed outline: plain headings and one-line task rows, no boxes. */
+/** Read-only rendering of a parsed outline: plain headings and one-line task rows (the caller may put it in a card). */
 export function OutlinePreview({ doc }: { doc: OutlineDoc | null }) {
   if (!doc) {
     return (

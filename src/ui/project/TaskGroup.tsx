@@ -5,6 +5,7 @@ import type { PlanContext } from '../../domain/context'
 import { makeTask } from '../../domain/factories'
 import { unfinishedBlockers } from '../../domain/order'
 import type { Project, Task, TaskSize } from '../../domain/types'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { TaskRow } from '../components/TaskRow'
 import { AddTaskRow } from './AddTaskRow'
 import { CollapsibleGroup } from './CollapsibleGroup'
@@ -81,27 +82,31 @@ export function TaskGroup({ project, group, ctx, nextId, header, onOpenTask }: P
   }
 
   return (
-    <section className="mb-8" aria-label={group.milestone?.name ?? 'Tasks without a milestone'}>
-      {header}
-      <SortableList
-        className="divide-y"
-        items={open}
-        onReorder={reorder}
-        label={(t) => t.title}
-        renderItem={renderRow}
-      />
-      <div className="mt-1">
-        <AddTaskRow groupName={groupName} onAdd={add} />
-      </div>
-      {done.length > 0 && (
-        <CollapsibleGroup label={`${done.length} done`} className="mt-1">
-          <div className="divide-y">
-            {done.map((t) => (
-              <div key={t.id}>{renderRow(t)}</div>
-            ))}
+    <section aria-label={group.milestone?.name ?? 'Tasks without a milestone'}>
+      <Card className="gap-2">
+        {header && <CardHeader>{header}</CardHeader>}
+        <CardContent>
+          <SortableList
+            className="divide-y"
+            items={open}
+            onReorder={reorder}
+            label={(t) => t.title}
+            renderItem={renderRow}
+          />
+          <div className="mt-1">
+            <AddTaskRow groupName={groupName} onAdd={add} />
           </div>
-        </CollapsibleGroup>
-      )}
+          {done.length > 0 && (
+            <CollapsibleGroup label={`${done.length} done`} className="mt-1">
+              <div className="divide-y">
+                {done.map((t) => (
+                  <div key={t.id}>{renderRow(t)}</div>
+                ))}
+              </div>
+            </CollapsibleGroup>
+          )}
+        </CardContent>
+      </Card>
     </section>
   )
 }
