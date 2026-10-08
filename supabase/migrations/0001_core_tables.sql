@@ -1,6 +1,6 @@
--- PersonalDash database setup — PART 1 of 3: types and core tables (projects, milestones, tasks)
+-- PersonalDash database setup — PART 1 of 5: types and core tables (projects, milestones, tasks)
 --
--- Run the three parts in order (0001, 0002, 0003) in Supabase > SQL Editor > New query: paste ONE whole part,
+-- Run the five parts in order (0001 to 0005) in Supabase > SQL Editor > New query: paste ONE whole part,
 -- click Run with nothing selected, then do the next part. Each part is short so it can't get cut off, and each
 -- is safe to run again (anything that already exists is skipped).
 --
@@ -69,4 +69,4 @@ create index if not exists tasks_project_id_idx on public.tasks (project_id);
 create index if not exists tasks_milestone_id_idx on public.tasks (milestone_id);
 create index if not exists tasks_week_start_idx on public.tasks (user_id, week_start);
 
-select 'Part 1 of 3 done: types, projects, milestones, tasks. Now run part 2.' as result;
+select 'Part 1 of 5 done: types, projects, milestones, tasks. Now run part 2.' as result;

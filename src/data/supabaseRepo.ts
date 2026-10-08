@@ -10,6 +10,7 @@ import {
 } from '../domain/types'
 import type { AuthService, AuthUser } from './auth'
 import type { Change } from './changes'
+import { checkImage, imageExtension } from './images'
 import type { Repo } from './repo'
 import type { Services } from './services'
 import {
@@ -21,6 +22,8 @@ import {
   milestoneToRow,
   projectFromRow,
   projectToRow,
+  resourceFromRow,
+  resourceToRow,
   settingsFromRow,
   settingsToRow,
   taskFromRow,
@@ -33,6 +36,7 @@ import {
   type DependencyRow,
   type MilestoneRow,
   type ProjectRow,
+  type ResourceRow,
   type SettingsRow,
   type TaskRow,
   type TemplateRow,
@@ -41,6 +45,10 @@ import {
 
 /** PostgREST returns at most this many rows per request (Supabase default max-rows). */
 const PAGE_SIZE = 1000
+/** Private Storage bucket for resource images (supabase/migrations/0005_storage.sql). */
+const IMAGE_BUCKET = 'resource-images'
+/** How long a signed image link stays valid, in seconds. */
+const SIGNED_URL_SECONDS = 3600
 /** Postgres unique_violation. */
 const UNIQUE_VIOLATION = '23505'
 
@@ -150,7 +158,7 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
   }
 
   async function loadSnapshot(): Promise<Snapshot> {
-    const [projects, milestones, tasks, dependencies, checklist, templates, weeks, settingsRow] =
+    const [projects, milestones, tasks, dependencies, checklist, templates, resources, weeks, settingsRow] =
       await Promise.all([
         fetchAll<ProjectRow>('projects', ['id']),
         fetchAll<MilestoneRow>('milestones', ['id']),
@@ -158,6 +166,7 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
         fetchAll<DependencyRow>('task_dependencies', ['task_id', 'blocked_by_task_id']),
         fetchAll<ChecklistItemRow>('checklist_items', ['id']),
         fetchAll<TemplateRow>('templates', ['id']),
+        fetchAll<ResourceRow>('resources', ['id']),
         fetchAll<WeekRow>('weeks', ['week_start']),
         fetchSettingsRow(),
       ])
@@ -173,7 +182,7 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
       dependencies: dependencies.map(dependencyFromRow),
       checklist: checklist.map(checklistItemFromRow),
       templates: templates.map(templateFromRow),
-      resources: [], // TODO(resources): load from the resources table (migration 0004)
+      resources: resources.map(resourceFromRow),
       weeks: weeks.map(weekFromRow),
       settings,
     }
@@ -260,8 +269,9 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
       case 'insertBundle':
         return insertBundle(change.bundle)
       case 'saveResources':
+        return upsert('resources', change.resources.map(resourceToRow), 'id')
       case 'deleteResource':
-        throw new Error('Supabase: resources are not supported yet') // TODO(resources)
+        return deleteById('resources', change.id)
       default: {
         const _exhaustive: never = change
         throw new Error(`Supabase: unsupported change ${JSON.stringify(_exhaustive)}`)
@@ -269,8 +279,26 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
     }
   }
 
-  const notYet = async (): Promise<never> => {
-    throw new Error('Supabase: image storage is not supported yet') // TODO(resources)
+  /** Uploads to resource-images/<userId>/<uuid>.<ext> and returns the path inside the bucket. */
+  async function uploadImage(file: File): Promise<string> {
+    checkImage(file)
+    const path = `${await userId()}/${crypto.randomUUID()}.${imageExtension(file)}`
+    const { error } = await client.storage.from(IMAGE_BUCKET).upload(path, file, { contentType: file.type })
+    if (error) fail('uploading the image', error)
+    return path
   }
-  return { loadSnapshot, apply, uploadImage: notYet, imageUrl: notYet, deleteImage: notYet }
+
+  async function imageUrl(path: string): Promise<string> {
+    const { data, error } = await client.storage.from(IMAGE_BUCKET).createSignedUrl(path, SIGNED_URL_SECONDS)
+    if (error) fail('loading the image', error)
+    return data.signedUrl
+  }
+
+  /** Best effort: removing a path that no longer exists is not an error. */
+  async function deleteImage(path: string): Promise<void> {
+    const { error } = await client.storage.from(IMAGE_BUCKET).remove([path])
+    if (error && !/not.?found/i.test(error.message)) fail('deleting the image', error)
+  }
+
+  return { loadSnapshot, apply, uploadImage, imageUrl, deleteImage }
 }

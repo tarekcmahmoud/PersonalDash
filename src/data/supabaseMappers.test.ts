@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { makeChecklistItem, makeMilestone, makeProject, makeTask, makeTemplate } from '../domain/factories'
+import {
+  makeChecklistItem,
+  makeMilestone,
+  makeProject,
+  makeResource,
+  makeTask,
+  makeTemplate,
+} from '../domain/factories'
 import { DEFAULT_SETTINGS, type Settings } from '../domain/types'
 import {
   checklistItemFromRow,
@@ -10,6 +17,8 @@ import {
   milestoneToRow,
   projectFromRow,
   projectToRow,
+  resourceFromRow,
+  resourceToRow,
   settingsFromRow,
   settingsToRow,
   taskFromRow,
@@ -97,6 +106,27 @@ describe('supabase mappers round-trip', () => {
     expect(weekFromRow(weekToRow(a))).toEqual(a)
     const b = { weekStart: '2026-10-12', capacityOverride: 12.5, reviewedAt: '2026-10-11T18:00:00.000Z' }
     expect(weekFromRow(weekToRow(b))).toEqual(b)
+  })
+
+  it('resource (defaults and fully populated)', () => {
+    const a = makeResource({ projectId: 'p1', url: 'https://example.com' })
+    expect(resourceFromRow(resourceToRow(a))).toEqual(a)
+    const b = makeResource({
+      projectId: 'p1',
+      url: 'https://example.com/docs',
+      title: 'Docs',
+      description: 'The reference.',
+      imageUrl: 'https://example.com/cover.png',
+      imagePath: 'u1/abc.png',
+      workstreamIds: ['m1', 'm2'],
+      position: 2.5,
+    })
+    expect(resourceFromRow(resourceToRow(b))).toEqual(b)
+    expect(resourceToRow(b)).toMatchObject({
+      project_id: 'p1',
+      image_path: 'u1/abc.png',
+      workstream_ids: ['m1', 'm2'],
+    })
   })
 
   it('settings (defaults and customised)', () => {
