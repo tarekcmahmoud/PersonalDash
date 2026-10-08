@@ -1,0 +1,10 @@
+/* Global styles. Use Primer CSS variables (functional tokens) everywhere — never hard-coded colors. */
+html,
+body {
+  margin: 0;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+}
+* {
+  box-sizing: border-box;
+}
