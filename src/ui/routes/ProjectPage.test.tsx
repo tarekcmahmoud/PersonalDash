@@ -21,19 +21,29 @@ const rowOf = (title: string) =>
   screen.getByRole('button', { name: title }).closest('[data-testid="task-row"]') as HTMLElement
 
 describe('ProjectPage', () => {
-  it('shows milestones in order, highlights the next task and explains blocked ones', async () => {
+  it('shows workstreams in order, marks the next task of each and explains blocked ones', async () => {
     renderPage({ route })
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Client website redesign' }),
     ).toBeInTheDocument()
-    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+    const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
     expect(headings).toEqual(['Discovery', 'Design', 'Build'])
+    expect(screen.getByRole('heading', { level: 2, name: /^Workstreams/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: /^Resources/ })).toBeInTheDocument()
 
-    // Exactly one grey "Next", on the first ready task.
-    expect(screen.getAllByText('Next')).toHaveLength(1)
+    // Workstreams run in parallel: each one has its own grey "Next" (Discovery is all done).
+    expect(screen.getAllByText('Next')).toHaveLength(2)
     expect(within(rowOf('Draft sitemap')).getByText('Next')).toBeInTheDocument()
+    expect(within(rowOf('Set up staging environment')).getByText('Next')).toBeInTheDocument()
     expect(within(rowOf('Draft sitemap')).queryByText(/After:/)).not.toBeInTheDocument()
+    const cardOf = (name: string) => screen.getByRole('region', { name }).querySelector('[data-testid]')!
+    expect(within(cardOf('Design') as HTMLElement).getAllByText('Next')).toHaveLength(1)
+    expect(within(cardOf('Build') as HTMLElement).getAllByText('Next')).toHaveLength(1)
+    expect(within(cardOf('Discovery') as HTMLElement).queryByText('Next')).not.toBeInTheDocument()
+
+    // The first task of another workstream is not blocked by the previous workstream.
+    expect(within(rowOf('Set up staging environment')).queryByText(/After:/)).not.toBeInTheDocument()
 
     // The following task waits for its predecessor: muted, with a grey note.
     expect(within(rowOf('Design homepage')).getByText('After: Draft sitemap')).toBeInTheDocument()
@@ -109,7 +119,7 @@ describe('ProjectPage', () => {
     expect(screen.getByTestId('location')).toHaveTextContent(`task=${sitemap.id}`)
   })
 
-  it('adds a task from the inline "Add task" row at the end of its milestone', async () => {
+  it('adds a task from the inline "Add task" row at the end of its workstream', async () => {
     const user = userEvent.setup()
     const { snapshot } = renderPage({ route })
     expect(await screen.findByRole('button', { name: 'Add task to Design' })).toBeInTheDocument()
@@ -158,12 +168,12 @@ describe('ProjectPage', () => {
     expect(screen.queryByRole('menuitemradio', { name: 'On hold' })).not.toBeInTheDocument()
   })
 
-  it('renames and deletes a milestone from its menu', async () => {
+  it('renames and deletes a workstream from its menu', async () => {
     const user = userEvent.setup()
     const { snapshot } = renderPage({ route })
-    await user.click(await screen.findByRole('button', { name: 'Milestone actions: Design' }))
-    await user.click(await screen.findByRole('menuitem', { name: 'Rename / edit…' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Edit milestone' })
+    await user.click(await screen.findByRole('button', { name: 'Workstream actions: Design' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Rename workstream…' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Edit workstream' })
     const name = within(dialog).getByRole('textbox', { name: 'Name' })
     await user.clear(name)
     await user.type(name, 'UI design')
@@ -172,14 +182,50 @@ describe('ProjectPage', () => {
       expect((await snapshot()).milestones.some((m) => m.name === 'UI design')).toBe(true)
     })
 
-    await user.click(await screen.findByRole('button', { name: 'Milestone actions: Build' }))
-    await user.click(await screen.findByRole('menuitem', { name: 'Delete milestone…' }))
-    await user.click(
-      await within(await screen.findByRole('alertdialog')).findByRole('button', { name: 'Delete milestone' }),
-    )
+    await user.click(await screen.findByRole('button', { name: 'Workstream actions: Build' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete workstream…' }))
+    const confirm = await screen.findByRole('alertdialog')
+    expect(within(confirm).getByText('Delete workstream “Build”?')).toBeInTheDocument()
+    await user.click(await within(confirm).findByRole('button', { name: 'Delete workstream' }))
     await waitFor(async () => {
       expect((await snapshot()).milestones.some((m) => m.name === 'Build')).toBe(false)
     })
+  })
+
+  it('adds a workstream from the button under the cards', async () => {
+    const user = userEvent.setup()
+    const { snapshot } = renderPage({ route })
+    await user.click(await screen.findByRole('button', { name: 'Add workstream' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Add workstream' })
+    await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'Launch')
+    await user.click(within(dialog).getByRole('button', { name: 'Add workstream' }))
+    await waitFor(async () => {
+      const added = (await snapshot()).milestones.find((m) => m.name === 'Launch')
+      expect(added).toMatchObject({ projectId: website.id, position: 3 })
+    })
+  })
+
+  it('shows tasks without a workstream as their own "No workstream" card', async () => {
+    const stray = {
+      ...seed.tasks.find((t) => t.title === 'Draft sitemap')!,
+      id: 'stray',
+      title: 'Stray task',
+    }
+    renderWithApp(<ProjectPage />, {
+      route,
+      path,
+      snapshot: {
+        ...structuredClone(seed),
+        tasks: [...structuredClone(seed).tasks, { ...stray, milestoneId: null }],
+      },
+    })
+    expect(await screen.findByRole('heading', { level: 3, name: 'No workstream' })).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual([
+      'No workstream',
+      'Discovery',
+      'Design',
+      'Build',
+    ])
   })
 
   it('deletes a project after confirmation and goes back to the list', async () => {

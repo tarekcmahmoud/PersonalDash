@@ -62,7 +62,7 @@ function updatedText(iso: string): string {
 const plural = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`
 
 function statsText(stats: OutlineStats): string {
-  return `${plural(stats.milestones, 'milestone')} · ${plural(stats.tasks, 'task')}`
+  return `${plural(stats.milestones, 'workstream')} · ${plural(stats.tasks, 'task')}`
 }
 
 interface EditorState {
@@ -138,7 +138,7 @@ function ProjectPickerDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Save a project as template</DialogTitle>
-          <DialogDescription>Its milestones and tasks become a reusable outline.</DialogDescription>
+          <DialogDescription>Its workstreams and tasks become a reusable outline.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-1.5">
           <Label htmlFor="template-project">Project</Label>

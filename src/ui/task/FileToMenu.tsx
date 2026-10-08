@@ -13,8 +13,8 @@ import type { ID, Task } from '../../domain/types'
 import { endPosition } from '../project/ordering'
 
 /**
- * "File to…" menu: move an Inbox task into an active project (optionally into one of its milestones).
- * Lists each project, followed by its "Project › Milestone" items.
+ * "File to…" menu: move an Inbox task into an active project (optionally into one of its workstreams).
+ * Lists each project, followed by its "Project › Workstream" items.
  */
 export function FileToMenu({ task }: { task: Task }) {
   const { data } = useSnapshot()

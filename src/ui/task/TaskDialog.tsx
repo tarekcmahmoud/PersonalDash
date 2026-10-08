@@ -268,7 +268,7 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Milestone" htmlFor={`${uid}-milestone`}>
+            <Field label="Workstream" htmlFor={`${uid}-milestone`}>
               <Select
                 value={milestoneId ?? NO_MILESTONE}
                 disabled={projectId === null}
@@ -278,7 +278,7 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NO_MILESTONE}>No milestone</SelectItem>
+                  <SelectItem value={NO_MILESTONE}>No workstream</SelectItem>
                   {milestones.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
                       {m.name}

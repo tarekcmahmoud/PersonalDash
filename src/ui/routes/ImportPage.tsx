@@ -39,9 +39,9 @@ outcome: Done when …
 target: 2026-12-15 hard        (hard or soft; soft if omitted)
 min-per-week: 2                (optional)
 
-- Task before any milestone [S]
+- Task before any workstream [S]
 
-## Milestone name
+## Workstream name
 target: 2026-10-31 soft
 - Task title [M] #key after:#otherkey
   done: what makes this task finished

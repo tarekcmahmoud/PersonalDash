@@ -57,7 +57,7 @@ export function OutlinePreview({ doc }: { doc: OutlineDoc | null }) {
       {doc.tasks.length > 0 && (
         <section>
           {doc.milestones.length > 0 && (
-            <h4 className="text-sm font-medium text-muted-foreground">No milestone</h4>
+            <h4 className="text-sm font-medium text-muted-foreground">No workstream</h4>
           )}
           <ul className="divide-y divide-border/60">
             {doc.tasks.map((t, i) => (

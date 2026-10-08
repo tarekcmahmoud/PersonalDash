@@ -17,14 +17,14 @@ import type { DateKind, ID, Milestone } from '../../domain/types'
 
 interface Props {
   projectId: ID
-  /** Edit this milestone; omit to add one. */
+  /** Edit this workstream; omit to add one. */
   milestone?: Milestone
-  /** Position for a new milestone. */
+  /** Position for a new workstream. */
   nextPosition?: number
   onClose: () => void
 }
 
-/** Add or edit (rename, target date) a milestone. */
+/** Add or edit (rename, target date) a workstream. */
 export function MilestoneDialog({ projectId, milestone, nextPosition = 0, onClose }: Props) {
   const apply = useApply()
   const uid = useId()
@@ -49,13 +49,13 @@ export function MilestoneDialog({ projectId, milestone, nextPosition = 0, onClos
     onClose()
   }
 
-  const nameError = submitted && !name.trim() ? 'Give the milestone a name.' : null
+  const nameError = submitted && !name.trim() ? 'Give the workstream a name.' : null
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{milestone ? 'Edit milestone' : 'Add milestone'}</DialogTitle>
+          <DialogTitle>{milestone ? 'Edit workstream' : 'Add workstream'}</DialogTitle>
           <DialogDescription className="sr-only">Name and optional target date.</DialogDescription>
         </DialogHeader>
         <form className="grid gap-4" onSubmit={(e) => void save(e)} noValidate>
@@ -99,7 +99,7 @@ export function MilestoneDialog({ projectId, milestone, nextPosition = 0, onClos
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit">{milestone ? 'Save' : 'Add milestone'}</Button>
+            <Button type="submit">{milestone ? 'Save' : 'Add workstream'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

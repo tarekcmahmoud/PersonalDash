@@ -1,4 +1,4 @@
-import type { ID, Milestone, Task, TaskSize } from '../../domain/types'
+import type { ID, Milestone, Resource, Task, TaskSize } from '../../domain/types'
 import { orderedProjectTasks } from '../../domain/order'
 
 export interface TaskGroupData {
@@ -70,4 +70,11 @@ export function parseSubtasks(text: string): Subtask[] {
     if (line) result.push({ title: line, size })
   }
   return result
+}
+
+/** Resources of a project in grid order. */
+export function sortedResources(resources: Resource[], projectId: ID): Resource[] {
+  return resources
+    .filter((r) => r.projectId === projectId)
+    .sort((a, b) => a.position - b.position || (a.createdAt < b.createdAt ? -1 : 1))
 }

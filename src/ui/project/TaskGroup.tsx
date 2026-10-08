@@ -5,6 +5,7 @@ import type { PlanContext } from '../../domain/context'
 import { makeTask } from '../../domain/factories'
 import { unfinishedBlockers } from '../../domain/order'
 import type { Project, Task, TaskSize } from '../../domain/types'
+import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { TaskRow } from '../components/TaskRow'
 import { AddTaskRow } from './AddTaskRow'
@@ -12,20 +13,23 @@ import { CollapsibleGroup } from './CollapsibleGroup'
 import { endPosition, renumberGroup, type TaskGroupData } from './ordering'
 import { RowMenu } from './RowMenu'
 import { SortableList, type SortableControls } from './SortableList'
+import { DIMMED_CLASSES } from './useProjectView'
 
 interface Props {
   project: Project
   group: TaskGroupData
   ctx: PlanContext
-  /** The project's next task id, marked with a grey "Next". */
-  nextId: string | null
-  /** Heading (milestone header or plain title). */
+  /** The next task of each workstream (see `nextTasks`), each marked with a grey "Next". */
+  nextIds: ReadonlySet<string>
+  /** Heading (workstream header or plain title). */
   header?: ReactNode
+  /** Greyed out because another workstream is in focus. */
+  dimmed?: boolean
   onOpenTask: (task: Task) => void
 }
 
-/** The tasks of one workflow group (milestone-less or one milestone): open tasks sortable, done collapsed. */
-export function TaskGroup({ project, group, ctx, nextId, header, onOpenTask }: Props) {
+/** The tasks of one workflow group (workstream-less or one workstream): open tasks sortable, done collapsed. */
+export function TaskGroup({ project, group, ctx, nextIds, header, dimmed = false, onOpenTask }: Props) {
   const actions = useTaskActions()
   const apply = useApply()
   const updateTasks = useUpdateTasks()
@@ -66,7 +70,7 @@ export function TaskGroup({ project, group, ctx, nextId, header, onOpenTask }: P
         checklist={checklistOf(task.id)}
         muted={blocked}
         note={blocked ? `After: ${blockers.map((b) => b.title).join(', ')}` : undefined}
-        meta={task.id === nextId ? ['Next'] : []}
+        meta={nextIds.has(task.id) ? ['Next'] : []}
         onToggleDone={(t) => void actions.toggleDone(t)}
         onOpen={(t) => onOpenTask(t)}
         actions={
@@ -82,8 +86,8 @@ export function TaskGroup({ project, group, ctx, nextId, header, onOpenTask }: P
   }
 
   return (
-    <section aria-label={group.milestone?.name ?? 'Tasks without a milestone'}>
-      <Card className="gap-2">
+    <section aria-label={group.milestone?.name ?? 'Tasks without a workstream'}>
+      <Card data-testid="workstream-card" data-dimmed={dimmed} className={cn('gap-2', DIMMED_CLASSES)}>
         {header && <CardHeader>{header}</CardHeader>}
         <CardContent>
           <SortableList

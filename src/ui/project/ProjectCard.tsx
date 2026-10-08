@@ -4,16 +4,19 @@ import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import type { PlanContext } from '../../domain/context'
 import { projectHealth } from '../../domain/health'
-import { nextTask } from '../../domain/order'
+import { nextTasks } from '../../domain/order'
 import type { Project } from '../../domain/types'
 import { formatTargetDate } from '../components/format'
 import { ProjectSignal } from '../components/HealthBadges'
 import { RowMenu } from './RowMenu'
 import type { SortableControls } from './SortableList'
 
+/** How many workstreams' next steps a card lists. */
+const MAX_NEXT_LINES = 3
+
 /**
  * One project as a card in the Projects masonry: name + one signal, the objective (outcome and date),
- * task progress, the next step, and this week's load. Cards grow with their outcome text, which is what
+ * task progress, the next step of each workstream (up to 3), and this week's load. Cards grow with their outcome text, which is what
  * makes the masonry. Reorder via the (hover) drag handle or the `…` menu.
  */
 export function ProjectCard({
@@ -31,7 +34,10 @@ export function ProjectCard({
   const open = tasks.length - done
   const planned = tasks.filter((t) => t.weekStart === ctx.weekStart && t.status !== 'done').length
   const active = project.status === 'active'
-  const next = active ? nextTask(project.id, ctx) : null
+  const nexts = active ? nextTasks(project.id, ctx) : []
+  const streamCount = ctx.milestones.filter((m) => m.projectId === project.id).length
+  const streamName = (milestoneId: string | null) =>
+    streamCount > 1 ? ctx.milestones.find((m) => m.id === milestoneId)?.name : undefined
   // "No next step" is shown in the Next block, so it is not repeated as a signal.
   const flags = projectHealth(project, ctx).filter((f) => f.kind !== 'no_next_step')
   const date = project.targetDate
@@ -84,9 +90,24 @@ export function ProjectCard({
         {active && (
           <div className="rounded-xl bg-muted px-3 py-2">
             <div className="text-xs text-muted-foreground">Next</div>
-            <p className={cn('line-clamp-2 text-sm', !next && 'text-muted-foreground')}>
-              {next ? next.title : 'No next step'}
-            </p>
+            {nexts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No next step</p>
+            ) : (
+              <ul className="flex flex-col gap-0.5">
+                {nexts.slice(0, MAX_NEXT_LINES).map((task) => {
+                  const stream = streamName(task.milestoneId)
+                  return (
+                    <li key={task.id} className="line-clamp-2 text-sm">
+                      {stream && <span className="text-muted-foreground">{`${stream}: `}</span>}
+                      {task.title}
+                    </li>
+                  )
+                })}
+                {nexts.length > MAX_NEXT_LINES && (
+                  <li className="text-xs text-muted-foreground">{`+${nexts.length - MAX_NEXT_LINES} more`}</li>
+                )}
+              </ul>
+            )}
           </div>
         )}
       </CardContent>

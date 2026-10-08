@@ -22,7 +22,7 @@ export function OutlineEditor({
   label = 'Outline',
   previewClassName,
   previewCard = false,
-  placeholder = '# Project name\noutcome: Done when …\ntarget: 2026-12-31 soft\n\n## Milestone\n- First task [S]',
+  placeholder = '# Project name\noutcome: Done when …\ntarget: 2026-12-31 soft\n\n## Workstream\n- First task [S]',
 }: {
   value: string
   onChange: (value: string) => void

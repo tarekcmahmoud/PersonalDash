@@ -46,7 +46,7 @@ afterEach(() => {
 describe('outline helpers', () => {
   it('summarises counts', () => {
     const { doc } = parseOutline(VALID)
-    expect(summaryText(outlineStats(doc!))).toBe('1 milestone · 4 tasks · 1 XL to split · 2 dependencies')
+    expect(summaryText(outlineStats(doc!))).toBe('1 workstream · 4 tasks · 1 XL to split · 2 dependencies')
   })
 
   it('finds a line range', () => {
@@ -99,7 +99,7 @@ describe('ImportPage', () => {
     const preview = await screen.findByRole('region', { name: 'Preview' })
     await within(preview).findByText('Garden shed')
     expect(
-      within(preview).getByText('1 milestone · 4 tasks · 1 XL to split · 2 dependencies'),
+      within(preview).getByText('1 workstream · 4 tasks · 1 XL to split · 2 dependencies'),
     ).toBeInTheDocument()
     expect(within(preview).getAllByText(/after: found/)).toHaveLength(2)
     expect(within(preview).getByText('Done when: slab is level')).toBeInTheDocument()
@@ -198,7 +198,7 @@ describe('TemplatesPage', () => {
   it('lists templates with counts', async () => {
     renderApp({ route: '/templates' })
     const item = await screen.findByRole('listitem', { name: 'Client engagement' })
-    expect(within(item).getByText(/4 milestones · \d+ tasks · updated/)).toBeInTheDocument()
+    expect(within(item).getByText(/4 workstreams · \d+ tasks · updated/)).toBeInTheDocument()
   })
 
   it('opens the import page with the template outline', async () => {

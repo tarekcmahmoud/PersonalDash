@@ -34,6 +34,10 @@ describe('ProjectsPage', () => {
     const card = within(website as HTMLElement)
     expect(card.getByText('Next')).toBeInTheDocument()
     expect(card.getByText('Draft sitemap')).toBeInTheDocument()
+    // One next step per workstream, labelled with the workstream.
+    expect(card.getByText('Design:')).toBeInTheDocument()
+    expect(card.getByText('Set up staging environment')).toBeInTheDocument()
+    expect(card.getByText('Build:')).toBeInTheDocument()
     expect(card.getByText(/^Deadline /)).toBeInTheDocument()
     expect(card.getByText(/^\d+ of \d+ done$/)).toBeInTheDocument()
     expect(card.getByText(/^\d+ open · \d+ planned this week$/)).toBeInTheDocument()
