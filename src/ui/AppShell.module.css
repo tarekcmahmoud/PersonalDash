@@ -70,3 +70,7 @@
     border-top: var(--borderWidth-thin) solid var(--borderColor-default);
   }
 }
+
+.banner:not(:empty) {
+  margin-bottom: var(--base-size-16);
+}

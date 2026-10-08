@@ -2,6 +2,7 @@ import { KebabHorizontalIcon } from '@primer/octicons-react'
 import { ActionList, ActionMenu, CounterLabel, NavList } from '@primer/react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useSnapshot } from '../data/hooks'
+import { CalendarReconnectBanner, CalendarSync } from '../integrations/gcal/CalendarSync'
 import styles from './AppShell.module.css'
 import { NAV_ITEMS } from './nav'
 
@@ -43,6 +44,10 @@ export function AppShell() {
       </nav>
 
       <main className={styles.main}>
+        <CalendarSync />
+        <div className={styles.banner}>
+          <CalendarReconnectBanner />
+        </div>
         <Outlet />
       </main>
 

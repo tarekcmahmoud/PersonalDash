@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef } from 'react'
 import { SNAPSHOT_KEY, useApply, useSnapshot, useUpdateTasks } from '../../data/hooks'
 import type { Snapshot } from '../../domain/types'
-import { calendarExists, createPersonalDashCalendar, errorMessage } from './api'
+import { calendarExists, createPersonalDashCalendar, deleteEvent, errorMessage } from './api'
 import { getValidToken, preloadGis } from './auth'
 import { planCalendarSync, reconcilePatches, runCalendarSync } from './sync'
 import { getSyncStatus, setSyncStatus, useSyncStatus } from './syncControl'
@@ -122,6 +122,25 @@ export function CalendarSync() {
     void qc.invalidateQueries({ queryKey: CALENDAR_EVENTS_KEY })
     void runRef.current()
   }, [nonce, active, qc])
+
+  // Deleted tasks (or whole projects/milestones) never reach the sync planner, so remove their events here:
+  // compare the event ids of the previous snapshot with the current one. Best effort.
+  const knownEvents = useRef<Map<string, string> | null>(null)
+  useEffect(() => {
+    if (!snapshot) return
+    const current = new Map<string, string>()
+    for (const t of snapshot.tasks) if (t.gcalEventId) current.set(t.id, t.gcalEventId)
+    const previous = knownEvents.current
+    knownEvents.current = current
+    if (!previous || !active || !calendarId) return
+    const token = getValidToken()
+    if (!token) return
+    for (const [taskId, eventId] of previous) {
+      if (!current.has(taskId) && !snapshot.tasks.some((t) => t.id === taskId)) {
+        void deleteEvent(token, calendarId, eventId).catch(() => undefined)
+      }
+    }
+  }, [snapshot, active, calendarId])
 
   useEffect(() => {
     const timerRef = retryTimer
