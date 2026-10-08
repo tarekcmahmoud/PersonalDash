@@ -1,67 +1,53 @@
-import { ExternalLink } from 'lucide-react'
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+import type { PlanContext } from '../../domain/context'
 import { resourcesForTasks } from '../../domain/resources'
-import type { Resource, Task } from '../../domain/types'
-import { CardSection } from '../components/Page'
-import { hostnameOf } from '../project/resourceUrl'
-
-/** Rows shown before "Show all". */
-const COLLAPSED_COUNT = 5
+import { MasonryGrid } from '../components/MasonryGrid'
+import { ResourceCard } from '../project/ResourceCard'
+import { resourceTasks } from './resourceTasks'
 
 /**
- * The project resources that help with `tasks` (workstream links first, then project-wide), as one-line links
- * with grey metadata: hostname and the task they are for. Renders nothing when no task has resources.
+ * Today's right-hand pane, laid out like the Project page's resources: a heading and a masonry grid of resource
+ * cards for the tasks in hand (workstream links first, then project-wide). Each card says which project and
+ * task it is for.
  */
-export function TodayResources({
-  title,
-  tasks,
-  resources,
-}: {
-  title: string
-  tasks: Task[]
-  resources: Resource[]
-}) {
-  const [expanded, setExpanded] = useState(false)
-  const relevant = resourcesForTasks(tasks, resources)
-  if (relevant.length === 0) return null
-  const shown = expanded ? relevant : relevant.slice(0, COLLAPSED_COUNT)
+export function TodayResources({ ctx }: { ctx: PlanContext }) {
+  const { scope, tasks } = resourceTasks(ctx)
+  const relevant = resourcesForTasks(tasks, ctx.resources)
+  const projectNames = new Map(ctx.projects.map((p) => [p.id, p.name]))
 
   return (
-    <CardSection title={title} count={relevant.length}>
-      <ul className="divide-y" aria-label={title}>
-        {shown.map(({ resource, tasks: helped }) => {
-          const host = hostnameOf(resource.url)
-          const label = resource.title.trim() || host || resource.url
-          const forTasks =
-            helped.length === 1 ? helped[0]!.title : `${helped[0]!.title} and ${helped.length - 1} more`
-          return (
-            <li key={resource.id} className="flex min-h-11 flex-col justify-center py-1.5">
-              <a
-                href={resource.url}
-                target="_blank"
-                rel="noreferrer"
-                className="min-w-0 truncate text-sm text-foreground underline-offset-4 outline-none hover:underline focus-visible:underline"
-              >
-                {label}
-                <ExternalLink aria-hidden className="mb-0.5 ml-1 inline size-3 text-muted-foreground" />
-              </a>
-              <span className="truncate text-xs text-muted-foreground">
-                {resource.title.trim() && host ? `${host} · ` : ''}For {forTasks}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-      {relevant.length > COLLAPSED_COUNT && (
-        <Button
-          variant="link"
-          className="mt-1 h-8 p-0 text-sm text-muted-foreground"
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {expanded ? 'Show fewer' : `Show all ${relevant.length}`}
-        </Button>
+    <section aria-labelledby="today-resources-heading" className="flex flex-col gap-4">
+      <div className="flex min-h-8 items-baseline gap-2">
+        <h2 id="today-resources-heading" className="text-base font-medium">
+          Resources
+          {relevant.length > 0 && (
+            <span className="ml-1.5 text-sm font-normal text-muted-foreground/60">{relevant.length}</span>
+          )}
+        </h2>
+        <span className="text-sm text-muted-foreground">
+          {scope === 'today' ? "for today's tasks" : "for this week's tasks"}
+        </span>
+      </div>
+
+      {relevant.length === 0 ? (
+        <p className="rounded-3xl border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
+          No resources for these tasks. Add links on a project page and link them to a workstream.
+        </p>
+      ) : (
+        <MasonryGrid className="xl:grid-cols-2">
+          {relevant.map(({ resource, tasks: helped }) => {
+            const first = helped[0]!.title
+            const forTasks = helped.length === 1 ? first : `${first} and ${helped.length - 1} more`
+            return (
+              <ResourceCard
+                key={resource.id}
+                resource={resource}
+                workstreams={ctx.milestones.filter((m) => m.projectId === resource.projectId)}
+                note={`${projectNames.get(resource.projectId) ?? ''} · For ${forTasks}`}
+              />
+            )
+          })}
+        </MasonryGrid>
       )}
-    </CardSection>
+    </section>
   )
 }

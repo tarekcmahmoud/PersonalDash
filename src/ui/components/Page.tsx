@@ -1,4 +1,7 @@
+import { ChevronLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
@@ -10,18 +13,34 @@ export function Page({
   title,
   description,
   actions,
+  back,
   wide = false,
   children,
 }: {
   title: string
   description?: ReactNode
   actions?: ReactNode
+  /** A grey "‹ label" link above the title, back to a parent screen (e.g. Projects from a project). */
+  back?: { to: string; label: string }
   /** Allow content wider than the default reading width (boards). */
   wide?: boolean
   children: ReactNode
 }) {
   return (
     <div className={cn('mx-auto w-full', wide ? 'max-w-[1400px]' : 'max-w-[760px]')}>
+      {back && (
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="mb-2 -ml-2.5 h-8 gap-1 px-2 font-normal text-muted-foreground"
+        >
+          <Link to={back.to}>
+            <ChevronLeft aria-hidden />
+            {back.label}
+          </Link>
+        </Button>
+      )}
       <header className="mb-6 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0 flex-1 basis-40">
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>

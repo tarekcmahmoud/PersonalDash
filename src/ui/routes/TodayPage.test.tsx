@@ -100,19 +100,29 @@ describe('TodayPage', () => {
     )
   })
 
+  it('lays out tasks on the left and resources on the right, like a project page', async () => {
+    renderApp(<TodayPage />)
+    expect(await screen.findByRole('heading', { name: 'Tasks', level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^Resources/, level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'Today view' })).toBeInTheDocument()
+  })
+
   it("pulls in the resources of today's tasks: their workstream's, then the project-wide ones", async () => {
     renderApp(<TodayPage />)
     // "Design homepage" (Design workstream) is pinned for today.
-    const resources = sectionOf(
-      await screen.findByRole('heading', { name: /^Resources for today/, level: 2 }),
-    )
-    const links = resources.getAllByRole('link').map((a) => a.textContent)
-    expect(links).toEqual(['Brand guidelines', 'Competitor moodboard', 'drive.example.com'])
+    const resources = sectionOf(await screen.findByRole('heading', { name: /^Resources/, level: 2 }))
+    expect(resources.getByText("for today's tasks")).toBeInTheDocument()
+    const cards = await resources.findAllByTestId('resource-card')
+    expect(cards.map((c) => within(c).getAllByRole('link')[0]!.textContent)).toEqual([
+      'Brand guidelines',
+      'Competitor moodboard',
+      'drive.example.com',
+    ])
     expect(resources.getByRole('link', { name: 'Brand guidelines' })).toHaveAttribute(
       'href',
       'https://example.com/brand-guidelines',
     )
-    expect(resources.getAllByText(/For Design homepage/)).toHaveLength(3)
+    expect(resources.getAllByText('Client website redesign · For Design homepage')).toHaveLength(3)
     expect(resources.queryByText('Client brief')).not.toBeInTheDocument()
   })
 
@@ -120,17 +130,15 @@ describe('TodayPage', () => {
     const snapshot = seedSnapshot(todayISO())
     snapshot.tasks = snapshot.tasks.map((t) => (t.pinnedDay ? { ...t, pinnedDay: null } : t))
     renderApp(<TodayPage />, { snapshot })
-    expect(
-      await screen.findByRole('heading', { name: /Resources for this week/, level: 2 }),
-    ).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /Resources for today/ })).not.toBeInTheDocument()
+    expect(await screen.findByText("for this week's tasks")).toBeInTheDocument()
+    expect((await screen.findAllByTestId('resource-card')).length).toBeGreaterThan(0)
   })
 
-  it('shows no resources section when the tasks have none', async () => {
+  it('explains where resources come from when the tasks have none', async () => {
     const snapshot = seedSnapshot(todayISO())
     snapshot.resources = []
     renderApp(<TodayPage />, { snapshot })
-    await section('Today')
-    expect(screen.queryByRole('heading', { name: /^Resources/ })).not.toBeInTheDocument()
+    expect(await screen.findByText(/No resources for these tasks/)).toBeInTheDocument()
+    expect(screen.queryByTestId('resource-card')).not.toBeInTheDocument()
   })
 })

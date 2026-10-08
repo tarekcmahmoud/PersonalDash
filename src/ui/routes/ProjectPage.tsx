@@ -195,7 +195,13 @@ export function ProjectPage() {
 
   const paneClass = (name: ProjectPane) => cn('min-w-0', pane !== name && 'max-lg:hidden')
   return (
-    <Page wide title={project.name} description={description} actions={actions}>
+    <Page
+      wide
+      back={{ to: '/projects', label: 'Projects' }}
+      title={project.name}
+      description={description}
+      actions={actions}
+    >
       <ToggleGroup
         type="single"
         variant="outline"

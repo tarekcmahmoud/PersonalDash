@@ -17,10 +17,13 @@ interface Props {
   /** The project's workstreams (to name the linked ones). */
   workstreams: Milestone[]
   /** All resources of the project in grid order (for Move earlier / later). */
-  siblings: Resource[]
+  siblings?: Resource[]
   /** Greyed out because another workstream is in focus. */
   dimmed?: boolean
-  onMove: (id: ID, delta: -1 | 1) => void
+  /** Omit where the grid has no meaningful order (Today): the menu then has no move items. */
+  onMove?: (id: ID, delta: -1 | 1) => void
+  /** Grey line under the chips, e.g. which project and task the resource is for. */
+  note?: string
 }
 
 /**
@@ -28,7 +31,7 @@ interface Props {
  * description and the workstreams it belongs to (grey chips; "Project-wide" when none). Hover `…` menu:
  * edit, move, delete.
  */
-export function ResourceCard({ resource, workstreams, siblings, dimmed = false, onMove }: Props) {
+export function ResourceCard({ resource, workstreams, siblings = [], dimmed = false, onMove, note }: Props) {
   const apply = useApply()
   const { repo } = useServices()
   const [editing, setEditing] = useState(false)
@@ -93,11 +96,13 @@ export function ResourceCard({ resource, workstreams, siblings, dimmed = false, 
           <RowMenu
             label={`Resource actions: ${title}`}
             moveLabels={['Move earlier', 'Move later']}
-            controls={{
-              isFirst: index <= 0,
-              isLast: index === siblings.length - 1,
-              move: (delta) => onMove(resource.id, delta),
-            }}
+            controls={
+              onMove && {
+                isFirst: index <= 0,
+                isLast: index === siblings.length - 1,
+                move: (delta) => onMove(resource.id, delta),
+              }
+            }
             extra={
               <>
                 <DropdownMenuItem onSelect={() => setEditing(true)}>Edit…</DropdownMenuItem>
@@ -125,6 +130,7 @@ export function ResourceCard({ resource, workstreams, siblings, dimmed = false, 
             </span>
           ))}
         </div>
+        {note && <p className="truncate text-xs text-muted-foreground">{note}</p>}
       </CardContent>
 
       {editing && (

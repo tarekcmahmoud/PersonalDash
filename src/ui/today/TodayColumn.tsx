@@ -13,12 +13,8 @@ import { FollowUpRow } from '../plan/FollowUpRow'
 import { MeetingList } from '../plan/MeetingList'
 import { TaskDayMenu } from '../plan/TaskDayMenu'
 import { weekStats } from '../plan/weekStats'
-import { TodayResources } from './TodayResources'
 
-/**
- * Today's meetings, pinned tasks, due follow-ups and overdue pins; the resources for those tasks; then the rest
- * of the week.
- */
+/** Today's meetings, pinned tasks, due follow-ups and overdue pins; then the rest of the week. */
 export function TodayColumn({ ctx }: { ctx: PlanContext }) {
   const actions = useTaskActions()
   const navigate = useNavigate()
@@ -39,13 +35,6 @@ export function TodayColumn({ ctx }: { ctx: PlanContext }) {
   const laterDays = [...new Set(laterPinned.map((t) => t.pinnedDay!))]
 
   const nothingPlanned = stats.planned.length === 0 && overduePinned.length === 0
-  // Resources follow what is on today's list; with nothing there, what is left of the week.
-  const todayTasks = [
-    ...pinnedToday.filter((t) => t.status !== 'done'),
-    ...overduePinned,
-    ...followUpsDue.map((f) => f.task),
-  ]
-  const resourceTasks = todayTasks.length > 0 ? todayTasks : [...unpinned, ...laterPinned]
   const todayHasContent =
     meetings.length + pinnedToday.length + followUpsDue.length + overduePinned.length > 0
 
@@ -89,12 +78,6 @@ export function TodayColumn({ ctx }: { ctx: PlanContext }) {
           {!todayHasContent && <p className="text-sm text-muted-foreground">Nothing pinned for today.</p>}
         </CardSection>
       )}
-
-      <TodayResources
-        title={todayTasks.length > 0 ? 'Resources for today' : 'Resources for this week'}
-        tasks={resourceTasks}
-        resources={ctx.resources}
-      />
 
       {nothingPlanned && (
         <section>

@@ -54,6 +54,11 @@ describe('ProjectPage', () => {
     expect(screen.queryByRole('button', { name: 'Kickoff call with client' })).not.toBeInTheDocument()
   })
 
+  it('links back to the projects list', async () => {
+    renderPage({ route })
+    expect(await screen.findByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/projects')
+  })
+
   it('has no visible status/edit/delete buttons, only a … menu', async () => {
     const user = userEvent.setup()
     renderPage({ route })
