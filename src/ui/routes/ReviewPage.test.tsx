@@ -224,7 +224,7 @@ describe('ReviewPage', () => {
       const chronic = crafted.task('Slip chronic')
       expect(screen.getByRole('link', { name: 'Open task Slip chronic' })).toHaveAttribute(
         'href',
-        `/projects/${chronic.projectId}?task=${chronic.id}`,
+        `/review?step=2&task=${chronic.id}`,
       )
       expect(screen.getAllByText(/split it, or decide/)).toHaveLength(1)
       expect(screen.queryByRole('link', { name: 'Open task Slip once' })).not.toBeInTheDocument()

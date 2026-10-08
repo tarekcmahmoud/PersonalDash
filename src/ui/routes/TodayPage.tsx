@@ -14,6 +14,7 @@ import { Page } from '../components/Page'
 import { weekStats } from '../plan/weekStats'
 import { TodayColumn } from '../today/TodayColumn'
 import { TodayResources } from '../today/TodayResources'
+import { TaskDialogHost } from '../task/TaskDialogHost'
 
 type TodayPane = 'tasks' | 'resources'
 
@@ -125,6 +126,7 @@ export function TodayPage() {
           <TodayResources ctx={ctx} />
         </div>
       </div>
+      <TaskDialogHost />
     </Page>
   )
 }

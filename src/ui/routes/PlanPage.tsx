@@ -2,6 +2,7 @@ import { Page } from '../components/Page'
 import { useWeekParam } from '../plan/useWeekParam'
 import { WeekPicker } from '../plan/WeekPicker'
 import { WeekSwitcher } from '../plan/WeekSwitcher'
+import { TaskDialogHost } from '../task/TaskDialogHost'
 
 /** "Plan the week": pick by hand which tasks to do this week, from a list grouped by project. */
 export function PlanPage() {
@@ -19,6 +20,7 @@ export function PlanPage() {
       }
     >
       <WeekPicker weekStart={weekStart} />
+      <TaskDialogHost />
     </Page>
   )
 }

@@ -1,13 +1,13 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { taskHref } from '../../data/taskActions'
 import { isChronicSlipper } from '../../domain/review'
 import type { ISODate, Project, Task } from '../../domain/types'
 import { formatWeekRange } from '../../domain/week'
 import { TaskRow } from '../components/TaskRow'
 import { StepIntro } from './StepIntro'
 import type { ReviewSession } from './useReviewSession'
+import { useTaskLink } from '../task/useTaskParam'
 
 /** Step 2: decide what happens to each task planned last week that is still open. */
 export function Leftovers({
@@ -22,6 +22,7 @@ export function Leftovers({
   pastWeek: ISODate
 }) {
   const { retro, decisions, undecided } = session
+  const taskLink = useTaskLink()
   const nameOf = (t: Task): string => projects.find((p) => p.id === t.projectId)?.name ?? 'Inbox'
 
   if (retro.leftovers.length === 0) {
@@ -93,7 +94,7 @@ export function Leftovers({
                           </span>
                           {' · '}
                           <Link
-                            to={taskHref(task)}
+                            to={taskLink(task)}
                             aria-label={`Open task ${task.title}`}
                             className="underline-offset-4 hover:text-foreground hover:underline"
                           >

@@ -18,6 +18,7 @@ import { REVIEW_STEPS } from '../review/steps'
 import { StepIntro } from '../review/StepIntro'
 import { useReviewSession } from '../review/useReviewSession'
 import { useWeekParam } from '../plan/useWeekParam'
+import { TaskDialogHost } from '../task/TaskDialogHost'
 
 const LAST_STEP = REVIEW_STEPS.length
 
@@ -62,6 +63,7 @@ export function ReviewPage() {
       description={`Reviewing ${formatWeekRange(pastWeek)} → planning ${formatWeekRange(newWeek)}`}
     >
       {children}
+      <TaskDialogHost />
     </Page>
   )
 

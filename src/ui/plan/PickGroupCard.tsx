@@ -2,11 +2,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
-import { taskHref, useTaskActions } from '../../data/taskActions'
+import { useTaskActions } from '../../data/taskActions'
 import type { PickCandidate, PickGroup } from '../../domain/planning'
 import type { ISODate } from '../../domain/types'
 import { ProjectSignal } from '../components/HealthBadges'
 import { TaskRow } from '../components/TaskRow'
+import { useTaskLink } from '../task/useTaskParam'
 
 function reasonText(c: PickCandidate): string | null {
   if (c.reason === 'xl') return 'Split first'
@@ -25,6 +26,7 @@ export function PickGroupCard({
   onShowMore: () => void
 }) {
   const actions = useTaskActions()
+  const taskLink = useTaskLink()
   const navigate = useNavigate()
   const { project } = group
 
@@ -67,7 +69,7 @@ export function PickGroupCard({
                 task={c.task}
                 muted={!c.selectable}
                 note={reasonText(c)}
-                onOpen={(t) => navigate(taskHref(t))}
+                onOpen={(t) => navigate(taskLink(t))}
               />
             </div>
           ))}

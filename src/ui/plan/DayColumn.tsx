@@ -2,7 +2,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { format, parseISO } from 'date-fns'
 import { Clock } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-import { taskHref, useTaskActions } from '../../data/taskActions'
+import { useTaskActions } from '../../data/taskActions'
 import { plannedHours } from '../../domain/capacity'
 import type { FollowUpItem } from '../../domain/followups'
 import type { CalendarEvent, ISODate, Settings, Task } from '../../domain/types'
@@ -13,6 +13,7 @@ import { TaskRow } from '../components/TaskRow'
 import { MeetingList } from './MeetingList'
 import { TaskDayMenu } from './TaskDayMenu'
 import { DraggableTask } from './WeekDnd'
+import { useTaskLink } from '../task/useTaskParam'
 
 /** One column of the week board: a day (or "any day"), its meetings, hours line, follow-ups and tasks. */
 export function DayColumn({
@@ -41,6 +42,7 @@ export function DayColumn({
   className?: string
 }) {
   const actions = useTaskActions()
+  const taskLink = useTaskLink()
   const navigate = useNavigate()
   // Drop target for the week board's drag-and-drop ("any" = this week, no day). See WeekDnd.
   const { setNodeRef: setDropRef, isOver, active: dragActive } = useDroppable({ id: day ?? 'any' })
@@ -106,7 +108,7 @@ export function DayColumn({
           {followUps.map((item) => (
             <li key={item.task.id} className="flex items-start gap-1.5 text-xs text-muted-foreground">
               <Clock className="mt-0.5 size-3 shrink-0" aria-hidden />
-              <Link to={taskHref(item.task)} className="min-w-0 underline-offset-4 hover:underline">
+              <Link to={taskLink(item.task)} className="min-w-0 underline-offset-4 hover:underline">
                 {item.label}
               </Link>
             </li>
@@ -126,7 +128,7 @@ export function DayColumn({
                   compact
                   projectName={task.projectId ? projectNames.get(task.projectId) : 'Inbox'}
                   onToggleDone={(t) => void actions.toggleDone(t)}
-                  onOpen={(t) => navigate(taskHref(t))}
+                  onOpen={(t) => navigate(taskLink(t))}
                   actions={
                     <>
                       {handle}

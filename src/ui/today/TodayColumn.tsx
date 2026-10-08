@@ -2,7 +2,7 @@ import { format, parseISO } from 'date-fns'
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { taskHref, useTaskActions } from '../../data/taskActions'
+import { useTaskActions } from '../../data/taskActions'
 import type { PlanContext } from '../../domain/context'
 import type { Task } from '../../domain/types'
 import { Card, CardContent } from '@/components/ui/card'
@@ -13,10 +13,12 @@ import { FollowUpRow } from '../plan/FollowUpRow'
 import { MeetingList } from '../plan/MeetingList'
 import { TaskDayMenu } from '../plan/TaskDayMenu'
 import { weekStats } from '../plan/weekStats'
+import { useTaskLink } from '../task/useTaskParam'
 
 /** Today's meetings, pinned tasks, due follow-ups and overdue pins; then the rest of the week. */
 export function TodayColumn({ ctx }: { ctx: PlanContext }) {
   const actions = useTaskActions()
+  const taskLink = useTaskLink()
   const navigate = useNavigate()
   const { today, tasks, projects } = ctx
   const names = new Map(projects.map((p) => [p.id, p.name]))
@@ -44,7 +46,7 @@ export function TodayColumn({ ctx }: { ctx: PlanContext }) {
       task={task}
       projectName={task.projectId ? names.get(task.projectId) : 'Inbox'}
       onToggleDone={(t) => void actions.toggleDone(t)}
-      onOpen={(t) => navigate(taskHref(t))}
+      onOpen={(t) => navigate(taskLink(t))}
       hideDay={extra.hideDay}
       actions={extra.actions ?? <TaskDayMenu task={task} weekStart={ctx.weekStart} variant="pin" />}
     />

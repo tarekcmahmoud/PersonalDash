@@ -24,6 +24,18 @@ describe('PlanPage', () => {
     expect(website.getByRole('checkbox', { name: /Set up staging environment/ })).toBeChecked()
   })
 
+  it('opens a task in a dialog on the planning page', async () => {
+    const user = userEvent.setup()
+    renderApp(<PlanPage />, { route: '/plan' })
+
+    const website = await group('Client website redesign')
+    await user.click(website.getByRole('button', { name: 'Draft sitemap' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByDisplayValue('Draft sitemap')).toBeInTheDocument()
+    // Still planning: the week picker stays behind the dialog.
+    expect(screen.getByText('Plan the week')).toBeInTheDocument()
+  })
+
   it('shows XL tasks as disabled with "Split first"', async () => {
     const user = userEvent.setup()
     renderApp(<PlanPage />)

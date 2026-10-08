@@ -6,13 +6,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import { taskHref, useTaskActions } from '../../data/taskActions'
+import { useTaskActions } from '../../data/taskActions'
 import type { FollowUpItem } from '../../domain/followups'
 import { addDaysISO } from '../../domain/week'
+import { useTaskLink } from '../task/useTaskParam'
 
 /** One line: "Follow up: X re Y" + grey date. "Still waiting…" (new date) and "Received" appear on hover. */
 export function FollowUpRow({ item, today }: { item: FollowUpItem; today: string }) {
   const actions = useTaskActions()
+  const taskLink = useTaskLink()
   const [open, setOpen] = useState(false)
   const [date, setDate] = useState(() => addDaysISO(today, 7))
 
@@ -28,7 +30,7 @@ export function FollowUpRow({ item, today }: { item: FollowUpItem; today: string
         aria-hidden
       />
       <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-        <Link to={taskHref(item.task)} className="min-w-0 text-sm underline-offset-4 hover:underline">
+        <Link to={taskLink(item.task)} className="min-w-0 text-sm underline-offset-4 hover:underline">
           {item.label}
         </Link>
         <span

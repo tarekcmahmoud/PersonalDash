@@ -10,6 +10,7 @@ import { eventsOnDay } from '../plan/events'
 import { useWeekParam } from '../plan/useWeekParam'
 import { WeekSwitcher } from '../plan/WeekSwitcher'
 import { weekStats } from '../plan/weekStats'
+import { TaskDialogHost } from '../task/TaskDialogHost'
 
 /**
  * Week board: a card for "this week, any day" followed by one per day, Monday to Sunday. Eight columns at
@@ -84,6 +85,7 @@ export function WeekPage() {
         onReset={resetWeek}
       />
       <div className="mt-4">{body}</div>
+      <TaskDialogHost />
     </Page>
   )
 }
