@@ -1,13 +1,20 @@
-import { CalendarIcon, KebabHorizontalIcon } from '@primer/octicons-react'
-import { ActionList, ActionMenu, IconButton } from '@primer/react'
 import { format, parseISO } from 'date-fns'
+import { CalendarDays, Check, MoreHorizontal } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useTaskActions } from '../../data/taskActions'
 import type { ISODate, Task } from '../../domain/types'
 import { weekDays } from '../../domain/week'
 
 /**
  * Menu to move a planned task between the days of its week.
- * "Pin to day" (Plan page) offers Mon..Sun + "No day"; "Move to…" (Week board) offers Mon..Sun + "Any day" + "Unplan".
+ * "Pin to day" (Today / Plan) offers Mon..Sun + "No day"; "Move to…" (Week board) offers Mon..Sun + "Any day" + "Unplan".
  */
 export function TaskDayMenu({
   task,
@@ -21,41 +28,40 @@ export function TaskDayMenu({
   const actions = useTaskActions()
   const isMove = variant === 'move'
   const label = isMove ? `Move "${task.title}" to…` : `Pin "${task.title}" to a day`
+  const Icon = isMove ? MoreHorizontal : CalendarDays
+  const current = <Check className="ml-auto size-4" aria-label="current" />
 
   return (
-    <ActionMenu>
-      <ActionMenu.Anchor>
-        <IconButton
-          icon={isMove ? KebabHorizontalIcon : CalendarIcon}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="size-8 text-muted-foreground md:size-7"
           aria-label={label}
-          variant="invisible"
-          size="small"
-        />
-      </ActionMenu.Anchor>
-      <ActionMenu.Overlay align="end" width="small">
-        <ActionList>
-          {weekDays(weekStart).map((day) => (
-            <ActionList.Item
-              key={day}
-              onSelect={() => void actions.pin(task, day)}
-              aria-current={task.pinnedDay === day ? 'true' : undefined}
-            >
-              {format(parseISO(day), 'EEE MMM d')}
-              {task.pinnedDay === day && <ActionList.TrailingVisual>current</ActionList.TrailingVisual>}
-            </ActionList.Item>
-          ))}
-          <ActionList.Divider />
-          <ActionList.Item onSelect={() => void actions.pin(task, null)}>
-            {isMove ? 'Any day' : 'No day'}
-            {task.pinnedDay === null && <ActionList.TrailingVisual>current</ActionList.TrailingVisual>}
-          </ActionList.Item>
-          {isMove && (
-            <ActionList.Item variant="danger" onSelect={() => void actions.unplan(task)}>
-              Unplan
-            </ActionList.Item>
-          )}
-        </ActionList>
-      </ActionMenu.Overlay>
-    </ActionMenu>
+          title={isMove ? 'Move to…' : 'Pin to a day'}
+        >
+          <Icon />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-40">
+        {weekDays(weekStart).map((day) => (
+          <DropdownMenuItem key={day} onSelect={() => void actions.pin(task, day)}>
+            {format(parseISO(day), 'EEE MMM d')}
+            {task.pinnedDay === day && current}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => void actions.pin(task, null)}>
+          {isMove ? 'Any day' : 'No day'}
+          {task.pinnedDay === null && current}
+        </DropdownMenuItem>
+        {isMove && (
+          <DropdownMenuItem variant="destructive" onSelect={() => void actions.unplan(task)}>
+            Unplan
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
