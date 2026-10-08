@@ -1,0 +1,26 @@
+.capture {
+  display: flex;
+  gap: var(--base-size-8);
+  margin-bottom: var(--base-size-16);
+}
+
+.captureInput {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.item {
+  border-bottom: var(--borderWidth-thin) solid var(--borderColor-muted);
+}
+
+.doneDetails {
+  margin-top: var(--base-size-16);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  cursor: pointer;
+  color: var(--fgColor-muted);
+}

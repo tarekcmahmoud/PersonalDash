@@ -1,0 +1,23 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-16);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--base-size-16);
+}
+
+.kind {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-4);
+}
+
+.kindLabel {
+  font-weight: var(--base-text-weight-semibold);
+  font-size: var(--text-body-size-medium);
+}
