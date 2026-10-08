@@ -1,7 +1,8 @@
 -- PersonalDash — initial schema.
 --
 -- HOW TO APPLY
---   Option A (no tooling): open your Supabase project > SQL Editor > New query, paste this whole file, Run.
+--   Option A (no tooling): open this file on GitHub, click "Copy raw file", then in your Supabase project
+--   open SQL Editor > New query, paste, and Run (with nothing selected — a selection runs only that part).
 --   Option B (Supabase CLI): from the repo root run `supabase link --project-ref <ref>` once, then
 --   `supabase db push` (this file lives in supabase/migrations/ so the CLI picks it up).
 --
@@ -17,20 +18,49 @@
 --   * The system "Admin / Misc" project (is_system) cannot be deleted or un-flagged, and there is at
 --     most one per user.
 --
--- Run once. It is not written to be re-run (create type / create table without IF NOT EXISTS).
+-- Safe to re-run: every statement checks whether its object already exists. Paste the WHOLE file (it ends
+-- with the Row Level Security policy block); running a partial paste gives a syntax error.
 
 -- ---------------------------------------------------------------------------------------------------
 -- Enums
 -- ---------------------------------------------------------------------------------------------------
-create type public.project_status as enum ('active', 'on_hold', 'done');
-create type public.date_kind as enum ('hard', 'soft');
-create type public.task_size as enum ('S', 'M', 'L', 'XL');
-create type public.task_status as enum ('todo', 'waiting', 'done');
+do $$
+begin
+  if not exists (select 1 from pg_type t join pg_namespace n on n.oid = t.typnamespace
+                 where n.nspname = 'public' and t.typname = 'project_status') then
+    create type public.project_status as enum ('active', 'on_hold', 'done');
+  end if;
+end;
+$$;
+do $$
+begin
+  if not exists (select 1 from pg_type t join pg_namespace n on n.oid = t.typnamespace
+                 where n.nspname = 'public' and t.typname = 'date_kind') then
+    create type public.date_kind as enum ('hard', 'soft');
+  end if;
+end;
+$$;
+do $$
+begin
+  if not exists (select 1 from pg_type t join pg_namespace n on n.oid = t.typnamespace
+                 where n.nspname = 'public' and t.typname = 'task_size') then
+    create type public.task_size as enum ('S', 'M', 'L', 'XL');
+  end if;
+end;
+$$;
+do $$
+begin
+  if not exists (select 1 from pg_type t join pg_namespace n on n.oid = t.typnamespace
+                 where n.nspname = 'public' and t.typname = 'task_status') then
+    create type public.task_status as enum ('todo', 'waiting', 'done');
+  end if;
+end;
+$$;
 
 -- ---------------------------------------------------------------------------------------------------
 -- projects
 -- ---------------------------------------------------------------------------------------------------
-create table public.projects (
+create table if not exists public.projects (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   name text not null,
@@ -43,14 +73,14 @@ create table public.projects (
   is_system boolean not null default false,
   created_at timestamptz not null default now()
 );
-create index projects_user_id_idx on public.projects (user_id);
+create index if not exists projects_user_id_idx on public.projects (user_id);
 -- At most one system project per user.
-create unique index projects_one_system_per_user_idx on public.projects (user_id) where is_system;
+create unique index if not exists projects_one_system_per_user_idx on public.projects (user_id) where is_system;
 
 -- ---------------------------------------------------------------------------------------------------
 -- milestones
 -- ---------------------------------------------------------------------------------------------------
-create table public.milestones (
+create table if not exists public.milestones (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   project_id uuid not null references public.projects (id) on delete cascade,
@@ -59,13 +89,13 @@ create table public.milestones (
   target_date date,
   date_kind public.date_kind
 );
-create index milestones_user_id_idx on public.milestones (user_id);
-create index milestones_project_id_idx on public.milestones (project_id);
+create index if not exists milestones_user_id_idx on public.milestones (user_id);
+create index if not exists milestones_project_id_idx on public.milestones (project_id);
 
 -- ---------------------------------------------------------------------------------------------------
 -- tasks (project_id null = Inbox)
 -- ---------------------------------------------------------------------------------------------------
-create table public.tasks (
+create table if not exists public.tasks (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   project_id uuid references public.projects (id) on delete cascade,
@@ -86,28 +116,28 @@ create table public.tasks (
   gcal_dirty boolean not null default false,
   created_at timestamptz not null default now()
 );
-create index tasks_user_id_idx on public.tasks (user_id);
-create index tasks_project_id_idx on public.tasks (project_id);
-create index tasks_milestone_id_idx on public.tasks (milestone_id);
-create index tasks_week_start_idx on public.tasks (user_id, week_start);
+create index if not exists tasks_user_id_idx on public.tasks (user_id);
+create index if not exists tasks_project_id_idx on public.tasks (project_id);
+create index if not exists tasks_milestone_id_idx on public.tasks (milestone_id);
+create index if not exists tasks_week_start_idx on public.tasks (user_id, week_start);
 
 -- ---------------------------------------------------------------------------------------------------
 -- task_dependencies: task_id cannot start until blocked_by_task_id is done
 -- ---------------------------------------------------------------------------------------------------
-create table public.task_dependencies (
+create table if not exists public.task_dependencies (
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   task_id uuid not null references public.tasks (id) on delete cascade,
   blocked_by_task_id uuid not null references public.tasks (id) on delete cascade,
   primary key (task_id, blocked_by_task_id),
   check (task_id <> blocked_by_task_id)
 );
-create index task_dependencies_user_id_idx on public.task_dependencies (user_id);
-create index task_dependencies_blocked_by_idx on public.task_dependencies (blocked_by_task_id);
+create index if not exists task_dependencies_user_id_idx on public.task_dependencies (user_id);
+create index if not exists task_dependencies_blocked_by_idx on public.task_dependencies (blocked_by_task_id);
 
 -- ---------------------------------------------------------------------------------------------------
 -- checklist_items
 -- ---------------------------------------------------------------------------------------------------
-create table public.checklist_items (
+create table if not exists public.checklist_items (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   task_id uuid not null references public.tasks (id) on delete cascade,
@@ -115,25 +145,25 @@ create table public.checklist_items (
   done boolean not null default false,
   position double precision not null default 0
 );
-create index checklist_items_user_id_idx on public.checklist_items (user_id);
-create index checklist_items_task_id_idx on public.checklist_items (task_id);
+create index if not exists checklist_items_user_id_idx on public.checklist_items (user_id);
+create index if not exists checklist_items_task_id_idx on public.checklist_items (task_id);
 
 -- ---------------------------------------------------------------------------------------------------
 -- templates
 -- ---------------------------------------------------------------------------------------------------
-create table public.templates (
+create table if not exists public.templates (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   name text not null,
   outline text not null default '',
   updated_at timestamptz not null default now()
 );
-create index templates_user_id_idx on public.templates (user_id);
+create index if not exists templates_user_id_idx on public.templates (user_id);
 
 -- ---------------------------------------------------------------------------------------------------
 -- weeks (per-week metadata; week_start is a Monday)
 -- ---------------------------------------------------------------------------------------------------
-create table public.weeks (
+create table if not exists public.weeks (
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   week_start date not null,
   capacity_override double precision check (capacity_override is null or capacity_override >= 0),
@@ -144,7 +174,7 @@ create table public.weeks (
 -- ---------------------------------------------------------------------------------------------------
 -- settings (one row per user)
 -- ---------------------------------------------------------------------------------------------------
-create table public.settings (
+create table if not exists public.settings (
   user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
   -- Record<'mon'..'sun', {start:'HH:MM', end:'HH:MM'} | null>
   work_hours jsonb not null,
@@ -163,7 +193,7 @@ create table public.settings (
 -- around the delete guard). Deleting the whole account (auth.users row removed, cascading to the
 -- projects) is still allowed: in that case the owning auth.users row no longer exists.
 -- ---------------------------------------------------------------------------------------------------
-create function public.guard_system_project()
+create or replace function public.guard_system_project()
 returns trigger
 language plpgsql
 security definer
@@ -185,10 +215,12 @@ begin
 end;
 $$;
 
+drop trigger if exists projects_guard_system_delete on public.projects;
 create trigger projects_guard_system_delete
   before delete on public.projects
   for each row execute function public.guard_system_project();
 
+drop trigger if exists projects_guard_system_update on public.projects;
 create trigger projects_guard_system_update
   before update on public.projects
   for each row execute function public.guard_system_project();
@@ -208,12 +240,16 @@ alter table public.settings enable row level security;
 do $$
 declare
   t text;
+  op text;
 begin
   foreach t in array array[
     'projects', 'milestones', 'tasks', 'task_dependencies',
     'checklist_items', 'templates', 'weeks', 'settings'
   ]
   loop
+    foreach op in array array['select', 'insert', 'update', 'delete'] loop
+      execute format('drop policy if exists %I on public.%I', t || '_' || op || '_own', t);
+    end loop;
     execute format(
       'create policy %I on public.%I for select to authenticated using (user_id = (select auth.uid()))',
       t || '_select_own', t);

@@ -26,9 +26,10 @@ Supabase stores your data and handles sign-in. The free tier is enough for perso
    database password. Save that password in a password manager. The app does not need it. Pick the region
    closest to you, then click **Create new project**. Wait a minute or two for it to finish.
 3. In the left sidebar, click **SQL Editor**, then **New query**.
-4. Open `supabase/migrations/0001_init.sql` from this project in a text editor. Copy the whole file and paste it
-   into the SQL Editor. Click **Run**. This creates the tables and security rules. Run this file only once. If you
-   run it again, you will see "already exists" errors, which means the tables are already there.
+4. Open `supabase/migrations/0001_init.sql` on GitHub and click **Copy raw file** (the copy icon above the file),
+   so you get the whole file. Paste it into the SQL Editor and click **Run** with nothing selected (a selection
+   runs only that part). This creates the tables and security rules. The script is safe to run again: anything
+   that already exists is skipped. A "syntax error at or near ;" means only part of the file was pasted.
 5. In the left sidebar, click **Authentication**, then **Users**. Click **Add user**, then **Create new user**.
    Enter your email address and a password. Tick **Auto Confirm User**, then click **Create user**. This account
    is the only one the app will ever have.
