@@ -1,0 +1,31 @@
+.section {
+  border: var(--borderWidth-thin) solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-default);
+  padding: var(--base-size-12) var(--base-size-16);
+  min-width: 0;
+}
+
+.muted {
+  background: var(--bgColor-muted);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--base-size-8);
+  margin-bottom: var(--base-size-4);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-title-size-small);
+  font-weight: var(--base-text-weight-semibold);
+}
+
+.actions {
+  margin-left: auto;
+  display: flex;
+  gap: var(--base-size-8);
+}

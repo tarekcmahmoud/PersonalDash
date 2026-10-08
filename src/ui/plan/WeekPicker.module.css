@@ -1,0 +1,21 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-16);
+}
+
+/* The sticky summary carries its own bottom margin; the flex gap handles the rest. */
+.root > :first-child {
+  margin-bottom: 0;
+}
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-12);
+}
+
+.inbox {
+  margin: 0;
+  color: var(--fgColor-muted);
+}

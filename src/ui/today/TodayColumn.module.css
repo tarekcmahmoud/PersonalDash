@@ -1,0 +1,32 @@
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-12);
+  min-width: 0;
+}
+
+.empty {
+  margin: 0 0 var(--base-size-12);
+  color: var(--fgColor-muted);
+}
+
+.dayLabel {
+  margin: var(--base-size-8) 0 0;
+  font-size: var(--text-body-size-small);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.capacity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-12);
+}
+
+.capLabel {
+  font-size: var(--text-body-size-small);
+  font-weight: var(--base-text-weight-semibold);
+  margin-bottom: var(--base-size-4);
+}

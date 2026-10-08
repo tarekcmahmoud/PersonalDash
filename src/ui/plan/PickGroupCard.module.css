@@ -1,0 +1,78 @@
+.card {
+  border: var(--borderWidth-thin) solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-default);
+  padding: var(--base-size-12) var(--base-size-16);
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--base-size-4) var(--base-size-12);
+}
+
+.name {
+  margin: 0;
+  font-size: var(--text-title-size-small);
+  font-weight: var(--base-text-weight-semibold);
+}
+
+.name a {
+  color: var(--fgColor-default);
+  text-decoration: none;
+}
+
+.name a:hover {
+  text-decoration: underline;
+}
+
+.count {
+  font-size: var(--text-body-size-small);
+  color: var(--fgColor-muted);
+}
+
+.badges {
+  margin-left: auto;
+}
+
+.empty {
+  margin: var(--base-size-8) 0 0;
+  color: var(--fgColor-muted);
+}
+
+.list {
+  margin-top: var(--base-size-4);
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--base-size-8);
+  border-top: var(--borderWidth-thin) solid var(--borderColor-muted);
+}
+
+.item:first-child {
+  border-top: 0;
+}
+
+.toggle {
+  flex-shrink: 0;
+  /* ≥32px tap target around the checkbox */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  margin-top: var(--base-size-4);
+}
+
+.row {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.more {
+  margin-top: var(--base-size-4);
+}

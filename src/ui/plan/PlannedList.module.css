@@ -1,0 +1,23 @@
+.details {
+  border: var(--borderWidth-thin) solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-default);
+  padding: var(--base-size-8) var(--base-size-16);
+}
+
+.details > summary {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: var(--base-text-weight-semibold);
+}
+
+.body {
+  padding-top: var(--base-size-4);
+}
+
+.empty {
+  margin: 0;
+  color: var(--fgColor-muted);
+}
