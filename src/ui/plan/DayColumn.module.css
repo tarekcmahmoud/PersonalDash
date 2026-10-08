@@ -1,0 +1,100 @@
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8);
+  min-width: 0;
+  padding: var(--base-size-8);
+  border: var(--borderWidth-thin) solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-muted);
+}
+
+.anyDay {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  box-shadow: var(--shadow-resting-small);
+}
+
+.today {
+  border-color: var(--borderColor-accent-emphasis);
+  box-shadow: inset 0 0 0 1px var(--borderColor-accent-emphasis);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--base-size-4) var(--base-size-8);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-body-size-medium);
+  font-weight: var(--base-text-weight-semibold);
+}
+
+.todayTag {
+  font-size: var(--text-body-size-small);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-accent);
+}
+
+.hours,
+.over {
+  margin-left: auto;
+  font-size: var(--text-body-size-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--fgColor-muted);
+}
+
+.over {
+  color: var(--fgColor-danger);
+  font-weight: var(--base-text-weight-semibold);
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8);
+}
+
+.card {
+  padding: 0 var(--base-size-8);
+  border: var(--borderWidth-thin) solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-default);
+  min-width: 0;
+}
+
+.followUp {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--base-size-8);
+  padding: var(--base-size-4) var(--base-size-8);
+  font-size: var(--text-body-size-small);
+  color: var(--fgColor-muted);
+  border: var(--borderWidth-thin) dashed var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+}
+
+.followUp svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.followUp a {
+  color: var(--fgColor-default);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.followUp a:hover {
+  text-decoration: underline;
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--text-body-size-small);
+  color: var(--fgColor-muted);
+}
