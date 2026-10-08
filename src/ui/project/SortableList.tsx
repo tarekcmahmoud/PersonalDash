@@ -15,30 +15,37 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ChevronDownIcon, ChevronUpIcon, GrabberIcon } from '@primer/octicons-react'
-import { IconButton } from '@primer/react'
+import { GripVertical } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
-import styles from './SortableList.module.css'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+
+/** What a sortable row gets to render: the drag handle and the state/actions for Move up / Move down menus. */
+export interface SortableControls {
+  /** Drag handle (pointer drag, or focus + Space + arrows). Hidden on phones, where menus move rows. */
+  handle: ReactNode
+  isFirst: boolean
+  isLast: boolean
+  move: (delta: -1 | 1) => void
+}
 
 interface SortableListProps<T extends { id: string }> {
   items: T[]
   /** Called with the full list in its new order. */
   onReorder: (items: T[]) => void
-  /** Accessible name of an item, used in the button labels. */
+  /** Accessible name of an item, used in the handle label. */
   label: (item: T) => string
-  /** `controls` = drag handle + up/down buttons; put it wherever the row wants them. */
-  renderItem: (item: T, controls: ReactNode) => ReactNode
+  renderItem: (item: T, controls: SortableControls) => ReactNode
+  className?: string
 }
 
-/**
- * Vertical sortable list. Reordering works by pointer drag, keyboard (focus the handle, Space, arrows) and
- * up/down buttons (the buttons are the touch fallback and hidden on wide screens).
- */
+/** Vertical sortable list: drag handle (pointer + keyboard) plus `move` for "Move up/down" menu items. */
 export function SortableList<T extends { id: string }>({
   items,
   onReorder,
   label,
   renderItem,
+  className,
 }: SortableListProps<T>) {
   const dndId = useId()
   const sensors = useSensors(
@@ -62,18 +69,20 @@ export function SortableList<T extends { id: string }>({
   return (
     <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        {items.map((item, index) => (
-          <SortableRow
-            key={item.id}
-            id={item.id}
-            name={label(item)}
-            isFirst={index === 0}
-            isLast={index === items.length - 1}
-            onMove={(delta) => move(index, index + delta)}
-          >
-            {(controls) => renderItem(item, controls)}
-          </SortableRow>
-        ))}
+        <div className={className}>
+          {items.map((item, index) => (
+            <SortableRow
+              key={item.id}
+              id={item.id}
+              name={label(item)}
+              isFirst={index === 0}
+              isLast={index === items.length - 1}
+              onMove={(delta) => move(index, index + delta)}
+            >
+              {(controls) => renderItem(item, controls)}
+            </SortableRow>
+          ))}
+        </div>
       </SortableContext>
     </DndContext>
   )
@@ -92,48 +101,33 @@ function SortableRow({
   isFirst: boolean
   isLast: boolean
   onMove: (delta: -1 | 1) => void
-  children: (controls: ReactNode) => ReactNode
+  children: (controls: SortableControls) => ReactNode
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id })
 
-  const controls = (
-    <span className={styles.controls}>
-      <IconButton
-        ref={setActivatorNodeRef}
-        {...attributes}
-        {...listeners}
-        className={styles.handle}
-        icon={GrabberIcon}
-        variant="invisible"
-        aria-label={`Drag to reorder: ${name}`}
-      />
-      <IconButton
-        className={styles.arrow}
-        icon={ChevronUpIcon}
-        variant="invisible"
-        aria-label={`Move up: ${name}`}
-        disabled={isFirst}
-        onClick={() => onMove(-1)}
-      />
-      <IconButton
-        className={styles.arrow}
-        icon={ChevronDownIcon}
-        variant="invisible"
-        aria-label={`Move down: ${name}`}
-        disabled={isLast}
-        onClick={() => onMove(1)}
-      />
-    </span>
+  const handle = (
+    <Button
+      ref={setActivatorNodeRef}
+      {...attributes}
+      {...listeners}
+      type="button"
+      variant="ghost"
+      size="icon-xs"
+      aria-label={`Drag to reorder: ${name}`}
+      className="hidden shrink-0 cursor-grab touch-none text-muted-foreground active:cursor-grabbing md:inline-flex"
+    >
+      <GripVertical />
+    </Button>
   )
 
   return (
     <div
       ref={setNodeRef}
-      className={isDragging ? `${styles.item} ${styles.dragging}` : styles.item}
+      className={cn('relative', isDragging && 'z-10 bg-background opacity-90 shadow-sm')}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
-      {children(controls)}
+      {children({ handle, isFirst, isLast, move: onMove })}
     </div>
   )
 }

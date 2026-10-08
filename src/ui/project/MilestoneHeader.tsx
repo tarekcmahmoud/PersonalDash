@@ -1,12 +1,12 @@
-import { KebabHorizontalIcon } from '@primer/octicons-react'
-import { ActionList, ActionMenu, IconButton, Label, useConfirm } from '@primer/react'
 import { format, parseISO } from 'date-fns'
 import { useState } from 'react'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { useApply } from '../../data/hooks'
 import type { Milestone } from '../../domain/types'
+import { ConfirmDialog } from './ConfirmDialog'
 import { MilestoneDialog } from './MilestoneDialog'
 import { renumber } from './ordering'
-import styles from './MilestoneHeader.module.css'
+import { RowMenu } from './RowMenu'
 
 interface Props {
   milestone: Milestone
@@ -15,11 +15,11 @@ interface Props {
   taskCount: number
 }
 
-/** Milestone title row: name, target date, and a menu to rename / reorder / delete. */
+/** Milestone heading: name (medium weight), grey target date, and a hover `…` menu (edit, move, delete). */
 export function MilestoneHeader({ milestone, siblings, taskCount }: Props) {
   const apply = useApply()
-  const confirm = useConfirm()
   const [editing, setEditing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const index = siblings.findIndex((m) => m.id === milestone.id)
 
   const move = (delta: -1 | 1) => {
@@ -30,52 +30,28 @@ export function MilestoneHeader({ milestone, siblings, taskCount }: Props) {
     if (changed.length > 0) void apply({ kind: 'saveMilestones', milestones: changed })
   }
 
-  const remove = async () => {
-    const ok = await confirm({
-      title: `Delete milestone “${milestone.name}”?`,
-      content:
-        taskCount > 0
-          ? `This also deletes its ${taskCount} task${taskCount === 1 ? '' : 's'}. This cannot be undone.`
-          : 'This cannot be undone.',
-      confirmButtonContent: 'Delete milestone',
-      confirmButtonType: 'danger',
-    })
-    if (ok) await apply({ kind: 'deleteMilestone', id: milestone.id })
-  }
-
   return (
-    <div className={styles.header}>
-      <h2 className={styles.name}>{milestone.name}</h2>
+    <div className="group mb-1 flex min-h-8 items-center gap-3 border-b pb-1">
+      <h2 className="min-w-0 truncate text-base font-medium">{milestone.name}</h2>
       {milestone.targetDate && (
-        <Label variant={milestone.dateKind === 'hard' ? 'severe' : 'secondary'}>
-          {`${milestone.dateKind === 'hard' ? 'Deadline' : 'Target'} · ${format(parseISO(milestone.targetDate), 'MMM d')}`}
-        </Label>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {`${milestone.dateKind === 'hard' ? 'Deadline' : 'Target'} ${format(parseISO(milestone.targetDate), 'MMM d')}`}
+        </span>
       )}
-      <ActionMenu>
-        <ActionMenu.Anchor>
-          <IconButton
-            className={styles.menu}
-            icon={KebabHorizontalIcon}
-            variant="invisible"
-            aria-label={`Milestone actions: ${milestone.name}`}
-          />
-        </ActionMenu.Anchor>
-        <ActionMenu.Overlay width="small">
-          <ActionList>
-            <ActionList.Item onSelect={() => setEditing(true)}>Rename / edit…</ActionList.Item>
-            <ActionList.Item disabled={index <= 0} onSelect={() => move(-1)}>
-              Move up
-            </ActionList.Item>
-            <ActionList.Item disabled={index >= siblings.length - 1} onSelect={() => move(1)}>
-              Move down
-            </ActionList.Item>
-            <ActionList.Divider />
-            <ActionList.Item variant="danger" onSelect={() => void remove()}>
-              Delete milestone…
-            </ActionList.Item>
-          </ActionList>
-        </ActionMenu.Overlay>
-      </ActionMenu>
+      <div className="ml-auto opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+        <RowMenu
+          label={`Milestone actions: ${milestone.name}`}
+          controls={{ isFirst: index <= 0, isLast: index >= siblings.length - 1, move }}
+          extra={
+            <>
+              <DropdownMenuItem onSelect={() => setEditing(true)}>Rename / edit…</DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
+                Delete milestone…
+              </DropdownMenuItem>
+            </>
+          }
+        />
+      </div>
       {editing && (
         <MilestoneDialog
           projectId={milestone.projectId}
@@ -83,6 +59,19 @@ export function MilestoneHeader({ milestone, siblings, taskCount }: Props) {
           onClose={() => setEditing(false)}
         />
       )}
+      <ConfirmDialog
+        open={deleting}
+        onOpenChange={setDeleting}
+        title={`Delete milestone “${milestone.name}”?`}
+        description={
+          taskCount > 0
+            ? `This also deletes its ${taskCount} task${taskCount === 1 ? '' : 's'}. This cannot be undone.`
+            : 'This cannot be undone.'
+        }
+        confirmLabel="Delete milestone"
+        destructive
+        onConfirm={() => apply({ kind: 'deleteMilestone', id: milestone.id })}
+      />
     </div>
   )
 }

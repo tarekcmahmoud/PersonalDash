@@ -1,17 +1,18 @@
-import { InboxIcon, PlusIcon } from '@primer/octicons-react'
-import { Button, Details, Spinner, TextInput } from '@primer/react'
-import { Blankslate } from '@primer/react/experimental'
 import { useState, type FormEvent } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useApply, useSnapshot } from '../../data/hooks'
 import { useTaskActions } from '../../data/taskActions'
 import { makeTask } from '../../domain/factories'
+import type { Task } from '../../domain/types'
 import { Page } from '../components/Page'
 import { TaskRow } from '../components/TaskRow'
+import { CollapsibleGroup } from '../project/CollapsibleGroup'
 import { endPosition, groupTasks } from '../project/ordering'
 import { FileToMenu } from '../task/FileToMenu'
 import { TaskDialogHost } from '../task/TaskDialogHost'
 import { useTaskParam } from '../task/useTaskParam'
-import styles from './InboxPage.module.css'
 
 export function InboxPage() {
   const { data } = useSnapshot()
@@ -41,60 +42,47 @@ export function InboxPage() {
     return { done: items.filter((c) => c.done).length, total: items.length }
   }
 
-  const row = (t: (typeof inbox)[number], withFileTo: boolean) => (
-    <div key={t.id} className={styles.item}>
-      <TaskRow
-        task={t}
-        checklist={checklistOf(t.id)}
-        onToggleDone={(task) => void actions.toggleDone(task)}
-        onOpen={(task) => open(task.id)}
-        trailing={withFileTo ? <FileToMenu task={t} /> : undefined}
-      />
-    </div>
+  const row = (t: Task, withFileTo: boolean) => (
+    <TaskRow
+      key={t.id}
+      task={t}
+      checklist={checklistOf(t.id)}
+      onToggleDone={(task) => void actions.toggleDone(task)}
+      onOpen={(task) => open(task.id)}
+      actions={withFileTo ? <FileToMenu task={t} /> : undefined}
+    />
   )
 
   return (
-    <Page
-      title="Inbox"
-      description="Capture now, decide later. File tasks into a project when you know where they belong."
-    >
-      <form className={styles.capture} onSubmit={capture}>
-        <TextInput
-          className={styles.captureInput}
-          block
-          size="large"
-          leadingVisual={PlusIcon}
+    <Page title="Inbox">
+      <form className="mb-4 flex items-center gap-2" onSubmit={capture}>
+        <Input
           value={title}
-          placeholder="Capture a task and press Enter"
+          placeholder="Capture a task, then Enter"
           aria-label="Capture a task"
+          className="h-10"
           onChange={(e) => setTitle(e.target.value)}
         />
-        <Button type="submit" variant="primary" size="large" disabled={!title.trim()}>
+        <Button type="submit" variant="ghost" disabled={!title.trim()} className="shrink-0">
           Add
         </Button>
       </form>
 
       {!data ? (
-        <Spinner aria-label="Loading inbox" />
+        <div role="status" aria-label="Loading inbox" className="grid gap-3">
+          <Skeleton className="h-8" />
+          <Skeleton className="h-8" />
+        </div>
       ) : openTasks.length === 0 ? (
-        <Blankslate border>
-          <Blankslate.Visual>
-            <InboxIcon size="medium" />
-          </Blankslate.Visual>
-          <Blankslate.Heading>Inbox zero</Blankslate.Heading>
-          <Blankslate.Description>
-            Nothing waiting to be filed. Capture new ideas above.
-          </Blankslate.Description>
-        </Blankslate>
+        <p className="py-2 text-sm text-muted-foreground">Inbox zero. Nothing waiting to be filed.</p>
       ) : (
-        <div>{openTasks.map((t) => row(t, true))}</div>
+        <div className="divide-y">{openTasks.map((t) => row(t, true))}</div>
       )}
 
       {doneTasks.length > 0 && (
-        <Details className={styles.doneDetails}>
-          <Details.Summary className={styles.summary}>{`${doneTasks.length} done`}</Details.Summary>
-          {doneTasks.map((t) => row(t, false))}
-        </Details>
+        <CollapsibleGroup label={`${doneTasks.length} done`} className="mt-4">
+          <div className="divide-y">{doneTasks.map((t) => row(t, false))}</div>
+        </CollapsibleGroup>
       )}
 
       <TaskDialogHost />

@@ -1,15 +1,16 @@
-import { Label } from '@primer/react'
-import type { ReactNode } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
-import { projectHealth } from '../../domain/health'
+import { Link } from 'react-router-dom'
 import type { PlanContext } from '../../domain/context'
+import { projectHealth } from '../../domain/health'
 import { nextTask } from '../../domain/order'
 import type { Project } from '../../domain/types'
-import { HealthBadges } from '../components/HealthBadges'
-import { ProjectObjective } from '../components/ProjectObjective'
-import styles from './ProjectRow.module.css'
+import { ProjectSignal } from '../components/HealthBadges'
+import { RowMenu } from './RowMenu'
+import type { SortableControls } from './SortableList'
 
-/** One project in the Projects list: name, objective, health, next step and task counts. */
+/**
+ * One project in the Projects list, on up to three quiet lines: name · signal · open count, then the
+ * outcome, then "Next: …". Reorder via the (hover) drag handle on desktop, the `…` menu on phones.
+ */
 export function ProjectRow({
   project,
   ctx,
@@ -17,34 +18,51 @@ export function ProjectRow({
 }: {
   project: Project
   ctx: PlanContext
-  /** Reorder controls (active projects only). */
-  controls?: ReactNode
+  /** Reorder controls (active, non-system projects only). */
+  controls?: SortableControls
 }) {
-  const mine = ctx.tasks.filter((t) => t.projectId === project.id)
-  const open = mine.filter((t) => t.status !== 'done').length
-  const done = mine.length - open
-  const next = project.status === 'active' ? nextTask(project.id, ctx) : null
+  const open = ctx.tasks.filter((t) => t.projectId === project.id && t.status !== 'done').length
+  const active = project.status === 'active'
+  const next = active ? nextTask(project.id, ctx) : null
+  // "No next step" is shown on the Next line, so it is not repeated as a signal.
+  const flags = projectHealth(project, ctx).filter((f) => f.kind !== 'no_next_step')
 
   return (
-    <div className={styles.row} data-testid="project-row">
-      <div className={styles.head}>
-        <RouterLink to={`/projects/${project.id}`} className={styles.name}>
-          {project.name}
-        </RouterLink>
-        {project.isSystem && <Label variant="secondary">System</Label>}
-        {controls && <div className={styles.controls}>{controls}</div>}
+    <div data-testid="project-row" className="group flex items-start gap-1 py-3 md:gap-1">
+      <div className="mt-0.5 -ml-7 hidden w-6 shrink-0 justify-center opacity-100 transition-opacity md:flex md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+        {controls?.handle}
       </div>
-      <ProjectObjective project={project} compact />
-      <HealthBadges flags={projectHealth(project, ctx)} />
-      <div className={styles.foot}>
-        {project.status === 'active' && (
-          <span className={styles.next}>
-            <span className={styles.muted}>Next: </span>
-            {next ? next.title : <span className={styles.muted}>No next step</span>}
-          </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-baseline gap-3">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <Link
+              to={`/projects/${project.id}`}
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              {project.name}
+            </Link>
+            {project.isSystem ? (
+              <span className="text-xs text-muted-foreground">System</span>
+            ) : (
+              <ProjectSignal flags={flags} />
+            )}
+          </div>
+          <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">{`${open} open`}</span>
+        </div>
+        {(project.outcome || !project.isSystem) && (
+          <p className="truncate text-sm text-muted-foreground">
+            {project.outcome || <em>No outcome set</em>}
+          </p>
         )}
-        <span className={styles.muted}>{`${open} open · ${done} done`}</span>
+        {active && (
+          <p className="truncate text-sm text-muted-foreground">
+            {next ? `Next: ${next.title}` : 'No next step'}
+          </p>
+        )}
       </div>
+      {controls && (
+        <RowMenu label={`Project actions: ${project.name}`} controls={controls} className="-my-1 md:hidden" />
+      )}
     </div>
   )
 }

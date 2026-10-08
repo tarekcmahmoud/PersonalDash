@@ -1,11 +1,12 @@
-import { Button, Textarea, useConfirm } from '@primer/react'
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { useApply, useSnapshot } from '../../data/hooks'
 import { makeTask } from '../../domain/factories'
 import { explicitBlockerIds } from '../../domain/order'
 import type { Task } from '../../domain/types'
+import { ConfirmDialog } from '../project/ConfirmDialog'
 import { groupTasks, parseSubtasks } from '../project/ordering'
-import styles from './TaskDialog.module.css'
 
 /**
  * Split an XL task: one subtask per line (optional trailing [S]/[M]/[L], default M). The subtasks take the XL
@@ -15,18 +16,12 @@ import styles from './TaskDialog.module.css'
 export function SplitTask({ task, onDone }: { task: Task; onDone: () => void }) {
   const apply = useApply()
   const { data } = useSnapshot()
-  const confirm = useConfirm()
   const [text, setText] = useState('')
+  const [confirming, setConfirming] = useState(false)
   const subtasks = parseSubtasks(text)
 
   const split = async () => {
     if (!data || subtasks.length === 0) return
-    const ok = await confirm({
-      title: 'Split this task?',
-      content: `“${task.title}” will be replaced by ${subtasks.length} new task${subtasks.length === 1 ? '' : 's'}.`,
-      confirmButtonContent: 'Split task',
-    })
-    if (!ok) return
 
     const created = subtasks.map((s) =>
       makeTask({
@@ -65,22 +60,37 @@ export function SplitTask({ task, onDone }: { task: Task; onDone: () => void }) 
   }
 
   return (
-    <div className={styles.split}>
-      <p className={styles.hint}>
-        This task is too big or unclear to schedule. Break it into smaller steps, one per line. Add [S], [M]
-        or [L] at the end of a line to set its size (default M).
+    <div className="grid gap-2">
+      <p className="text-xs text-muted-foreground">
+        Too big or unclear to schedule. One step per line; end a line with [S], [M] or [L] to set its size
+        (default M).
       </p>
       <Textarea
-        block
         rows={4}
         value={text}
         aria-label="Subtasks, one per line"
         placeholder={'Outline the content model [S]\nBuild the editor [L]\nPublishing flow'}
         onChange={(e) => setText(e.target.value)}
       />
-      <Button disabled={subtasks.length === 0} onClick={() => void split()}>
-        Split into subtasks
-      </Button>
+      <div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={subtasks.length === 0}
+          onClick={() => setConfirming(true)}
+        >
+          Split into subtasks
+        </Button>
+      </div>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="Split this task?"
+        description={`“${task.title}” will be replaced by ${subtasks.length} new task${subtasks.length === 1 ? '' : 's'}.`}
+        confirmLabel="Split task"
+        onConfirm={split}
+      />
     </div>
   )
 }

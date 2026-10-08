@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { seedSnapshot } from '../../data/seed'
+import { addDaysISO, weekStartOf } from '../../domain/week'
 import { freezeToday, renderWithApp, TEST_TODAY, unfreezeToday } from '../../test/renderWithApp'
 import { TaskDialogHost } from './TaskDialogHost'
 
@@ -11,6 +12,16 @@ afterEach(() => unfreezeToday())
 const seed = seedSnapshot(TEST_TODAY)
 const task = (title: string) => seed.tasks.find((t) => t.title === title)!
 const project = (name: string) => seed.projects.find((p) => p.name === name)!
+
+/** Choose an option in a shadcn (Radix) Select. */
+const pick = async (
+  user: ReturnType<typeof userEvent.setup>,
+  trigger: HTMLElement,
+  option: string | RegExp,
+) => {
+  await user.click(trigger)
+  await user.click(await screen.findByRole('option', { name: option }))
+}
 
 const openDialog = async (title: string) => {
   const result = renderWithApp(<TaskDialogHost />, {
@@ -26,18 +37,23 @@ describe('TaskDialog', () => {
     const user = userEvent.setup()
     const { dialog, snapshot } = await openDialog('Publish job post')
 
+    // Secondary sections are collapsed unless they have content.
+    await user.click(within(dialog).getByRole('button', { name: 'Blocked by' }))
+
     // "Review applications" is already blocked by "Publish job post"; blocking the reverse is a loop.
-    await user.selectOptions(
+    await pick(
+      user,
       within(dialog).getByRole('combobox', { name: 'Add a blocker' }),
-      'Review applications and shortlist',
+      /Review applications and shortlist/,
     )
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(/would create a loop/)
     expect(within(dialog).queryByRole('button', { name: /Remove blocker/ })).not.toBeInTheDocument()
 
     // A harmless blocker is accepted and saved through setDependencies.
-    await user.selectOptions(
+    await pick(
+      user,
       within(dialog).getByRole('combobox', { name: 'Add a blocker' }),
-      'Agree budget and contract type',
+      /Agree budget and contract type/,
     )
     expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
     expect(
@@ -57,10 +73,13 @@ describe('TaskDialog', () => {
     const user = userEvent.setup()
     const { dialog, snapshot } = await openDialog('Build CMS integration')
 
+    // XL tasks open the split section by default.
     await user.click(within(dialog).getByRole('textbox', { name: 'Subtasks, one per line' }))
     await user.paste('Content model [S]\nEditor [L]\nPublishing flow')
     await user.click(within(dialog).getByRole('button', { name: 'Split into subtasks' }))
-    await user.click(await screen.findByRole('button', { name: 'Split task' }))
+    await user.click(
+      await within(await screen.findByRole('alertdialog')).findByRole('button', { name: 'Split task' }),
+    )
 
     await waitFor(async () => {
       const snap = await snapshot()
@@ -95,8 +114,8 @@ describe('TaskDialog', () => {
     const title = within(dialog).getByRole('textbox', { name: /Title/ })
     await user.clear(title)
     await user.type(title, 'Draft the sitemap')
-    await user.click(within(dialog).getByRole('button', { name: 'L' }))
-    await user.selectOptions(within(dialog).getByRole('combobox', { name: 'Status' }), 'Waiting')
+    await user.click(within(dialog).getByRole('radio', { name: 'L' }))
+    await pick(user, within(dialog).getByRole('combobox', { name: 'Status' }), 'Waiting')
     await user.type(within(dialog).getByRole('textbox', { name: 'Waiting on' }), 'Client')
     await user.type(
       within(dialog).getByRole('textbox', { name: 'New checklist item' }),
@@ -140,7 +159,7 @@ describe('TaskDialog', () => {
   it('moves a task to another project, to the end of that group', async () => {
     const user = userEvent.setup()
     const { dialog, snapshot } = await openDialog('Renew car insurance')
-    await user.selectOptions(within(dialog).getByRole('combobox', { name: 'Project' }), 'Hire a designer')
+    await pick(user, within(dialog).getByRole('combobox', { name: 'Project' }), 'Hire a designer')
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
     await waitFor(async () => {
       const moved = (await snapshot()).tasks.find((t) => t.id === task('Renew car insurance').id)!
@@ -152,11 +171,51 @@ describe('TaskDialog', () => {
     })
   })
 
-  it('unplans a planned task on save', async () => {
+  it('keeps secondary sections collapsed unless they have content', async () => {
+    const { dialog } = await openDialog('Draft sitemap')
+    // Draft sitemap has a checklist, so it starts open; Blocked by has no explicit blockers.
+    expect(within(dialog).getByRole('button', { name: /^Checklist( \d+)?$/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(within(dialog).getByRole('button', { name: 'Blocked by' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+  })
+
+  it('pins a planned task to a day with the Day select', async () => {
     const user = userEvent.setup()
     const { dialog, snapshot } = await openDialog('Design homepage')
-    expect(within(dialog).getByText(/Planned for the week of/)).toBeInTheDocument()
-    await user.click(within(dialog).getByRole('button', { name: 'Unplan' }))
+    const planned = task('Design homepage')
+    expect(planned.weekStart).not.toBeNull()
+    await pick(user, within(dialog).getByRole('combobox', { name: 'Day' }), /^Fri /)
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(async () => {
+      const saved = (await snapshot()).tasks.find((t) => t.id === planned.id)!
+      expect(saved.weekStart).toBe(planned.weekStart)
+      expect(saved.pinnedDay).toBe(addDaysISO(planned.weekStart!, 4))
+    })
+  })
+
+  it('plans an unplanned task into the current week on a chosen day', async () => {
+    const user = userEvent.setup()
+    const { dialog, snapshot } = await openDialog('Renew car insurance')
+    expect(task('Renew car insurance').weekStart).toBeNull()
+    expect(within(dialog).getByRole('combobox', { name: 'Day' })).toHaveTextContent('Not planned')
+    await pick(user, within(dialog).getByRole('combobox', { name: 'Day' }), /^Wed /)
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    const monday = weekStartOf(TEST_TODAY)
+    await waitFor(async () => {
+      const saved = (await snapshot()).tasks.find((t) => t.id === task('Renew car insurance').id)!
+      expect(saved).toMatchObject({ weekStart: monday, pinnedDay: addDaysISO(monday, 2) })
+    })
+  })
+
+  it('unplans a planned task with "Not planned"', async () => {
+    const user = userEvent.setup()
+    const { dialog, snapshot } = await openDialog('Design homepage')
+    await pick(user, within(dialog).getByRole('combobox', { name: 'Day' }), 'Not planned')
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
     await waitFor(async () => {
       const saved = (await snapshot()).tasks.find((t) => t.id === task('Design homepage').id)!
