@@ -5,6 +5,7 @@ import { dayCapacity } from '../../domain/capacity'
 import { isInWeek, weekDays } from '../../domain/week'
 import { Page } from '../components/Page'
 import { DayColumn } from '../plan/DayColumn'
+import { WeekDndProvider } from '../plan/WeekDnd'
 import { eventsOnDay } from '../plan/events'
 import { useWeekParam } from '../plan/useWeekParam'
 import { WeekSwitcher } from '../plan/WeekSwitcher'
@@ -12,7 +13,7 @@ import { weekStats } from '../plan/weekStats'
 
 /**
  * Week board: a card for "this week, any day" followed by one per day, Monday to Sunday. Eight columns at
- * 1280px and up, four or two on narrower screens, a vertical list on phones. Tasks move between days via the hover "Move to…" menu.
+ * 1280px and up, four or two on narrower screens, a vertical list on phones. Drag a task onto another day (or "Any day") to move it; the hover "Move to…" menu does the same.
  */
 export function WeekPage() {
   const { weekStart, setWeek, resetWeek, isCurrentWeek } = useWeekParam()
@@ -43,32 +44,34 @@ export function WeekPage() {
     const followUpDay = (date: string): string => (date < weekStart ? ctx.today : date)
 
     return (
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
-        <DayColumn
-          weekStart={weekStart}
-          day={null}
-          tasks={planned.filter((t) => t.pinnedDay === null || !days.includes(t.pinnedDay))}
-          followUps={[]}
-          meetings={[]}
-          capacity={null}
-          settings={ctx.settings}
-          projectNames={names}
-        />
-        {days.map((day) => (
+      <WeekDndProvider tasks={planned} projectNames={names}>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
           <DayColumn
-            key={day}
             weekStart={weekStart}
-            day={day}
-            isToday={todayInWeek && day === ctx.today}
-            tasks={planned.filter((t) => t.pinnedDay === day)}
-            followUps={followUps.filter((f) => followUpDay(f.date) === day)}
-            meetings={eventsOnDay(ctx.events, day)}
-            capacity={dayCapacity(day, ctx.settings, ctx.events).capacity}
+            day={null}
+            tasks={planned.filter((t) => t.pinnedDay === null || !days.includes(t.pinnedDay))}
+            followUps={[]}
+            meetings={[]}
+            capacity={null}
             settings={ctx.settings}
             projectNames={names}
           />
-        ))}
-      </div>
+          {days.map((day) => (
+            <DayColumn
+              key={day}
+              weekStart={weekStart}
+              day={day}
+              isToday={todayInWeek && day === ctx.today}
+              tasks={planned.filter((t) => t.pinnedDay === day)}
+              followUps={followUps.filter((f) => followUpDay(f.date) === day)}
+              meetings={eventsOnDay(ctx.events, day)}
+              capacity={dayCapacity(day, ctx.settings, ctx.events).capacity}
+              settings={ctx.settings}
+              projectNames={names}
+            />
+          ))}
+        </div>
+      </WeekDndProvider>
     )
   })()
 

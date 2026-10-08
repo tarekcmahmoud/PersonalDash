@@ -1,3 +1,4 @@
+import { useDroppable } from '@dnd-kit/core'
 import { format, parseISO } from 'date-fns'
 import { Clock } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -11,6 +12,7 @@ import { formatHours } from '../components/format'
 import { TaskRow } from '../components/TaskRow'
 import { MeetingList } from './MeetingList'
 import { TaskDayMenu } from './TaskDayMenu'
+import { DraggableTask } from './WeekDnd'
 
 /** One column of the week board: a day (or "any day"), its meetings, hours line, follow-ups and tasks. */
 export function DayColumn({
@@ -40,6 +42,9 @@ export function DayColumn({
 }) {
   const actions = useTaskActions()
   const navigate = useNavigate()
+  // Drop target for the week board's drag-and-drop ("any" = this week, no day). See WeekDnd.
+  const { setNodeRef: setDropRef, isOver, active: dragActive } = useDroppable({ id: day ?? 'any' })
+  const dragging = dragActive !== null
   const hours = plannedHours(tasks, settings, followUps.length)
   const over = capacity !== null ? Math.round(hours * 10) - Math.round(capacity * 10) : 0
   const empty = tasks.length === 0 && followUps.length === 0
@@ -54,11 +59,14 @@ export function DayColumn({
 
   return (
     <Card
+      ref={setDropRef}
       size="sm"
       role="region"
       className={cn(
-        'min-w-0 gap-2 rounded-2xl xl:[--card-spacing:--spacing(3)]',
+        'min-w-0 gap-2 rounded-2xl transition-shadow xl:[--card-spacing:--spacing(3)]',
         isToday && 'ring-2 ring-primary/40',
+        // Drop target highlight while a task is dragged over this column.
+        isOver && 'bg-primary/5 ring-2 ring-primary',
         className,
       )}
       aria-label={day ? format(parseISO(day), 'EEEE MMMM d') : 'This week, any day'}
@@ -110,22 +118,35 @@ export function DayColumn({
         // Columns are narrow: `compact` rows put the grey metadata under the title.
         <div className="divide-y px-(--card-spacing)">
           {tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              hideDay
-              compact
-              projectName={task.projectId ? projectNames.get(task.projectId) : 'Inbox'}
-              onToggleDone={(t) => void actions.toggleDone(t)}
-              onOpen={(t) => navigate(taskHref(t))}
-              actions={<TaskDayMenu task={task} weekStart={weekStart} variant="move" />}
-            />
+            <DraggableTask key={task.id} task={task}>
+              {(handle) => (
+                <TaskRow
+                  task={task}
+                  hideDay
+                  compact
+                  projectName={task.projectId ? projectNames.get(task.projectId) : 'Inbox'}
+                  onToggleDone={(t) => void actions.toggleDone(t)}
+                  onOpen={(t) => navigate(taskHref(t))}
+                  actions={
+                    <>
+                      {handle}
+                      <TaskDayMenu task={task} weekStart={weekStart} variant="move" />
+                    </>
+                  }
+                />
+              )}
+            </DraggableTask>
           ))}
         </div>
       )}
       {empty && (
-        <p className="hidden px-(--card-spacing) text-xs text-muted-foreground/60 md:block">
-          Nothing planned
+        <p
+          className={cn(
+            'px-(--card-spacing) text-xs text-muted-foreground/60',
+            dragging ? 'block' : 'hidden md:block',
+          )}
+        >
+          {dragging ? 'Drop here' : 'Nothing planned'}
         </p>
       )}
     </Card>
