@@ -60,27 +60,14 @@ export function projectWorkstreams(
 }
 
 /**
- * The tasks that must be done before `task` can start:
- * - if the task has explicit Dependency links → exactly those blocker tasks (any workstream);
- * - otherwise → the task immediately before it in the same workstream (if any). Workstreams run in
- *   parallel, so the first task of a workstream has no implicit predecessor.
- * Inbox tasks (projectId null) have no implicit predecessor.
- * Returns only blockers whose status is not 'done' (a 'waiting' predecessor still blocks).
+ * The tasks that must be done before `task` can start: exactly its Dependency links (any workstream). Order
+ * within a workstream is priority only, so a task without links can start any time.
+ * Returns only blockers whose status is not 'done' (a 'waiting' blocker still blocks).
  */
-export function unfinishedBlockers(task: Task, ctx: OrderInput): Task[] {
-  const explicit = explicitBlockerIds(task.id, ctx.dependencies)
-  let blockers: Task[]
-  if (explicit.length > 0) {
-    const wanted = new Set(explicit)
-    blockers = ctx.tasks.filter((t) => wanted.has(t.id))
-  } else if (task.projectId === null) {
-    blockers = []
-  } else {
-    const stream = projectWorkstreams(task.projectId, ctx).find((w) => w.tasks.some((t) => t.id === task.id))
-    const i = stream ? stream.tasks.findIndex((t) => t.id === task.id) : -1
-    blockers = i > 0 ? [stream!.tasks[i - 1]!] : []
-  }
-  return blockers.filter((b) => b.status !== 'done')
+export function unfinishedBlockers(task: Task, ctx: Pick<OrderInput, 'tasks' | 'dependencies'>): Task[] {
+  const wanted = new Set(explicitBlockerIds(task.id, ctx.dependencies))
+  if (wanted.size === 0) return []
+  return ctx.tasks.filter((t) => wanted.has(t.id) && t.status !== 'done')
 }
 
 /** status 'todo' and no unfinished blockers. */

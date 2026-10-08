@@ -71,7 +71,7 @@ function Field({
 const NO_PROJECT = 'inbox'
 const NO_MILESTONE = 'none'
 
-/** Edit one task: details, location, status/waiting, day, and (collapsed) checklist, blockers, split. */
+/** Edit one task: details, location, status/waiting, day, and (collapsed) checklist, links (waits for), split. */
 export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void }) {
   const { data } = useSnapshot()
   const apply = useApply()
@@ -360,7 +360,7 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
 
             {projectId && (
               <CollapsibleGroup
-                label="Blocked by"
+                label="Waits for"
                 count={effectiveBlockers.length || undefined}
                 defaultOpen={savedBlockers.length > 0}
               >

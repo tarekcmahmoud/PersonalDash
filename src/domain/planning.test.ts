@@ -37,6 +37,13 @@ const chain = (pid: string, n: number, each: (i: number) => Partial<Task> = () =
     makeTask({ id: `${pid}-t${i + 1}`, title: `t${i + 1}`, projectId: pid, position: i, ...each(i) }),
   )
 
+/** Links that make each task of `chain(pid, n)` wait for the one before it. */
+const chainLinks = (pid: string, n: number): Dependency[] =>
+  Array.from({ length: n - 1 }, (_, i) => ({
+    taskId: `${pid}-t${i + 2}`,
+    blockedByTaskId: `${pid}-t${i + 1}`,
+  }))
+
 const groupIds = (groups: { project: Project }[]) => groups.map((g) => g.project.id)
 
 describe('isSchedulable', () => {
@@ -170,8 +177,8 @@ describe('buildPickList: candidates', () => {
 })
 
 describe('buildPickList: selectability', () => {
-  it('first task is selectable; later ones are blocked by their predecessor', () => {
-    const [g] = buildPickList(ctxOf([proj('a')], chain('a', 3)))
+  it('a task linked to an open task is blocked by it', () => {
+    const [g] = buildPickList(ctxOf([proj('a')], chain('a', 3), { dependencies: chainLinks('a', 3) }))
     const [c1, c2, c3] = g!.candidates
     expect(c1).toMatchObject({ planned: false, selectable: true, reason: null, blockedBy: [] })
     expect(c2).toMatchObject({ planned: false, selectable: false, reason: 'blocked' })
@@ -181,14 +188,14 @@ describe('buildPickList: selectability', () => {
 
   it('a done predecessor leaves the next task selectable', () => {
     const tasks = chain('a', 3, (i) => (i === 0 ? { status: 'done' } : {}))
-    const [g] = buildPickList(ctxOf([proj('a')], tasks))
+    const [g] = buildPickList(ctxOf([proj('a')], tasks, { dependencies: chainLinks('a', 3) }))
     expect(g!.candidates[0]).toMatchObject({ selectable: true, reason: null })
     expect(g!.candidates[1]).toMatchObject({ selectable: false, reason: 'blocked' })
   })
 
   it('a waiting predecessor still blocks', () => {
     const tasks = chain('a', 2, (i) => (i === 0 ? { status: 'waiting' } : {}))
-    const [g] = buildPickList(ctxOf([proj('a')], tasks))
+    const [g] = buildPickList(ctxOf([proj('a')], tasks, { dependencies: chainLinks('a', 2) }))
     expect(g!.candidates).toHaveLength(1)
     expect(g!.candidates[0]).toMatchObject({ selectable: false, reason: 'blocked' })
     expect(g!.candidates[0]!.blockedBy.map((b) => b.id)).toEqual(['a-t1'])
@@ -196,7 +203,7 @@ describe('buildPickList: selectability', () => {
 
   it('a blocker planned in the same week makes the candidate selectable', () => {
     const tasks = chain('a', 3, (i) => (i === 0 ? { weekStart: WEEK } : {}))
-    const [g] = buildPickList(ctxOf([proj('a')], tasks))
+    const [g] = buildPickList(ctxOf([proj('a')], tasks, { dependencies: chainLinks('a', 3) }))
     const [c1, c2, c3] = g!.candidates
     expect(c1).toMatchObject({ planned: true })
     expect(c2).toMatchObject({ planned: false, selectable: true, reason: null, blockedBy: [] })
@@ -205,7 +212,7 @@ describe('buildPickList: selectability', () => {
 
   it('a blocker planned in a different week still blocks', () => {
     const tasks = chain('a', 2, (i) => (i === 0 ? { weekStart: '2026-10-12' } : {}))
-    const [g] = buildPickList(ctxOf([proj('a')], tasks))
+    const [g] = buildPickList(ctxOf([proj('a')], tasks, { dependencies: chainLinks('a', 2) }))
     expect(g!.candidates[1]).toMatchObject({ selectable: false, reason: 'blocked' })
   })
 
@@ -225,10 +232,16 @@ describe('buildPickList: selectability', () => {
     expect(z).toMatchObject({ selectable: false, reason: 'blocked' })
   })
 
-  it('explicit dependencies replace the implicit rule', () => {
+  it('tasks without links are all selectable, whatever their order', () => {
+    const [g] = buildPickList(ctxOf([proj('a')], chain('a', 3)))
+    expect(g!.candidates.map((c) => c.selectable)).toEqual([true, true, true])
+  })
+
+  it('a task waits only for its own links', () => {
     const tasks = chain('a', 3)
     const deps: Dependency[] = [{ taskId: 'a-t3', blockedByTaskId: 'a-t1' }]
     const [g] = buildPickList(ctxOf([proj('a')], tasks, { dependencies: deps }))
+    expect(g!.candidates[1]).toMatchObject({ selectable: true, reason: null })
     expect(g!.candidates[2]!.blockedBy.map((b) => b.id)).toEqual(['a-t1'])
     // And a finished explicit blocker frees the task even though t2 is open.
     const done = tasks.map((t) => (t.id === 'a-t1' ? { ...t, status: 'done' as const } : t))
@@ -244,14 +257,14 @@ describe('buildPickList: selectability', () => {
 
   it('XL takes precedence over blocked', () => {
     const tasks = chain('a', 2, (i) => (i === 1 ? { size: 'XL' } : {}))
-    const [g] = buildPickList(ctxOf([proj('a')], tasks))
+    const [g] = buildPickList(ctxOf([proj('a')], tasks, { dependencies: chainLinks('a', 2) }))
     expect(g!.candidates[1]!.blockedBy).toHaveLength(1)
     expect(g!.candidates[1]).toMatchObject({ selectable: false, reason: 'xl' })
   })
 
   it('XL stays unselectable even if its blocker is planned this week', () => {
     const tasks = chain('a', 2, (i) => (i === 0 ? { weekStart: WEEK } : { size: 'XL' }))
-    const [g] = buildPickList(ctxOf([proj('a')], tasks))
+    const [g] = buildPickList(ctxOf([proj('a')], tasks, { dependencies: chainLinks('a', 2) }))
     expect(g!.candidates[1]).toMatchObject({ selectable: false, reason: 'xl', blockedBy: [] })
   })
 
@@ -260,7 +273,7 @@ describe('buildPickList: selectability', () => {
     const [g] = buildPickList(ctxOf([proj('a')], tasks))
     expect(g!.candidates[2]).toMatchObject({ planned: true, selectable: true, reason: null })
     const blocked = chain('a', 2, (i) => (i === 1 ? { weekStart: WEEK } : {}))
-    const [g2] = buildPickList(ctxOf([proj('a')], blocked))
+    const [g2] = buildPickList(ctxOf([proj('a')], blocked, { dependencies: chainLinks('a', 2) }))
     expect(g2!.candidates[1]).toMatchObject({ planned: true, selectable: true, reason: null })
   })
 
@@ -272,7 +285,7 @@ describe('buildPickList: selectability', () => {
 
   it('system project tasks work like any other', () => {
     const sys = { ...makeSystemProject(), id: 'sys' }
-    const [g] = buildPickList(ctxOf([sys], chain('sys', 2)))
+    const [g] = buildPickList(ctxOf([sys], chain('sys', 2), { dependencies: chainLinks('sys', 2) }))
     expect(g!.candidates[0]).toMatchObject({ selectable: true })
     expect(g!.candidates[1]).toMatchObject({ selectable: false, reason: 'blocked' })
   })

@@ -65,14 +65,16 @@ describe('seedSnapshot', () => {
     expect(plannedIn(board!.id)).toBeLessThan(board!.weeklyMin!)
   })
 
-  it('has one explicit dependency: the designer review waits for the job post', () => {
-    expect(s.dependencies).toHaveLength(1)
-    const [dep] = s.dependencies
-    const byTitle = (title: string) => s.tasks.find((t) => t.title === title)
-    expect(dep).toEqual({
-      taskId: byTitle('Review applications and shortlist')?.id,
-      blockedByTaskId: byTitle('Publish job post')?.id,
-    })
+  it('links tasks: mostly in order, with a cross link and independent tasks', () => {
+    const byTitle = (title: string) => s.tasks.find((t) => t.title === title)!
+    const waitsFor = (title: string) =>
+      s.dependencies.filter((d) => d.taskId === byTitle(title).id).map((d) => byTitle2(d.blockedByTaskId))
+    const byTitle2 = (id: string) => s.tasks.find((t) => t.id === id)?.title
+    expect(waitsFor('Design homepage')).toEqual(['Draft sitemap'])
+    expect(waitsFor('Review applications and shortlist')).toEqual(['Publish job post'])
+    expect(waitsFor('Write interview plan')).toEqual([])
+    expect(waitsFor('Renew car insurance')).toEqual([])
+    expect(waitsFor('Draft sitemap')).toEqual([]) // first in its workstream
   })
 
   it('has a waiting task with a follow-up date inside this week', () => {

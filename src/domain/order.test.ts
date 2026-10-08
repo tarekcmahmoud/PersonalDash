@@ -85,53 +85,16 @@ describe('orderedProjectTasks', () => {
   })
 })
 
-describe('unfinishedBlockers (implicit rule)', () => {
-  it('first task has no blockers', () => {
-    const tasks = [task('a'), task('b', { position: 1 })]
-    expect(unfinishedBlockers(tasks[0]!, ctxOf(tasks))).toEqual([])
+describe('unfinishedBlockers (no links)', () => {
+  it('a task without links is never blocked, whatever comes before it', () => {
+    const tasks = [task('a', { status: 'waiting' }), task('b', { position: 1 }), task('c', { position: 2 })]
+    for (const t of tasks) expect(unfinishedBlockers(t, ctxOf(tasks))).toEqual([])
   })
 
-  it('a task is blocked by the task immediately before it', () => {
-    const tasks = [task('a'), task('b', { position: 1 }), task('c', { position: 2 })]
-    expect(ids(unfinishedBlockers(tasks[1]!, ctxOf(tasks)))).toEqual(['a'])
-    expect(ids(unfinishedBlockers(tasks[2]!, ctxOf(tasks)))).toEqual(['b'])
-  })
-
-  it('a done predecessor does not block', () => {
-    const tasks = [task('a', { status: 'done' }), task('b', { position: 1 })]
-    expect(unfinishedBlockers(tasks[1]!, ctxOf(tasks))).toEqual([])
-  })
-
-  it('a waiting predecessor still blocks', () => {
-    const tasks = [task('a', { status: 'waiting' }), task('b', { position: 1 })]
-    expect(ids(unfinishedBlockers(tasks[1]!, ctxOf(tasks)))).toEqual(['a'])
-  })
-
-  it('predecessor is only the immediate one, regardless of its status', () => {
-    // a (todo) -> b (done) -> c : c's only candidate predecessor is b, which is done.
-    const tasks = [task('a'), task('b', { position: 1, status: 'done' }), task('c', { position: 2 })]
-    expect(unfinishedBlockers(tasks[2]!, ctxOf(tasks))).toEqual([])
-  })
-
-  it('workstreams run in parallel: the first task of a stream has no implicit predecessor', () => {
+  it('order inside a workstream is priority only', () => {
     const m1 = makeMilestone({ id: 'm1', projectId: P, name: 'Design', position: 0 })
-    const m2 = makeMilestone({ id: 'm2', projectId: P, name: 'Build', position: 1 })
-    const tasks = [
-      task('loose'),
-      task('d1', { milestoneId: 'm1' }),
-      task('d2', { milestoneId: 'm1', position: 1 }),
-      task('b1', { milestoneId: 'm2' }),
-    ]
-    const ctx = ctxOf(tasks, [m1, m2])
-    expect(unfinishedBlockers(tasks[1]!, ctx)).toEqual([]) // d1: not blocked by 'loose'
-    expect(unfinishedBlockers(tasks[3]!, ctx)).toEqual([]) // b1: not blocked by d2
-    expect(ids(unfinishedBlockers(tasks[2]!, ctx))).toEqual(['d1']) // within a stream, order still holds
-  })
-
-  it('inbox tasks have no implicit predecessor', () => {
-    const a = task('a', { projectId: null })
-    const b = task('b', { projectId: null, position: 1 })
-    expect(unfinishedBlockers(b, ctxOf([a, b]))).toEqual([])
+    const tasks = [task('d1', { milestoneId: 'm1' }), task('d2', { milestoneId: 'm1', position: 1 })]
+    expect(unfinishedBlockers(tasks[1]!, ctxOf(tasks, [m1]))).toEqual([])
   })
 
   it('a task missing from the context has no blockers', () => {
@@ -141,14 +104,19 @@ describe('unfinishedBlockers (implicit rule)', () => {
 })
 
 describe('unfinishedBlockers (explicit dependencies)', () => {
-  it('explicit links replace the implicit rule', () => {
+  it('a task waits for exactly its linked tasks', () => {
     const tasks = [task('a'), task('b', { position: 1 }), task('c', { position: 2 })]
     const deps: Dependency[] = [{ taskId: 'c', blockedByTaskId: 'a' }]
-    // c is NOT blocked by b any more, only by a.
     expect(ids(unfinishedBlockers(tasks[2]!, ctxOf(tasks, [], deps)))).toEqual(['a'])
   })
 
-  it('an explicit blocker that is done leaves the task unblocked (no fallback to implicit)', () => {
+  it('a waiting blocker still blocks', () => {
+    const tasks = [task('a', { status: 'waiting' }), task('b', { position: 1 })]
+    const deps: Dependency[] = [{ taskId: 'b', blockedByTaskId: 'a' }]
+    expect(ids(unfinishedBlockers(tasks[1]!, ctxOf(tasks, [], deps)))).toEqual(['a'])
+  })
+
+  it('a blocker that is done leaves the task unblocked', () => {
     const tasks = [task('a', { status: 'done' }), task('b', { position: 1 }), task('c', { position: 2 })]
     const deps: Dependency[] = [{ taskId: 'c', blockedByTaskId: 'a' }]
     expect(unfinishedBlockers(tasks[2]!, ctxOf(tasks, [], deps))).toEqual([])
@@ -191,16 +159,16 @@ describe('isReady / nextTask', () => {
       task('c', { position: 2, status: 'waiting' }),
       task('d', { position: 3, status: 'done' }),
     ]
-    const ctx = ctxOf(tasks)
+    const ctx = ctxOf(tasks, [], [{ taskId: 'b', blockedByTaskId: 'a' }])
     expect(isReady(tasks[0]!, ctx)).toBe(true)
-    expect(isReady(tasks[1]!, ctx)).toBe(false) // blocked by a
+    expect(isReady(tasks[1]!, ctx)).toBe(false) // waits for a
     expect(isReady(tasks[2]!, ctx)).toBe(false) // not todo
     expect(isReady(tasks[3]!, ctx)).toBe(false) // done
   })
 
-  it('isReady is true once the predecessor is done', () => {
+  it('isReady is true once the blocker is done', () => {
     const tasks = [task('a', { status: 'done' }), task('b', { position: 1 })]
-    expect(isReady(tasks[1]!, ctxOf(tasks))).toBe(true)
+    expect(isReady(tasks[1]!, ctxOf(tasks, [], [{ taskId: 'b', blockedByTaskId: 'a' }]))).toBe(true)
   })
 
   it('nextTask returns the first ready task in workflow order', () => {
@@ -208,12 +176,15 @@ describe('isReady / nextTask', () => {
     expect(nextTask(P, ctxOf(tasks))?.id).toBe('b')
   })
 
-  it('nextTask skips a blocked todo and finds a later ready one via explicit deps', () => {
+  it('nextTask skips blocked todos and finds a later ready one', () => {
     const tasks = [task('a', { status: 'waiting' }), task('b', { position: 1 }), task('c', { position: 2 })]
-    expect(nextTask(P, ctxOf(tasks))).toBeNull() // b blocked by waiting a, c blocked by b
-    const deps: Dependency[] = [{ taskId: 'c', blockedByTaskId: 'x-done' }]
-    const withDone = [...tasks, task('x-done', { projectId: 'other', status: 'done' })]
-    expect(nextTask(P, ctxOf(withDone, [], deps))?.id).toBe('c')
+    const chain: Dependency[] = [
+      { taskId: 'b', blockedByTaskId: 'a' },
+      { taskId: 'c', blockedByTaskId: 'b' },
+    ]
+    expect(nextTask(P, ctxOf(tasks, [], chain))).toBeNull() // b waits for waiting a, c waits for b
+    // Without links, b can start any time.
+    expect(nextTask(P, ctxOf(tasks))?.id).toBe('b')
   })
 
   it('nextTask is null for empty, all-done, or unknown projects', () => {
@@ -309,10 +280,11 @@ describe('workstreams', () => {
       task('b1', { milestoneId: 'm2', status: 'waiting' }),
       task('b2', { milestoneId: 'm2', position: 1 }),
     ]
-    const ctx = ctxOf(tasks, [m1, m2])
-    // Build's b2 waits behind the waiting b1, so only Design has a next step.
+    const deps: Dependency[] = [{ taskId: 'b2', blockedByTaskId: 'b1' }]
+    const ctx = ctxOf(tasks, [m1, m2], deps)
+    // Build's b2 waits for the waiting b1, so only Design has a next step.
     expect(ids(nextTasks(P, ctx))).toEqual(['d2'])
-    const ctx2 = ctxOf([...tasks, task('loose')], [m1, m2])
+    const ctx2 = ctxOf([...tasks, task('loose')], [m1, m2], deps)
     expect(ids(nextTasks(P, ctx2))).toEqual(['loose', 'd2'])
     expect(nextTask(P, ctx2)?.id).toBe('loose')
   })

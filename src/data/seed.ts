@@ -8,7 +8,7 @@ import {
   makeTemplate,
 } from '../domain/factories'
 import { addDaysISO, addWeeksISO, isInWeek, weekStartOf } from '../domain/week'
-import { DEFAULT_SETTINGS, type Dependency, type Snapshot } from '../domain/types'
+import { DEFAULT_SETTINGS, type Dependency, type Snapshot, type Task } from '../domain/types'
 
 /**
  * Demo data for memory mode, relative to `today`: 4 active projects (one with a hard deadline within
@@ -322,8 +322,6 @@ export function seedSnapshot(today: string): Snapshot {
     position: 1,
   })
 
-  const dependencies: Dependency[] = [{ taskId: reviewApplications.id, blockedByTaskId: publishPost.id }]
-
   const template = makeTemplate({
     name: 'Client engagement',
     outline: [
@@ -354,43 +352,57 @@ export function seedSnapshot(today: string): Snapshot {
     ].join('\n'),
   })
 
+  const tasks = [
+    kickoff,
+    audit,
+    interviews,
+    sitemap,
+    homepageDesign,
+    contentTemplates,
+    stagingSetup,
+    cmsIntegration,
+    buildHomepage,
+    buildContentPages,
+    revenueNumbers,
+    riskSummary,
+    costFigures,
+    kpiSlides,
+    budget,
+    publishPost,
+    writeInterviewPlan,
+    reviewApplications,
+    runInterviews,
+    makeOffer,
+    trainingPlan,
+    shoes,
+    longRun,
+    bookRace,
+    build15,
+    quotes,
+    colours,
+    electrician,
+    dentist,
+    insurance,
+    passport,
+    replySam,
+  ]
+  // Most demo work runs in order inside its workstream. The Admin / Misc chores and the interview plan can
+  // start any time, and the designer review waits for the job post rather than for the interview plan.
+  const explicit: Dependency[] = [{ taskId: reviewApplications.id, blockedByTaskId: publishPost.id }]
+  const anytime = new Set([writeInterviewPlan.id])
+  const dependencies = [
+    ...explicit,
+    ...sequenceLinks(
+      tasks.filter((t) => t.projectId !== null && t.projectId !== system.id),
+      explicit,
+      anytime,
+    ),
+  ]
+
   return {
     projects: [system, website, board, designer, marathon, kitchen],
     milestones: [discovery, design, build],
-    tasks: [
-      kickoff,
-      audit,
-      interviews,
-      sitemap,
-      homepageDesign,
-      contentTemplates,
-      stagingSetup,
-      cmsIntegration,
-      buildHomepage,
-      buildContentPages,
-      revenueNumbers,
-      riskSummary,
-      costFigures,
-      kpiSlides,
-      budget,
-      publishPost,
-      writeInterviewPlan,
-      reviewApplications,
-      runInterviews,
-      makeOffer,
-      trainingPlan,
-      shoes,
-      longRun,
-      bookRace,
-      build15,
-      quotes,
-      colours,
-      electrician,
-      dentist,
-      insurance,
-      passport,
-      replySam,
-    ],
+    tasks,
     dependencies,
     checklist: sitemapChecklist,
     templates: [template],
@@ -456,6 +468,26 @@ function websiteResources(projectId: string, ws: { discovery: string; design: st
       workstreamIds: [],
     }),
   ]
+}
+
+/**
+ * Links that make each task wait for the one before it in its project group (same project and workstream, by
+ * position). Tasks that already have links in `explicit`, and the `anytime` ones, get none.
+ */
+function sequenceLinks(tasks: Task[], explicit: Dependency[], anytime: Set<string>): Dependency[] {
+  const linked = new Set([...explicit.map((d) => d.taskId), ...anytime])
+  const groups = new Map<string, Task[]>()
+  for (const t of tasks) {
+    const key = `${t.projectId}/${t.milestoneId}`
+    groups.set(key, [...(groups.get(key) ?? []), t])
+  }
+  return [...groups.values()].flatMap((group) =>
+    [...group]
+      .sort((a, b) => a.position - b.position)
+      .flatMap((t, i, sorted) =>
+        i > 0 && !linked.has(t.id) ? [{ taskId: t.id, blockedByTaskId: sorted[i - 1]!.id }] : [],
+      ),
+  )
 }
 
 /** Empty snapshot: DEFAULT_SETTINGS + the system project only. */

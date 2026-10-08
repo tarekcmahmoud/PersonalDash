@@ -11,7 +11,8 @@ import { groupTasks, parseSubtasks } from '../project/ordering'
 /**
  * Split an XL task: one subtask per line (optional trailing [S]/[M]/[L], default M). The subtasks take the XL
  * task's place right after it in the same group; the XL task is deleted. Explicit blockers move to the first
- * subtask, and tasks that were blocked by the XL task are blocked by the last subtask instead.
+ * subtask, each subtask waits for the one before it, and tasks that waited for the XL task wait for the last
+ * subtask instead.
  */
 export function SplitTask({ task, onDone }: { task: Task; onDone: () => void }) {
   const apply = useApply()
@@ -47,6 +48,10 @@ export function SplitTask({ task, onDone }: { task: Task; onDone: () => void }) 
     const ownBlockers = explicitBlockerIds(task.id, data.dependencies)
     if (ownBlockers.length > 0) {
       await apply({ kind: 'setDependencies', taskId: first.id, blockedByIds: ownBlockers })
+    }
+    // The steps of a split run in order: each subtask waits for the one before it.
+    for (let i = 1; i < created.length; i++) {
+      await apply({ kind: 'setDependencies', taskId: created[i]!.id, blockedByIds: [created[i - 1]!.id] })
     }
     const dependents = [
       ...new Set(data.dependencies.filter((d) => d.blockedByTaskId === task.id).map((d) => d.taskId)),

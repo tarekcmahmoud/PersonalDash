@@ -33,39 +33,31 @@ const openDialog = async (title: string) => {
 }
 
 describe('TaskDialog', () => {
-  it('rejects a blocker that would create a dependency cycle', async () => {
+  it('links the task to tasks it waits for and rejects loops', async () => {
     const user = userEvent.setup()
     const { dialog, snapshot } = await openDialog('Publish job post')
 
-    // Secondary sections are collapsed unless they have content.
-    await user.click(within(dialog).getByRole('button', { name: 'Blocked by' }))
-
-    // "Review applications" is already blocked by "Publish job post"; blocking the reverse is a loop.
-    await pick(
-      user,
-      within(dialog).getByRole('combobox', { name: 'Add a blocker' }),
-      /Review applications and shortlist/,
-    )
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(/would create a loop/)
-    expect(within(dialog).queryByRole('button', { name: /Remove blocker/ })).not.toBeInTheDocument()
-
-    // A harmless blocker is accepted and saved through setDependencies.
-    await pick(
-      user,
-      within(dialog).getByRole('combobox', { name: 'Add a blocker' }),
-      /Agree budget and contract type/,
-    )
-    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+    // It already waits for the budget, so the section starts open.
+    const add = () => within(dialog).getByRole('combobox', { name: 'Add a task it waits for' })
     expect(
-      within(dialog).getByRole('button', { name: 'Remove blocker: Agree budget and contract type' }),
+      within(dialog).getByRole('button', { name: 'Stop waiting for: Agree budget and contract type' }),
     ).toBeInTheDocument()
+
+    // "Review applications" already waits for "Publish job post"; the reverse would be a loop.
+    await pick(user, add(), /Review applications and shortlist/)
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(/would create a loop/)
+    expect(within(dialog).queryByRole('button', { name: /Stop waiting for: Review/ })).not.toBeInTheDocument()
+
+    // A harmless link is accepted and saved through setDependencies.
+    await pick(user, add(), /Write interview plan/)
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     await waitFor(async () => {
       const deps = (await snapshot()).dependencies.filter((d) => d.taskId === task('Publish job post').id)
-      expect(deps).toEqual([
-        { taskId: task('Publish job post').id, blockedByTaskId: task('Agree budget and contract type').id },
-      ])
+      expect(deps.map((d) => d.blockedByTaskId).sort()).toEqual(
+        [task('Agree budget and contract type').id, task('Write interview plan').id].sort(),
+      )
     })
   })
 
@@ -99,6 +91,15 @@ describe('TaskDialog', () => {
       'Build homepage [L]',
       'Build content pages [M]',
     ])
+    // Links: the first subtask takes over the XL task's own link, the rest run in order, and what waited for
+    // the XL task now waits for the last subtask.
+    const title = (id: string) => snap.tasks.find((t) => t.id === id)?.title
+    const waitsFor = (name: string) =>
+      snap.dependencies.filter((d) => title(d.taskId) === name).map((d) => title(d.blockedByTaskId))
+    expect(waitsFor('Content model')).toEqual(['Set up staging environment'])
+    expect(waitsFor('Editor')).toEqual(['Content model'])
+    expect(waitsFor('Publishing flow')).toEqual(['Editor'])
+    expect(waitsFor('Build homepage')).toEqual(['Publishing flow'])
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit task' })).not.toBeInTheDocument())
   })
 
@@ -173,12 +174,12 @@ describe('TaskDialog', () => {
 
   it('keeps secondary sections collapsed unless they have content', async () => {
     const { dialog } = await openDialog('Draft sitemap')
-    // Draft sitemap has a checklist, so it starts open; Blocked by has no explicit blockers.
+    // Draft sitemap has a checklist, so it starts open; it waits for nothing.
     expect(within(dialog).getByRole('button', { name: /^Checklist( \d+)?$/ })).toHaveAttribute(
       'aria-expanded',
       'true',
     )
-    expect(within(dialog).getByRole('button', { name: 'Blocked by' })).toHaveAttribute(
+    expect(within(dialog).getByRole('button', { name: 'Waits for' })).toHaveAttribute(
       'aria-expanded',
       'false',
     )

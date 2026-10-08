@@ -27,9 +27,13 @@ target: 2026-10-31 soft
 ```
 
 A **workstream** (`## Name`) is a parallel track of work, such as Design or Build. Workstreams progress
-independently, so each one has its own next step, while tasks inside one workstream run in order. Tasks before
-the first `##` belong to no workstream and form their own sequence. Use `after:` for links across workstreams
-or any other order that isn't a simple sequence.
+independently, so each one has its own next step. In the outline, tasks inside one workstream run in the order
+listed: importing links each task to the one before it. Tasks before the first `##` belong to no workstream and
+form their own sequence. Use `after:` for links across workstreams or any other order that isn't a simple
+sequence, and `anytime` for a task that doesn't need the one before it.
+
+In the app, these become ordinary links between tasks. A task waits only for the tasks it is linked to, so you
+can add or remove links later (task menu → **Waits for…**, or the task dialog).
 
 ## Rules
 
@@ -41,6 +45,7 @@ or any other order that isn't a simple sequence.
 | `min-per-week: N`                          | Weekly minimum (integer ≥ 1). Only under `# Name`.                                  |
 | `## Name`                                  | Workstream (a parallel track). Workstreams appear in this order.                    |
 | `- Title [S\|M\|L\|XL] #key after:#k1,#k2` | Task (at column 0). Tasks before the first `##` belong to no workstream.            |
+| `- Title [S] anytime`                      | Task that doesn't wait for the task before it.                                      |
 | `  done: …`                                | Definition of done for the task above (indented ≥ 2 spaces).                        |
 | `  note: …`                                | Note line for the task above; several are joined with newlines.                     |
 | `  - [ ] text` / `  - [x] text`            | Checklist item of the task above.                                                   |
@@ -53,6 +58,8 @@ Task line details:
 - `#key` (lowercase letters, digits, `-`) names a task so other tasks can reference it. Keys must be unique.
 - `after:#a,#b` makes the task depend on those tasks explicitly (instead of on the previous task in its
   workstream). Use it to link tasks across workstreams. Forward references are allowed. Unknown keys and cycles are **errors**.
+- `anytime` means the task doesn't wait for the previous task in its workstream. It can't be combined with
+  `after:` (that is an **error**). Saving a project as a template writes `anytime` for tasks without links.
 - Tokens may appear in any order after the title; everything that isn't a token is the title (trimmed).
 - Tabs count as two spaces. Keys/values are case-insensitive for `outcome`, `target`, `min-per-week`, `done`,
   `note`, and size letters.

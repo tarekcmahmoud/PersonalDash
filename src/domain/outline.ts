@@ -15,6 +15,11 @@ export interface OutlineTask {
   key: string | null
   /** Keys (without '#') of explicit blockers. */
   after: string[]
+  /**
+   * `anytime` token: the task does not follow the previous task in its group (no implied link). Only ever
+   * `true` or absent.
+   */
+  anytime?: true
   doneWhen: string
   notes: string
   checklist: OutlineChecklistItem[]
@@ -61,6 +66,7 @@ export interface ParseResult {
 const SIZE_RE = /^\[(S|M|L|XL)\]$/i
 const KEY_TOKEN_RE = /^#([a-z0-9-]+)$/i
 const AFTER_RE = /^after:(.*)$/i
+const ANYTIME_RE = /^anytime$/i
 const KEY_VALUE_RE = /^([A-Za-z][A-Za-z0-9-]*)\s*:\s*(.*)$/
 const HEADER_RE = /^#(?!#)(?:\s+(.*))?$/
 const MILESTONE_RE = /^##(?!#)(?:\s+(.*))?$/
@@ -101,11 +107,12 @@ interface TaskLine {
   size: TaskSize | null
   key: string | null
   after: string[]
+  anytime: boolean
   errors: string[]
 }
 
 function parseTaskLine(rest: string): TaskLine {
-  const out: TaskLine = { title: '', size: null, key: null, after: [], errors: [] }
+  const out: TaskLine = { title: '', size: null, key: null, after: [], anytime: false, errors: [] }
   const titleParts: string[] = []
   let sawAfter = false
   let sawSize = false
@@ -141,8 +148,13 @@ function parseTaskLine(rest: string): TaskLine {
       }
       continue
     }
+    if (ANYTIME_RE.test(tok)) {
+      out.anytime = true
+      continue
+    }
     titleParts.push(tok)
   }
+  if (out.anytime && sawAfter) out.errors.push('Use either anytime or after:, not both')
   out.title = titleParts.join(' ')
   return out
 }
@@ -238,6 +250,7 @@ export function parseOutline(text: string): ParseResult {
           size: parsed.size ?? 'M',
           key: parsed.key,
           after: parsed.after,
+          ...(parsed.anytime ? { anytime: true as const } : {}),
           doneWhen: '',
           notes: '',
           checklist: [],
@@ -409,6 +422,7 @@ export function serializeOutline(doc: OutlineDoc): string {
     let line = `- ${oneLine(t.title)} [${t.size}]`
     if (t.key) line += ` #${t.key}`
     if (t.after.length > 0) line += ` after:${t.after.map((k) => `#${k}`).join(',')}`
+    if (t.anytime) line += ' anytime'
     out.push(line)
     if (t.doneWhen.trim() !== '') out.push(`  done: ${oneLine(t.doneWhen)}`)
     if (t.notes !== '') {
@@ -446,7 +460,9 @@ export interface DocToBundleOptions {
 
 /**
  * New entities for a project created from a doc: one Project, its Milestones (position = order),
- * Tasks (position = order within group, status todo), Dependencies from `after`, ChecklistItems.
+ * Tasks (position = order within group, status todo), Dependencies, ChecklistItems.
+ * Dependencies: a task with `after:` waits for exactly those tasks; otherwise it waits for the previous task
+ * in its group, unless it is marked `anytime` (or is the group's first task).
  * Uses the factories in ./factories (fresh ids).
  */
 export function docToBundle(doc: OutlineDoc, opts: DocToBundleOptions): EntityBundle {
@@ -474,6 +490,7 @@ export function docToBundle(doc: OutlineDoc, opts: DocToBundleOptions): EntityBu
   const pending: { taskId: string; after: string[] }[] = []
 
   const addTasks = (tasks: OutlineTask[], milestoneId: string | null) => {
+    let previousId: string | null = null
     tasks.forEach((t, position) => {
       const task = makeTask({
         projectId: project.id,
@@ -488,6 +505,9 @@ export function docToBundle(doc: OutlineDoc, opts: DocToBundleOptions): EntityBu
       bundle.tasks.push(task)
       if (t.key !== null && !idByKey.has(t.key)) idByKey.set(t.key, task.id)
       if (t.after.length > 0) pending.push({ taskId: task.id, after: t.after })
+      else if (previousId !== null && !t.anytime)
+        bundle.dependencies.push({ taskId: task.id, blockedByTaskId: previousId })
+      previousId = task.id
       t.checklist.forEach((c, i) => {
         bundle.checklist.push(makeChecklistItem({ taskId: task.id, text: c.text, done: c.done, position: i }))
       })
@@ -520,7 +540,8 @@ export function docToBundle(doc: OutlineDoc, opts: DocToBundleOptions): EntityBu
 
 /**
  * Doc describing an existing project (used for "save as template"). Includes every task regardless of
- * status, in workflow order. Tasks referenced by explicit dependencies get generated keys (t1, t2, …).
+ * status, in workflow order. Links are written so that docToBundle recreates them (see linkKind below); tasks
+ * referenced by an after: list get generated keys (t1, t2, …).
  * Checklist items keep their done flag; milestone order follows position.
  */
 export function projectToDoc(
@@ -546,30 +567,47 @@ export function projectToDoc(
   const deps = snapshot.dependencies.filter(
     (d) => inProject.has(d.taskId) && inProject.has(d.blockedByTaskId) && d.taskId !== d.blockedByTaskId,
   )
-  const blockers = new Set(deps.map((d) => d.blockedByTaskId))
-  const keyById = new Map<string, string>()
-  for (const t of ordered) if (blockers.has(t.id)) keyById.set(t.id, `t${keyById.size + 1}`)
   const orderIndex = new Map(ordered.map((t, i) => [t.id, i]))
+  const blockersOf = (t: Task): string[] => [
+    ...new Set(
+      deps
+        .filter((d) => d.taskId === t.id)
+        .map((d) => d.blockedByTaskId)
+        .sort((a, b) => (orderIndex.get(a) ?? 0) - (orderIndex.get(b) ?? 0)),
+    ),
+  ]
+  // How each task's links are written: a lone link to the previous task in its group is the format's default;
+  // no links after a previous task is `anytime`; anything else is an explicit after: list.
+  const linkKind = new Map<string, 'default' | 'anytime' | string[]>()
+  for (const group of [ungrouped, ...groups.map((g) => g.tasks)]) {
+    group.forEach((t, i) => {
+      const blockers = blockersOf(t)
+      const previous = group[i - 1]
+      if (previous && blockers.length === 1 && blockers[0] === previous.id) linkKind.set(t.id, 'default')
+      else if (blockers.length === 0) linkKind.set(t.id, previous ? 'anytime' : 'default')
+      else linkKind.set(t.id, blockers)
+    })
+  }
+  const referenced = new Set([...linkKind.values()].flatMap((k) => (Array.isArray(k) ? k : [])))
+  const keyById = new Map<string, string>()
+  for (const t of ordered) if (referenced.has(t.id)) keyById.set(t.id, `t${keyById.size + 1}`)
 
-  const toOutlineTask = (t: Task): OutlineTask => ({
-    title: t.title,
-    size: t.size,
-    key: keyById.get(t.id) ?? null,
-    after: [
-      ...new Set(
-        deps
-          .filter((d) => d.taskId === t.id)
-          .sort((a, b) => (orderIndex.get(a.blockedByTaskId) ?? 0) - (orderIndex.get(b.blockedByTaskId) ?? 0))
-          .map((d) => keyById.get(d.blockedByTaskId) as string),
-      ),
-    ],
-    doneWhen: t.doneWhen,
-    notes: t.notes,
-    checklist: snapshot.checklist
-      .filter((c) => c.taskId === t.id)
-      .sort((a, b) => a.position - b.position)
-      .map((c) => ({ text: c.text, done: c.done })),
-  })
+  const toOutlineTask = (t: Task): OutlineTask => {
+    const kind = linkKind.get(t.id)
+    return {
+      title: t.title,
+      size: t.size,
+      key: keyById.get(t.id) ?? null,
+      after: Array.isArray(kind) ? kind.map((id) => keyById.get(id) as string) : [],
+      ...(kind === 'anytime' ? { anytime: true as const } : {}),
+      doneWhen: t.doneWhen,
+      notes: t.notes,
+      checklist: snapshot.checklist
+        .filter((c) => c.taskId === t.id)
+        .sort((a, b) => a.position - b.position)
+        .map((c) => ({ text: c.text, done: c.done })),
+    }
+  }
 
   return {
     name: project.name,

@@ -45,9 +45,9 @@ describe('ProjectPage', () => {
     // The first task of another workstream is not blocked by the previous workstream.
     expect(within(rowOf('Set up staging environment')).queryByText(/After:/)).not.toBeInTheDocument()
 
-    // The following task waits for its predecessor: muted, with a grey note.
-    expect(within(rowOf('Design homepage')).getByText('After: Draft sitemap')).toBeInTheDocument()
+    // A task waiting for an open task in the same workstream is muted; the link is drawn, not written.
     expect(rowOf('Design homepage')).toHaveClass('opacity-50')
+    expect(within(rowOf('Design homepage')).queryByText(/After:/)).not.toBeInTheDocument()
 
     // Done tasks are collapsed per group.
     expect(screen.getByRole('button', { name: '3 done' })).toHaveAttribute('aria-expanded', 'false')
@@ -95,13 +95,78 @@ describe('ProjectPage', () => {
     })
   })
 
-  it('lists explicit blockers by title', async () => {
-    const designer = seed.projects.find((p) => p.name === 'Hire a designer')!
-    renderPage({ route: `/projects/${designer.id}` })
-    await screen.findByRole('heading', { level: 1, name: 'Hire a designer' })
+  it('writes links to other workstreams as grey notes on both tasks', async () => {
+    const snapshot = structuredClone(seed)
+    const byTitle = (title: string) => snapshot.tasks.find((t) => t.title === title)!
+    snapshot.dependencies.push({
+      taskId: byTitle('Set up staging environment').id,
+      blockedByTaskId: byTitle('Design homepage').id,
+    })
+    renderWithApp(<ProjectPage />, { route, path, snapshot })
+    await screen.findByRole('heading', { level: 1, name: 'Client website redesign' })
     expect(
-      within(rowOf('Review applications and shortlist')).getByText('After: Publish job post'),
+      within(rowOf('Set up staging environment')).getByText('After: Design homepage (Design)'),
     ).toBeInTheDocument()
+    expect(rowOf('Set up staging environment')).toHaveClass('opacity-50')
+    expect(
+      within(rowOf('Design homepage')).getByText('Then: Set up staging environment (Build)'),
+    ).toBeInTheDocument()
+  })
+
+  it('links tasks from the row menu: Waits for…, then the task to wait for', async () => {
+    const user = userEvent.setup()
+    const designer = seed.projects.find((p) => p.name === 'Hire a designer')!
+    const { snapshot } = renderWithApp(<ProjectPage />, {
+      route: `/projects/${designer.id}`,
+      path,
+      snapshot: structuredClone(seed),
+    })
+    await screen.findByRole('heading', { level: 1, name: 'Hire a designer' })
+
+    // Write interview plan can start any time; make it wait for the job post.
+    expect(rowOf('Write interview plan')).not.toHaveClass('opacity-50')
+    await user.click(screen.getByRole('button', { name: 'Task actions: Write interview plan' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Waits for…' }))
+    expect(screen.getByText(/Pick the task/)).toHaveTextContent(
+      'Pick the task “Write interview plan” waits for.',
+    )
+    await user.click(screen.getByRole('button', { name: 'Publish job post' }))
+
+    await waitFor(() => expect(rowOf('Write interview plan')).toHaveClass('opacity-50'))
+    expect(screen.queryByText(/Pick the task/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    const ids = (await snapshot()).dependencies
+      .filter((d) => d.taskId === rowOf('Write interview plan').dataset.taskId)
+      .map((d) => d.blockedByTaskId)
+    expect(ids).toEqual([rowOf('Publish job post').dataset.taskId])
+
+    // And undo it from the same menu.
+    await user.click(screen.getByRole('button', { name: 'Task actions: Write interview plan' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Stop waiting for “Publish job post”' }))
+    await waitFor(() => expect(rowOf('Write interview plan')).not.toHaveClass('opacity-50'))
+  })
+
+  it('refuses a link that would make a loop', async () => {
+    const user = userEvent.setup()
+    renderPage({ route })
+    await screen.findByRole('heading', { level: 1, name: 'Client website redesign' })
+    // Design homepage already waits for Draft sitemap.
+    await user.click(screen.getByRole('button', { name: 'Task actions: Draft sitemap' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Waits for…' }))
+    await user.click(screen.getByRole('button', { name: 'Design homepage' }))
+    expect(rowOf('Draft sitemap')).not.toHaveClass('opacity-50')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('cancels picking with Escape', async () => {
+    const user = userEvent.setup()
+    renderPage({ route })
+    await screen.findByRole('heading', { level: 1, name: 'Client website redesign' })
+    await user.click(screen.getByRole('button', { name: 'Task actions: Draft sitemap' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Waits for…' }))
+    expect(screen.getByText(/Pick the task/)).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByText(/Pick the task/)).not.toBeInTheDocument()
   })
 
   it('opens the task dialog from the ?task= param and removes it on close', async () => {

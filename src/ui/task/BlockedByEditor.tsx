@@ -19,7 +19,7 @@ interface Props {
   onChange: (ids: ID[]) => void
 }
 
-/** Pick explicit "blocked by" tasks from the same project; loops are rejected with an inline error. */
+/** Pick the tasks this one waits for, from the same project; loops are rejected with an inline error. */
 export function BlockedByEditor({
   task,
   projectId,
@@ -51,7 +51,7 @@ export function BlockedByEditor({
     ]
     if (wouldCreateCycle(task.id, blockerId, graph)) {
       setError(
-        `Can't block this task on “${blocker?.title ?? 'that task'}”: it already depends on this task, which would create a loop.`,
+        `This task can't wait for “${blocker?.title ?? 'that task'}”: that task already waits for this one, which would create a loop.`,
       )
       return
     }
@@ -62,9 +62,7 @@ export function BlockedByEditor({
   return (
     <div className="grid gap-2">
       {value.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
-          No explicit blockers: this task simply follows the previous task in the project.
-        </p>
+        <p className="text-xs text-muted-foreground">Not linked to other tasks, so it can start any time.</p>
       ) : (
         <ul className="grid gap-0.5">
           {value.map((id) => {
@@ -84,7 +82,7 @@ export function BlockedByEditor({
                   variant="ghost"
                   size="icon-sm"
                   className="text-muted-foreground"
-                  aria-label={`Remove blocker: ${t?.title ?? id}`}
+                  aria-label={`Stop waiting for: ${t?.title ?? id}`}
                   onClick={() => {
                     setError(null)
                     onChange(value.filter((v) => v !== id))
@@ -98,8 +96,8 @@ export function BlockedByEditor({
         </ul>
       )}
       <Select value="" onValueChange={add} disabled={candidates.length === 0}>
-        <SelectTrigger aria-label="Add a blocker" className="w-full">
-          <SelectValue placeholder="Add a blocker…" />
+        <SelectTrigger aria-label="Add a task it waits for" className="w-full">
+          <SelectValue placeholder="Add a task it waits for…" />
         </SelectTrigger>
         <SelectContent>
           {candidates.map((t) => (

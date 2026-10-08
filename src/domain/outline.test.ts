@@ -115,6 +115,13 @@ describe('parseOutline: valid input', () => {
     expect(d.tasks[1]).toMatchObject({ title: 'Write the thing now', size: 'L', key: 'b', after: ['a'] })
   })
 
+  it('reads the anytime token and rejects it together with after:', () => {
+    const d = parseOk('# P\n- one [M] #a\n- two anytime [S]\n')
+    expect(d.tasks[1]).toMatchObject({ title: 'two', size: 'S', anytime: true })
+    expect(d.tasks[0]!.anytime).toBeUndefined()
+    expect(errorsOf('# P\n- a [S] #a\n- b [S] after:#a anytime\n')).toHaveLength(1)
+  })
+
   it('supports multiple after keys, forward references, and a space after the comma', () => {
     const d = parseOk('# P\n- first [S] after:#c, #b\n- second [S] #b\n- third [S] #c\n')
     expect(d.tasks[0]!.after).toEqual(['c', 'b'])
@@ -550,13 +557,21 @@ describe('docToBundle', () => {
     expect(new Set(b.tasks.map((t) => t.id)).size).toBe(b.tasks.length)
   })
 
-  it('creates dependencies from after keys (forward references included)', () => {
+  it('links each task to the previous one in its group, or to its after keys (forward references included)', () => {
     const b = docToBundle(source, { rank: 0 })
     const id = (title: string) => b.tasks.find((t) => t.title === title)?.id
     expect(b.dependencies).toEqual([
+      { taskId: id('pre-b'), blockedByTaskId: id('pre-a') },
+      { taskId: id('z'), blockedByTaskId: id('later') },
       { taskId: id('b'), blockedByTaskId: id('a') },
       { taskId: id('b'), blockedByTaskId: id('later') },
     ])
+  })
+
+  it('does not link an anytime task to the previous one', () => {
+    const b = docToBundle(parseOk('# P\n## M\n- a [S]\n- b [S] anytime\n- c [S]\n'), { rank: 0 })
+    const id = (title: string) => b.tasks.find((t) => t.title === title)?.id
+    expect(b.dependencies).toEqual([{ taskId: id('c'), blockedByTaskId: id('b') }])
   })
 
   it('creates checklist items with positions 0..n and done flags', () => {
@@ -675,6 +690,24 @@ describe('projectToDoc', () => {
     expect(s1).toMatchObject({ key: null, after: ['t2'] })
     expect(s2).toMatchObject({ key: null, after: ['t1', 't2'] })
     expect(d.tasks[0]!.after).toEqual([])
+  })
+
+  it('writes a lone link to the previous task as the default and no links as anytime', () => {
+    const { project, snapshot } = buildProject()
+    const [f1, f2] = snapshot.tasks
+      .filter((t) => t.title === 'f1' || t.title === 'f2')
+      .sort((a, b) => a.position - b.position)
+    const linked = projectToDoc(project.id, {
+      ...snapshot,
+      dependencies: [...snapshot.dependencies, { taskId: f2!.id, blockedByTaskId: f1!.id }],
+    })
+    expect(linked.milestones[0]!.tasks[1]).toMatchObject({ title: 'f2', after: [] })
+    expect(linked.milestones[0]!.tasks[1]!.anytime).toBeUndefined()
+
+    const d = projectToDoc(project.id, snapshot)
+    expect(d.milestones[0]!.tasks[0]!.anytime).toBeUndefined() // first in its group
+    expect(d.milestones[0]!.tasks[1]).toMatchObject({ title: 'f2', anytime: true })
+    expect(d.tasks[1]).toMatchObject({ title: 'loose 2', anytime: true })
   })
 
   it('keeps checklist order and done flags', () => {

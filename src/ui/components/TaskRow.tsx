@@ -101,6 +101,7 @@ export function TaskRow({
   return (
     <div
       data-testid="task-row"
+      data-task-id={task.id}
       data-status={task.status}
       className={cn(
         'group flex min-h-10 items-start gap-2 py-1.5',

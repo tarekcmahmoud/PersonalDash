@@ -1,5 +1,6 @@
 import { Crosshair, MoreHorizontal, Plus } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,8 +19,8 @@ import { cn } from '@/lib/utils'
 import { useApply, usePlanContext } from '../../data/hooks'
 import { useServices } from '../../data/services'
 import { projectHealth } from '../../domain/health'
-import { nextTasks, projectWorkstreams } from '../../domain/order'
-import type { ProjectStatus } from '../../domain/types'
+import { explicitBlockerIds, nextTasks, projectWorkstreams, wouldCreateCycle } from '../../domain/order'
+import type { ProjectStatus, Task } from '../../domain/types'
 import { ProjectSignal } from '../components/HealthBadges'
 import { Page } from '../components/Page'
 import { ProjectObjective } from '../components/ProjectObjective'
@@ -50,6 +51,17 @@ export function ProjectPage() {
   const [pane, setPane] = useProjectPane()
   const projectMilestones = ctx?.milestones.filter((m) => m.projectId === projectId) ?? []
   const { focusId, setFocus, exitFocus } = useFocus(projectMilestones.map((m) => m.id))
+  // "Waits for…": the task whose blocker is being picked (the next task clicked).
+  const [linking, setLinking] = useState<Task | null>(null)
+
+  useEffect(() => {
+    if (!linking) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLinking(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [linking])
 
   if (!ctx) {
     return (
@@ -90,6 +102,20 @@ export function ProjectPage() {
   const resources = sortedResources(ctx.resources, project.id)
   const focused = milestones.find((m) => m.id === focusId) ?? null
   const taskCount = ctx.tasks.filter((t) => t.projectId === project.id).length
+
+  /** Finishes "Waits for…": `linking` waits for `target` from now on (loops are refused). */
+  const completeLink = (target: Task) => {
+    const task = linking!
+    setLinking(null)
+    if (target.id === task.id) return
+    const current = explicitBlockerIds(task.id, ctx.dependencies)
+    if (current.includes(target.id)) return
+    if (wouldCreateCycle(task.id, target.id, ctx.dependencies)) {
+      toast.error(`“${task.title}” can't wait for “${target.title}”: that task already waits for it.`)
+      return
+    }
+    void apply({ kind: 'setDependencies', taskId: task.id, blockedByIds: [...current, target.id] })
+  }
 
   const setStatus = (status: ProjectStatus) =>
     void apply({ kind: 'saveProjects', projects: [{ ...project, status }] })
@@ -235,6 +261,19 @@ export function ProjectPage() {
               )}
             </h2>
           </div>
+          {linking && (
+            <div
+              role="status"
+              className="sticky top-2 z-10 flex items-center justify-between gap-3 rounded-2xl bg-muted px-4 py-2 text-sm"
+            >
+              <span className="min-w-0">
+                Pick the task <span className="font-medium">“{linking.title}”</span> waits for.
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => setLinking(null)}>
+                Cancel
+              </Button>
+            </div>
+          )}
           {groups.map((stream) => (
             <TaskGroup
               key={stream.milestone?.id ?? 'none'}
@@ -243,7 +282,8 @@ export function ProjectPage() {
               ctx={ctx}
               nextIds={nextIds}
               dimmed={focusId !== null && stream.milestone?.id !== focusId}
-              onOpenTask={(t) => open(t.id)}
+              onOpenTask={(t) => (linking ? completeLink(t) : open(t.id))}
+              onStartLink={setLinking}
               header={
                 stream.milestone ? (
                   <MilestoneHeader

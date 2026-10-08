@@ -1,15 +1,18 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { useApply, useUpdateTasks } from '../../data/hooks'
 import { useTaskActions } from '../../data/taskActions'
 import type { PlanContext } from '../../domain/context'
 import { makeTask } from '../../domain/factories'
-import { unfinishedBlockers } from '../../domain/order'
+import { explicitBlockerIds, unfinishedBlockers } from '../../domain/order'
 import type { Project, Task, TaskSize } from '../../domain/types'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { TaskRow } from '../components/TaskRow'
 import { AddTaskRow } from './AddTaskRow'
 import { CollapsibleGroup } from './CollapsibleGroup'
+import { LinkRails } from './LinkRails'
+import { railLanes, railsWidth } from './links'
 import { endPosition, renumberGroup, type TaskGroupData } from './ordering'
 import { RowMenu } from './RowMenu'
 import { SortableList, type SortableControls } from './SortableList'
@@ -26,16 +29,66 @@ interface Props {
   /** Greyed out because another workstream is in focus. */
   dimmed?: boolean
   onOpenTask: (task: Task) => void
+  /** Starts "Waits for…": the next task picked becomes one this task waits for. */
+  onStartLink?: (task: Task) => void
 }
 
-/** The tasks of one workflow group (workstream-less or one workstream): open tasks sortable, done collapsed. */
-export function TaskGroup({ project, group, ctx, nextIds, header, dimmed = false, onOpenTask }: Props) {
+/**
+ * The tasks of one workflow group (workstream-less or one workstream): open tasks sortable, done collapsed.
+ * Links between its open tasks are drawn as rails in the left gutter; links to tasks elsewhere are grey notes
+ * ("After: …", "Then: …"). Tasks waiting for an unfinished task are greyed out.
+ */
+export function TaskGroup({
+  project,
+  group,
+  ctx,
+  nextIds,
+  header,
+  dimmed = false,
+  onOpenTask,
+  onStartLink,
+}: Props) {
   const actions = useTaskActions()
   const apply = useApply()
   const updateTasks = useUpdateTasks()
   const groupName = group.milestone?.name ?? 'the project'
   const open = group.tasks.filter((t) => t.status !== 'done')
   const done = group.tasks.filter((t) => t.status === 'done')
+  // The list element, as state: the rails measure it once it is attached.
+  const [listEl, setListEl] = useState<HTMLDivElement | null>(null)
+  const inList = new Set(open.map((t) => t.id))
+  const rails = railLanes(
+    open.map((t) => t.id),
+    ctx.dependencies,
+  )
+  const byId = new Map(ctx.tasks.map((t) => [t.id, t]))
+
+  /** "Title (Workstream)" for a task outside this list: its workstream, or its project when elsewhere. */
+  const elsewhere = (t: Task): string => {
+    const where =
+      t.projectId !== project.id
+        ? (ctx.projects.find((p) => p.id === t.projectId)?.name ?? 'Inbox')
+        : (ctx.milestones.find((m) => m.id === t.milestoneId)?.name ?? 'No workstream')
+    return `${t.title} (${where})`
+  }
+  const linkNote = (task: Task, blockers: Task[]): string | undefined => {
+    const after = blockers.filter((b) => !inList.has(b.id))
+    const then = ctx.dependencies
+      .filter((d) => d.blockedByTaskId === task.id && !inList.has(d.taskId))
+      .map((d) => byId.get(d.taskId))
+      .filter((t): t is Task => t !== undefined && t.status !== 'done')
+    const parts = [
+      after.length > 0 ? `After: ${after.map(elsewhere).join(', ')}` : '',
+      task.status !== 'done' && then.length > 0 ? `Then: ${then.map(elsewhere).join(', ')}` : '',
+    ].filter(Boolean)
+    return parts.length > 0 ? parts.join(' · ') : undefined
+  }
+  const unlink = (task: Task, blockerId: string) =>
+    void apply({
+      kind: 'setDependencies',
+      taskId: task.id,
+      blockedByIds: explicitBlockerIds(task.id, ctx.dependencies).filter((id) => id !== blockerId),
+    })
 
   const reorder = (openInNewOrder: Task[]) => {
     const changed = renumberGroup(group.tasks, openInNewOrder)
@@ -64,12 +117,15 @@ export function TaskGroup({ project, group, ctx, nextIds, header, dimmed = false
   const renderRow = (task: Task, controls?: SortableControls) => {
     const blockers = task.status === 'done' ? [] : unfinishedBlockers(task, ctx)
     const blocked = blockers.length > 0
+    const waitsFor = explicitBlockerIds(task.id, ctx.dependencies)
+      .map((id) => byId.get(id))
+      .filter((t): t is Task => t !== undefined)
     return (
       <TaskRow
         task={task}
         checklist={checklistOf(task.id)}
         muted={blocked}
-        note={blocked ? `After: ${blockers.map((b) => b.title).join(', ')}` : undefined}
+        note={linkNote(task, blockers)}
         meta={nextIds.has(task.id) ? ['Next'] : []}
         onToggleDone={(t) => void actions.toggleDone(t)}
         onOpen={(t) => onOpenTask(t)}
@@ -77,7 +133,22 @@ export function TaskGroup({ project, group, ctx, nextIds, header, dimmed = false
           controls && (
             <>
               {controls.handle}
-              <RowMenu label={`Task actions: ${task.title}`} controls={controls} />
+              <RowMenu
+                label={`Task actions: ${task.title}`}
+                controls={controls}
+                extra={
+                  onStartLink && (
+                    <>
+                      <DropdownMenuItem onSelect={() => onStartLink(task)}>Waits for…</DropdownMenuItem>
+                      {waitsFor.map((b) => (
+                        <DropdownMenuItem key={b.id} onSelect={() => unlink(task, b.id)}>
+                          {`Stop waiting for “${b.title}”`}
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  )
+                }
+              />
             </>
           )
         }
@@ -90,13 +161,16 @@ export function TaskGroup({ project, group, ctx, nextIds, header, dimmed = false
       <Card data-testid="workstream-card" data-dimmed={dimmed} className={cn('gap-2', DIMMED_CLASSES)}>
         {header && <CardHeader>{header}</CardHeader>}
         <CardContent>
-          <SortableList
-            className="divide-y"
-            items={open}
-            onReorder={reorder}
-            label={(t) => t.title}
-            renderItem={renderRow}
-          />
+          <div ref={setListEl} className="relative" style={{ paddingLeft: railsWidth(rails) }}>
+            <LinkRails container={listEl} rails={rails} />
+            <SortableList
+              className="divide-y"
+              items={open}
+              onReorder={reorder}
+              label={(t) => t.title}
+              renderItem={renderRow}
+            />
+          </div>
           <div className="mt-1">
             <AddTaskRow groupName={groupName} onAdd={add} />
           </div>

@@ -72,7 +72,8 @@ Rules of the format:
    Skip it when the title already makes completion obvious.
 5. Tasks within a workstream run in the order listed: each one implicitly follows the previous task in that
    workstream. Use `#key` and `after:` when a task must wait for a task in ANOTHER workstream, or when the order
-   inside a workstream is not simply sequential. Give a key only to tasks that something else points to.
+   inside a workstream is not simply sequential. Give a key only to tasks that something else points to. Add
+   `anytime` to a task that does not need the task before it (it can be done in parallel).
 6. Wherever the work stalls until someone else responds (hand-offs, approvals, deliveries, replies), add the
    line `note: waiting on <who>` to that task, naming the person or party from my project details.
 7. The very first task must be something I can start today with what I have, and must be S or M.

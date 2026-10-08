@@ -86,7 +86,7 @@ export interface ChecklistItem {
   position: number
 }
 
-/** taskId cannot start until blockedByTaskId is done. Explicit links replace the implicit "previous task" rule. */
+/** taskId cannot start until blockedByTaskId is done. Tasks without links can start any time. */
 export interface Dependency {
   taskId: ID
   blockedByTaskId: ID
