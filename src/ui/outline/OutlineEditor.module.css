@@ -1,0 +1,71 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-12);
+  min-width: 0;
+}
+
+.switcher {
+  display: none;
+}
+
+.panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--base-size-16);
+  align-items: start;
+}
+
+.editPane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8);
+  min-width: 0;
+}
+
+.editor textarea {
+  font-family: var(--fontStack-monospace);
+  font-size: var(--text-body-size-small);
+  line-height: 1.5;
+  min-height: 420px;
+  tab-size: 2;
+}
+
+.previewPane {
+  min-width: 0;
+  max-height: 640px;
+  overflow-y: auto;
+  padding: var(--base-size-16);
+  background: var(--bgColor-default);
+  border: var(--borderWidth-thin) solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+}
+
+.hint {
+  margin: 0;
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
+}
+
+@media (max-width: 767px) {
+  .switcher {
+    display: block;
+  }
+
+  .panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .root[data-tab='edit'] .previewPane,
+  .root[data-tab='preview'] .editPane {
+    display: none;
+  }
+
+  .editor textarea {
+    min-height: 320px;
+  }
+
+  .previewPane {
+    max-height: none;
+  }
+}
