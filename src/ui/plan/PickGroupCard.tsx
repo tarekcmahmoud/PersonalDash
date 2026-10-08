@@ -1,19 +1,19 @@
-import { Button, Checkbox } from '@primer/react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { taskHref, useTaskActions } from '../../data/taskActions'
 import type { PickCandidate, PickGroup } from '../../domain/planning'
 import type { ISODate } from '../../domain/types'
-import { HealthBadges } from '../components/HealthBadges'
+import { ProjectSignal } from '../components/HealthBadges'
 import { TaskRow } from '../components/TaskRow'
-import styles from './PickGroupCard.module.css'
 
 function reasonText(c: PickCandidate): string | null {
-  if (c.reason === 'xl') return 'Split this task first'
-  if (c.reason === 'blocked') return `Blocked by: ${c.blockedBy.map((b) => b.title).join(', ')}`
+  if (c.reason === 'xl') return 'Split first'
+  if (c.reason === 'blocked') return `After: ${c.blockedBy.map((b) => b.title).join(', ')}`
   return null
 }
 
-/** One project in the pick list: health, planned count and its next tasks with a "Plan this week" toggle. */
+/** One project in the pick list: name, one signal, planned count and its next tasks with a "plan" checkbox. */
 export function PickGroupCard({
   group,
   weekStart,
@@ -28,50 +28,55 @@ export function PickGroupCard({
   const { project } = group
 
   return (
-    <section className={styles.card} aria-label={project.name}>
-      <header className={styles.head}>
-        <h3 className={styles.name}>
-          <Link to={`/projects/${project.id}`}>{project.name}</Link>
+    <section aria-label={project.name} className="py-4 first:pt-0 last:pb-0">
+      <header className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+        <h3 className="min-w-0 text-sm font-medium">
+          <Link to={`/projects/${project.id}`} className="underline-offset-4 hover:underline">
+            {project.name}
+          </Link>
         </h3>
-        <span className={styles.count}>{group.plannedCount} planned</span>
-        <div className={styles.badges}>
-          <HealthBadges flags={group.flags} />
-        </div>
+        <ProjectSignal flags={group.flags} />
+        <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+          {group.plannedCount} planned
+        </span>
       </header>
 
-      {group.candidates.length === 0 && <p className={styles.empty}>No open tasks.</p>}
-      <div className={styles.list}>
-        {group.candidates.map((c) => {
-          const note = reasonText(c)
-          return (
-            <div key={c.task.id} className={styles.item}>
-              <div className={styles.toggle}>
-                <Checkbox
-                  checked={c.planned}
-                  disabled={!c.selectable}
-                  aria-label={`Plan "${c.task.title}" this week`}
-                  onChange={() => void (c.planned ? actions.unplan(c.task) : actions.plan(c.task, weekStart))}
-                />
-              </div>
-              <div className={styles.row}>
-                <TaskRow
-                  task={c.task}
-                  muted={!c.selectable}
-                  note={note}
-                  onOpen={(t) => navigate(taskHref(t))}
-                />
-              </div>
-            </div>
-          )
-        })}
+      {group.candidates.length === 0 && <p className="py-1 text-sm text-muted-foreground">No open tasks.</p>}
+      <div>
+        {group.candidates.map((c) => (
+          <div key={c.task.id} className="flex items-start gap-2">
+            {/* The label widens the tap target to 32px around the checkbox, like TaskRow's own. */}
+            <label className="mt-0.5 -ml-2 flex size-8 shrink-0 cursor-pointer items-center justify-center">
+              <Checkbox
+                checked={c.planned}
+                disabled={!c.selectable}
+                aria-label={`Plan "${c.task.title}" this week`}
+                onCheckedChange={() =>
+                  void (c.planned ? actions.unplan(c.task) : actions.plan(c.task, weekStart))
+                }
+              />
+            </label>
+            <TaskRow
+              className="min-w-0 flex-1"
+              task={c.task}
+              muted={!c.selectable}
+              note={reasonText(c)}
+              onOpen={(t) => navigate(taskHref(t))}
+            />
+          </div>
+        ))}
       </div>
 
       {group.hasMore && (
-        <div className={styles.more}>
-          <Button variant="invisible" onClick={onShowMore} aria-label={`Show more tasks for ${project.name}`}>
-            Show more
-          </Button>
-        </div>
+        <Button
+          variant="link"
+          size="sm"
+          className="-ml-1 text-xs text-muted-foreground"
+          onClick={onShowMore}
+          aria-label={`Show more tasks for ${project.name}`}
+        >
+          Show more
+        </Button>
       )}
     </section>
   )

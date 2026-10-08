@@ -14,23 +14,23 @@ describe('PlanPage', () => {
     const website = await group('Client website redesign')
     expect(website.getByText('2 planned')).toBeInTheDocument()
     // Seed: sitemap M + homepage L + revenue M + long run M + dentist S + one follow-up S = 22h of 31.5h.
-    expect(screen.getByText('22h planned of 31.5h')).toBeInTheDocument()
+    expect(screen.getByText('22 of 31.5h planned')).toBeInTheDocument()
 
     await user.click(website.getByRole('checkbox', { name: /Design content page templates/ }))
 
-    await waitFor(() => expect(screen.getByText('26h planned of 31.5h')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('26 of 31.5h planned')).toBeInTheDocument())
     expect(website.getByText('3 planned')).toBeInTheDocument()
     expect(website.getByRole('checkbox', { name: /Design content page templates/ })).toBeChecked()
   })
 
-  it('shows XL tasks as disabled with "Split this task first"', async () => {
+  it('shows XL tasks as disabled with "Split first"', async () => {
     const user = userEvent.setup()
     renderApp(<PlanPage />)
 
     const website = await group('Client website redesign')
     await user.click(website.getByRole('button', { name: /Show more tasks/ }))
 
-    expect(await website.findByText('Split this task first')).toBeInTheDocument()
+    expect(await website.findByText('Split first')).toBeInTheDocument()
     expect(website.getByRole('checkbox', { name: /Build CMS integration/ })).toBeDisabled()
   })
 
@@ -41,38 +41,39 @@ describe('PlanPage', () => {
     expect(designer.getByText('0 planned')).toBeInTheDocument()
   })
 
-  it('lists the follow-up for the week and the inbox count', async () => {
+  it('shows one quiet line with the follow-up and Inbox counts, each linking out', async () => {
     renderApp(<PlanPage />)
-    expect(
-      await screen.findByText('Follow up: Finance team re Collect final cost figures'),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Go to Inbox' })).toHaveAttribute('href', '/inbox')
+    expect(await screen.findByRole('link', { name: '1 follow-up due' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: '2 in Inbox' })).toHaveAttribute('href', '/inbox')
+    // The planned list and the follow-up section moved elsewhere.
+    expect(screen.queryByText(/Planned this week/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Follow up: Finance team/)).not.toBeInTheDocument()
   })
 
   it('sets and clears a capacity override', async () => {
     const user = userEvent.setup()
     renderApp(<PlanPage />)
-    await screen.findByText('22h planned of 31.5h')
+    await screen.findByText('22 of 31.5h planned')
 
     await user.click(screen.getByRole('button', { name: 'Adjust' }))
-    const input = screen.getByLabelText('Capacity override in hours')
+    const input = await screen.findByLabelText('Capacity override in hours')
     await user.clear(input)
     await user.type(input, '20')
     await user.click(screen.getByRole('button', { name: 'Save' }))
     expect(await screen.findByText(/2h over/)).toBeInTheDocument()
-    expect(screen.getByText('22h planned of 20h')).toBeInTheDocument()
+    expect(screen.getByText(/22 of 20h planned/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Adjust' }))
     await user.click(screen.getByRole('button', { name: 'Reset to computed' }))
-    expect(await screen.findByText('22h planned of 31.5h')).toBeInTheDocument()
+    expect(await screen.findByText('22 of 31.5h planned')).toBeInTheDocument()
   })
 
   it('moves to the next week with the switcher', async () => {
     const user = userEvent.setup()
     renderApp(<PlanPage />)
-    await screen.findByText('22h planned of 31.5h')
+    await screen.findByText('22 of 31.5h planned')
     await user.click(screen.getByRole('button', { name: 'Next week' }))
-    expect(await screen.findByText('0h planned of 31.5h')).toBeInTheDocument()
+    expect(await screen.findByText('0 of 31.5h planned')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'This week' })).toBeInTheDocument()
   })
 })

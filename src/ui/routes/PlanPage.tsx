@@ -7,13 +7,17 @@ import { WeekSwitcher } from '../plan/WeekSwitcher'
 export function PlanPage() {
   const { weekStart, setWeek, resetWeek, isCurrentWeek } = useWeekParam()
   return (
-    <Page title="Plan the week" description="Pick the tasks you will do this week.">
-      <WeekSwitcher
-        weekStart={weekStart}
-        isCurrentWeek={isCurrentWeek}
-        onChange={setWeek}
-        onReset={resetWeek}
-      />
+    <Page
+      title="Plan the week"
+      actions={
+        <WeekSwitcher
+          weekStart={weekStart}
+          isCurrentWeek={isCurrentWeek}
+          onChange={setWeek}
+          onReset={resetWeek}
+        />
+      }
+    >
       <WeekPicker weekStart={weekStart} />
     </Page>
   )

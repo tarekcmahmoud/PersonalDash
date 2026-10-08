@@ -1,4 +1,3 @@
-import { BaseStyles, ThemeProvider } from '@primer/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, type RenderResult } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
@@ -9,11 +8,6 @@ import { ServicesProvider } from '../../data/services'
 import type { Repo } from '../../data/repo'
 import type { Snapshot } from '../../domain/types'
 import { todayISO } from '../../domain/week'
-
-// jsdom lacks adoptedStyleSheets, which the popover polyfill behind Primer's IconButton tooltips needs.
-if (!('adoptedStyleSheets' in document)) {
-  Object.defineProperty(document, 'adoptedStyleSheets', { value: [], writable: true, configurable: true })
-}
 
 export interface RenderOptions {
   /** Router entries, default ['/']. */
@@ -30,15 +24,11 @@ export function renderApp(ui: ReactElement, opts: RenderOptions = {}): RenderRes
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <ThemeProvider colorMode="light">
-        <BaseStyles>
-          <QueryClientProvider client={client}>
-            <ServicesProvider services={services}>
-              <MemoryRouter initialEntries={[opts.route ?? '/']}>{children}</MemoryRouter>
-            </ServicesProvider>
-          </QueryClientProvider>
-        </BaseStyles>
-      </ThemeProvider>
+      <QueryClientProvider client={client}>
+        <ServicesProvider services={services}>
+          <MemoryRouter initialEntries={[opts.route ?? '/']}>{children}</MemoryRouter>
+        </ServicesProvider>
+      </QueryClientProvider>
     )
   }
 
