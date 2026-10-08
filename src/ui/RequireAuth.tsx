@@ -1,4 +1,3 @@
-import { Spinner, Stack } from '@primer/react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import type { AuthUser } from '../data/auth'
@@ -20,12 +19,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     }
   }, [auth])
 
-  if (user === undefined)
-    return (
-      <Stack align="center" padding="spacious">
-        <Spinner />
-      </Stack>
-    )
+  if (user === undefined) return <p className="p-10 text-center text-sm text-muted-foreground">Loading…</p>
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   return <>{children}</>
 }

@@ -23,7 +23,7 @@ function RailLink({ item, active, badge }: { item: NavItem; active: boolean; bad
       <TooltipTrigger asChild>
         <NavLink
           to={item.to}
-          aria-label={item.label}
+          aria-label={badge > 0 ? `${item.label} (${badge})` : item.label}
           aria-current={active ? 'page' : undefined}
           className={cn(
             'relative flex size-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground',

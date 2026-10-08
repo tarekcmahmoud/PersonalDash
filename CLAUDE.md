@@ -18,7 +18,7 @@ summarized in `docs/` and the JSDoc on the contracts below.
   (vendored from shadcn's `bases/radix` registry; their `cn-*` classes are styled by `src/styles/style-rhea.css`,
   kept pristine — app overrides go in `src/index.css`; import as `@/components/ui/button` etc.), `cn()` from `@/lib/utils`, icons from
   `lucide-react`, toasts via `toast()` from `sonner`. Style with Tailwind classes only (no CSS modules, no
-  inline colours). Tokens are in `src/index.css`. **Primer is being removed — never import `@primer/*`.**
+  inline colours). Tokens are in `src/index.css`. Primer has been removed — never import `@primer/*`.
 - **Design rules (calm, greyscale-first):**
   - Text tiers: `text-foreground` for titles/primary content; `text-muted-foreground` for ALL metadata (size,
     day, project name, counts, dates); `text-muted-foreground/60` for tertiary/disabled.
@@ -26,10 +26,8 @@ summarized in `docs/` and the JSDoc on the contracts below.
     below weekly minimum, XL, repeated slips). Nothing else is coloured. No coloured badges/labels.
   - Yellow accent `primary` is a FILL only (primary button, focus ring, active nav, progress, checked
     checkbox) — never text. Links: foreground + underline on hover (`Button variant="link"`).
-  - Boxes where they help: group related content in a `Card` (`@/components/ui/card`; Rhea's soft card: faint
-    ring + shadow, rounded) — e.g. a project's candidates on Plan, a day column on Week, a settings section, a
-    dialog section. Don't box single rows, don't nest boxes, and keep rows inside a box divided by hairlines
-    (`divide-y`). Simple lists can still be plain sections (`Section` from `src/ui/components/Page.tsx`).
+  - Use cards (`@/components/ui/card`, Rhea's soft card) freely to group related content; separate rows inside a
+    group with hairlines (`divide-y`).
   - At most one primary (`variant="default"`) button per screen; others `ghost`/`outline`/`link`.
   - Task rows: use `TaskRow` (one line, grey metadata, `actions` revealed on hover on desktop, always visible
     on touch). Project health: `ProjectSignal` (one signal max). Capacity: `CapacityLine`/`CapacityBar`.

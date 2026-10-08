@@ -1,5 +1,0 @@
-/* Temporary while screens migrate off Primer: keep Primer overlays above the fixed phone tab bar. */
-#__primerPortalRoot__ {
-  position: relative;
-  z-index: 100;
-}
