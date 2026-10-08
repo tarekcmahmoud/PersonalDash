@@ -20,12 +20,15 @@ export function RowMenu({
   controls,
   extra,
   className,
+  moveLabels = ['Move up', 'Move down'],
 }: {
   /** Accessible name of the trigger, e.g. "Task actions: Draft sitemap". */
   label: string
   controls?: Pick<SortableControls, 'isFirst' | 'isLast' | 'move'>
   extra?: ReactNode
   className?: string
+  /** Labels of the two move items (default "Move up" / "Move down"). */
+  moveLabels?: [string, string]
 }) {
   return (
     <DropdownMenu>
@@ -44,10 +47,10 @@ export function RowMenu({
         {controls && (
           <>
             <DropdownMenuItem disabled={controls.isFirst} onSelect={() => controls.move(-1)}>
-              Move up
+              {moveLabels[0]}
             </DropdownMenuItem>
             <DropdownMenuItem disabled={controls.isLast} onSelect={() => controls.move(1)}>
-              Move down
+              {moveLabels[1]}
             </DropdownMenuItem>
           </>
         )}

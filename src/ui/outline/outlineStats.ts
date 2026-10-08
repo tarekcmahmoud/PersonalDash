@@ -25,9 +25,9 @@ export function outlineStats(doc: OutlineDoc): OutlineStats {
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
-/** "4 milestones · 23 tasks · 2 XL to split · 3 dependencies" (XL / dependencies are left out when zero). */
+/** "4 workstreams · 23 tasks · 2 XL to split · 3 dependencies" (XL / dependencies are left out when zero). */
 export function summaryText(stats: OutlineStats): string {
-  const parts = [plural(stats.milestones, 'milestone'), plural(stats.tasks, 'task')]
+  const parts = [plural(stats.milestones, 'workstream'), plural(stats.tasks, 'task')]
   if (stats.xl > 0) parts.push(`${stats.xl} XL to split`)
   if (stats.dependencies > 0) parts.push(plural(stats.dependencies, 'dependency', 'dependencies'))
   return parts.join(' · ')
