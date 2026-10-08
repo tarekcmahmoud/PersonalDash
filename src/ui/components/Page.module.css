@@ -1,9 +1,0 @@
-.narrow {
-  max-width: 880px;
-}
-.wide {
-  max-width: 1400px;
-}
-.header {
-  margin-bottom: var(--base-size-16);
-}

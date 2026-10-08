@@ -1,15 +1,4 @@
-/* Global styles. Use Primer CSS variables (functional tokens) everywhere — never hard-coded colors. */
-html,
-body {
-  margin: 0;
-  background: var(--bgColor-default);
-  color: var(--fgColor-default);
-}
-* {
-  box-sizing: border-box;
-}
-
-/* Primer overlays (Dialog, ActionMenu, …) render into this portal; keep them above the fixed phone tab bar. */
+/* Temporary while screens migrate off Primer: keep Primer overlays above the fixed phone tab bar. */
 #__primerPortalRoot__ {
   position: relative;
   z-index: 100;

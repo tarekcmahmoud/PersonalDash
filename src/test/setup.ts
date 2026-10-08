@@ -33,3 +33,11 @@ if (!('popover' in HTMLElement.prototype)) {
 if (!('adoptedStyleSheets' in document)) {
   Object.defineProperty(document, 'adoptedStyleSheets', { value: [], writable: true, configurable: true })
 }
+
+// Radix primitives (shadcn/ui) need these pointer/scroll APIs, which jsdom lacks.
+if (!Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = () => false
+  Element.prototype.setPointerCapture = () => {}
+  Element.prototype.releasePointerCapture = () => {}
+}
+if (!Element.prototype.scrollIntoView) Element.prototype.scrollIntoView = () => {}

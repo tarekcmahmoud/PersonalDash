@@ -1,12 +1,35 @@
-import { ProgressBar, Stack } from '@primer/react'
-import styles from './CapacityBar.module.css'
+import { Progress } from '@/components/ui/progress'
+import { cn } from '@/lib/utils'
+import { formatHours } from './format'
 
-/** Hours rounded to 1 decimal, without a trailing ".0" (12 -> "12", 12.5 -> "12.5"). */
-function formatHours(hours: number): string {
-  return String(Math.round(hours * 10) / 10)
+/** One grey line: "22 of 31h this week" — red when over capacity. */
+export function CapacityLine({
+  planned,
+  capacity,
+  suffix = '',
+  className,
+}: {
+  planned: number
+  capacity: number
+  suffix?: string
+  className?: string
+}) {
+  const over = Math.round(planned * 10) - Math.round(capacity * 10)
+  return (
+    <span
+      className={cn(
+        'text-sm tabular-nums',
+        over > 0 ? 'text-destructive' : 'text-muted-foreground',
+        className,
+      )}
+    >
+      {formatHours(planned)} of {formatHours(capacity)}h{suffix}
+      {over > 0 && ` · ${formatHours(over / 10)}h over`}
+    </span>
+  )
 }
 
-/** Weekly capacity bar: planned hours against capacity, with over-capacity and meeting hours called out. */
+/** Thin capacity bar (yellow fill, red when over) + the grey capacity line. */
 export function CapacityBar({
   planned,
   capacity,
@@ -16,27 +39,21 @@ export function CapacityBar({
   capacity: number
   meetingHours?: number
 }) {
-  // Compare in tenths of an hour so float noise cannot show "0h over".
-  const overTenths = Math.round(planned * 10) - Math.round(capacity * 10)
-  const isOver = overTenths > 0
+  const over = Math.round(planned * 10) > Math.round(capacity * 10)
   const percent = capacity > 0 ? Math.min(100, (planned / capacity) * 100) : planned > 0 ? 100 : 0
-
   return (
-    <Stack gap="condensed">
-      <ProgressBar
+    <div className="flex flex-col gap-1.5">
+      <Progress
         aria-label="Capacity used"
-        progress={Math.max(0, percent)}
-        bg={isOver ? 'danger' : 'accent'}
+        value={percent}
+        className={cn('h-1', over && '[&>[data-slot=progress-indicator]]:bg-destructive')}
       />
-      <div className={styles.meta}>
-        <span>
-          {formatHours(planned)}h planned of {formatHours(capacity)}h
-        </span>
-        {isOver && <span className={styles.over}> · {formatHours(overTenths / 10)}h over</span>}
+      <div className="flex flex-wrap gap-x-1">
+        <CapacityLine planned={planned} capacity={capacity} suffix=" planned" />
         {meetingHours !== undefined && meetingHours > 0 && (
-          <span> · {formatHours(meetingHours)}h in meetings</span>
+          <span className="text-sm text-muted-foreground">· {formatHours(meetingHours)}h in meetings</span>
         )}
       </div>
-    </Stack>
+    </div>
   )
 }

@@ -1,94 +1,132 @@
-import { KebabHorizontalIcon } from '@primer/octicons-react'
-import { ActionList, ActionMenu, CounterLabel, NavList, Spinner } from '@primer/react'
+import { MoreHorizontal } from 'lucide-react'
 import { Suspense } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 import { useSnapshot } from '../data/hooks'
 import { CalendarReconnectBanner, CalendarSync } from '../integrations/gcal/CalendarSync'
-import styles from './AppShell.module.css'
-import { NAV_ITEMS } from './nav'
+import { NAV_ITEMS, type NavItem } from './nav'
 
 function isActive(pathname: string, to: string) {
   return to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(to + '/')
 }
 
-/** Layout: sidebar NavList on wide screens, bottom tab bar (+ "More" menu) on phones. */
+function RailLink({ item, active, badge }: { item: NavItem; active: boolean; badge: number }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <NavLink
+          to={item.to}
+          aria-label={item.label}
+          aria-current={active ? 'page' : undefined}
+          className={cn(
+            'relative flex size-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground',
+            active && 'text-foreground',
+          )}
+        >
+          {active && (
+            <span aria-hidden className="absolute top-2 bottom-2 -left-2 w-0.5 rounded-full bg-primary" />
+          )}
+          <item.icon className="size-5" strokeWidth={1.75} />
+          {badge > 0 && (
+            <span
+              aria-hidden
+              className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary ring-2 ring-background"
+            />
+          )}
+        </NavLink>
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        {item.label}
+        {badge > 0 ? ` (${badge})` : ''}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+/** Layout: a quiet 56px icon rail on wide screens; a slim bottom tab bar (+ "More" menu) on phones. */
 export function AppShell() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { data } = useSnapshot()
   const inboxCount = data?.tasks.filter((t) => t.projectId === null && t.status !== 'done').length ?? 0
+  const badgeFor = (item: NavItem) => (item.to === '/inbox' ? inboxCount : 0)
 
   return (
-    <div className={styles.shell}>
-      <nav className={styles.sidebar} aria-label="Main">
-        <div className={styles.brand}>PersonalDash</div>
-        <NavList>
-          {NAV_ITEMS.map((item) => (
-            <NavList.Item
-              key={item.to}
-              as={NavLink}
-              to={item.to}
-              aria-current={isActive(pathname, item.to) ? 'page' : undefined}
-            >
-              <NavList.LeadingVisual>
-                <item.icon />
-              </NavList.LeadingVisual>
-              {item.label}
-              {item.to === '/inbox' && inboxCount > 0 && (
-                <NavList.TrailingVisual>
-                  <CounterLabel>{inboxCount}</CounterLabel>
-                </NavList.TrailingVisual>
-              )}
-            </NavList.Item>
+    <div className="min-h-screen md:grid md:grid-cols-[56px_minmax(0,1fr)]">
+      <nav
+        aria-label="Main"
+        className="sticky top-0 hidden h-screen flex-col items-center justify-between border-r py-3 md:flex"
+      >
+        <div className="flex flex-col items-center gap-1">
+          {NAV_ITEMS.filter((i) => i.primary).map((item) => (
+            <RailLink key={item.to} item={item} active={isActive(pathname, item.to)} badge={badgeFor(item)} />
           ))}
-        </NavList>
+        </div>
+        <div className="flex flex-col items-center gap-1">
+          {NAV_ITEMS.filter((i) => !i.primary).map((item) => (
+            <RailLink key={item.to} item={item} active={isActive(pathname, item.to)} badge={badgeFor(item)} />
+          ))}
+        </div>
       </nav>
 
-      <main className={styles.main}>
+      <main className="min-w-0 px-4 pt-6 pb-24 md:px-10 md:pt-10 md:pb-12">
         <CalendarSync />
-        <div className={styles.banner}>
+        <div className="mx-auto max-w-[760px] empty:hidden [&:not(:empty)]:mb-4">
           <CalendarReconnectBanner />
         </div>
-        <Suspense fallback={<Spinner aria-label="Loading" />}>
+        <Suspense fallback={<p className="text-sm text-muted-foreground">Loading…</p>}>
           <Outlet />
         </Suspense>
       </main>
 
-      <nav className={styles.bottomBar} aria-label="Main">
-        {NAV_ITEMS.filter((i) => i.primary).map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={styles.tab}
-            aria-current={isActive(pathname, item.to) ? 'page' : undefined}
+      <nav
+        aria-label="Main"
+        className="fixed inset-x-0 bottom-0 z-10 flex border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      >
+        {NAV_ITEMS.filter((i) => i.primary).map((item) => {
+          const active = isActive(pathname, item.to)
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'flex flex-1 flex-col items-center gap-1 py-2 text-[11px] text-muted-foreground',
+                active && 'text-foreground',
+              )}
+            >
+              <item.icon className="size-5" strokeWidth={active ? 2.25 : 1.75} />
+              <span>{item.label}</span>
+            </NavLink>
+          )
+        })}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label="More"
+            className="relative flex flex-1 flex-col items-center gap-1 py-2 text-[11px] text-muted-foreground"
           >
-            <item.icon size={20} />
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
-        <ActionMenu>
-          <ActionMenu.Anchor>
-            <button type="button" className={styles.tab} aria-label="More">
-              <KebabHorizontalIcon size={20} />
-              <span>More{inboxCount > 0 ? ` (${inboxCount})` : ''}</span>
-            </button>
-          </ActionMenu.Anchor>
-          <ActionMenu.Overlay align="end">
-            <ActionList>
-              {NAV_ITEMS.filter((i) => !i.primary).map((item) => (
-                <ActionList.Item key={item.to} onSelect={() => navigate(item.to)}>
-                  <ActionList.LeadingVisual>
-                    <item.icon />
-                  </ActionList.LeadingVisual>
-                  {item.label}
-                  {item.to === '/inbox' && inboxCount > 0 && (
-                    <ActionList.TrailingVisual>{inboxCount}</ActionList.TrailingVisual>
-                  )}
-                </ActionList.Item>
-              ))}
-            </ActionList>
-          </ActionMenu.Overlay>
-        </ActionMenu>
+            <MoreHorizontal className="size-5" strokeWidth={1.75} />
+            <span>More{inboxCount > 0 ? ` (${inboxCount})` : ''}</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="top" className="min-w-44">
+            {NAV_ITEMS.filter((i) => !i.primary).map((item) => (
+              <DropdownMenuItem key={item.to} onSelect={() => navigate(item.to)}>
+                <item.icon />
+                {item.label}
+                {item.to === '/inbox' && inboxCount > 0 && (
+                  <span className="ml-auto text-xs text-muted-foreground">{inboxCount}</span>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </nav>
     </div>
   )

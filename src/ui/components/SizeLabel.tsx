@@ -1,25 +1,25 @@
-import { Label } from '@primer/react'
 import type { TaskSize } from '../../domain/types'
+import { cn } from '@/lib/utils'
 
-const SIZE_TITLE: Record<TaskSize, string> = {
+const TITLES: Record<TaskSize, string> = {
   S: '≈1h',
   M: '≈half day',
   L: '≈full day',
   XL: 'Too big or unclear — split before scheduling',
 }
 
-/** Task size chip. XL means "too big or unclear" and must be split before it can be scheduled. */
-export function SizeLabel({ size }: { size: TaskSize }) {
-  if (size === 'XL') {
-    return (
-      <Label variant="attention" title={SIZE_TITLE.XL}>
-        XL · split
-      </Label>
-    )
-  }
+/** Task size as quiet grey text. XL is the only one that draws attention (it can't be planned). */
+export function SizeLabel({ size, className }: { size: TaskSize; className?: string }) {
   return (
-    <Label variant="secondary" title={SIZE_TITLE[size]}>
-      {size}
-    </Label>
+    <span
+      title={TITLES[size]}
+      className={cn(
+        'tabular-nums',
+        size === 'XL' ? 'font-medium text-warning' : 'text-muted-foreground',
+        className,
+      )}
+    >
+      {size === 'XL' ? 'XL · split' : size}
+    </span>
   )
 }

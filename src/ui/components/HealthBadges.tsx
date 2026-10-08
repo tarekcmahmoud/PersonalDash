@@ -1,31 +1,28 @@
-import { Label, LabelGroup } from '@primer/react'
 import type { HealthFlag } from '../../domain/health'
+import { cn } from '@/lib/utils'
+import { topSignal } from './format'
 
-function FlagLabel({ flag }: { flag: HealthFlag }) {
-  switch (flag.kind) {
-    case 'neglected':
-      return <Label variant="attention">Nothing planned</Label>
-    case 'below_min':
-      return <Label variant="attention">{`${flag.planned}/${flag.min} this week`}</Label>
-    case 'deadline_soon': {
-      const text = flag.daysLeft === 0 ? 'Due today' : `Due in ${flag.daysLeft}d`
-      return <Label variant={flag.dateKind === 'hard' ? 'severe' : 'accent'}>{text}</Label>
-    }
-    case 'overdue':
-      return <Label variant="danger">{`Overdue ${flag.daysOver}d`}</Label>
-    case 'no_next_step':
-      return <Label variant="secondary">No next step</Label>
-  }
+/** One quiet signal: a small coloured dot + text for attention, plain grey text otherwise. */
+export function ProjectSignal({ flags, className }: { flags: HealthFlag[]; className?: string }) {
+  const signal = topSignal(flags)
+  if (!signal) return null
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 text-xs whitespace-nowrap',
+        signal.tone === 'danger' && 'text-destructive',
+        signal.tone === 'warning' && 'text-warning',
+        signal.tone === 'muted' && 'text-muted-foreground',
+        className,
+      )}
+    >
+      {signal.tone !== 'muted' && <span aria-hidden className="size-1.5 rounded-full bg-current" />}
+      {signal.text}
+    </span>
+  )
 }
 
-/** Project health flags as labels. Renders nothing when there are no flags. */
-export function HealthBadges({ flags }: { flags: HealthFlag[] }) {
-  if (flags.length === 0) return null
-  return (
-    <LabelGroup>
-      {flags.map((flag) => (
-        <FlagLabel key={flag.kind} flag={flag} />
-      ))}
-    </LabelGroup>
-  )
+/** @deprecated Use ProjectSignal — kept so unmigrated screens compile. Shows the single top signal. */
+export function HealthBadges(props: { flags: HealthFlag[]; className?: string }) {
+  return <ProjectSignal {...props} />
 }

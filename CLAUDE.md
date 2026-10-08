@@ -14,10 +14,23 @@ summarized in `docs/` and the JSDoc on the contracts below.
 
 - `src/domain/` is pure TypeScript: no React, no I/O, no `Date.now()` inside logic (pass `today`/`now` in).
   Dates are local `'YYYY-MM-DD'` strings; use helpers in `src/domain/week.ts`.
-- UI uses **Primer React v38** (`@primer/react`) + `@primer/octicons-react`. There is **no `Box` and no `sx`
-  prop** in v38: lay out with `Stack` and style with CSS modules (`X.module.css`) using Primer CSS variables
-  (e.g. `var(--fgColor-muted)`, `var(--bgColor-muted)`, `var(--borderColor-default)`, `var(--base-size-8)`).
-  Never hard-code colors. Must work at 390px width (phone) and in dark mode.
+- UI uses **shadcn/ui** (Radix + Tailwind v4). Kit components live in `src/components/ui/` (vendored from the
+  shadcn new-york-v4 registry; import as `@/components/ui/button` etc.), `cn()` from `@/lib/utils`, icons from
+  `lucide-react`, toasts via `toast()` from `sonner`. Style with Tailwind classes only (no CSS modules, no
+  inline colours). Tokens are in `src/index.css`. **Primer is being removed — never import `@primer/*`.**
+- **Design rules (calm, greyscale-first):**
+  - Text tiers: `text-foreground` for titles/primary content; `text-muted-foreground` for ALL metadata (size,
+    day, project name, counts, dates); `text-muted-foreground/60` for tertiary/disabled.
+  - Colour = attention only: `text-destructive` (overdue, hard deadline soon), `text-warning` (neglected,
+    below weekly minimum, XL, repeated slips). Nothing else is coloured. No coloured badges/labels.
+  - Yellow accent `primary` is a FILL only (primary button, focus ring, active nav, progress, checked
+    checkbox) — never text. Links: foreground + underline on hover (`Button variant="link"`).
+  - No boxes: separate sections with a heading + whitespace (`Section` from `src/ui/components/Page.tsx`)
+    and hairline row dividers (`divide-y`). No bordered cards (dialogs/popovers excepted).
+  - At most one primary (`variant="default"`) button per screen; others `ghost`/`outline`/`link`.
+  - Task rows: use `TaskRow` (one line, grey metadata, `actions` revealed on hover on desktop, always visible
+    on touch). Project health: `ProjectSignal` (one signal max). Capacity: `CapacityLine`/`CapacityBar`.
+  - Must work at 390px (phone; ≥32px touch targets) and in dark mode (`.dark` on <html>).
 - Data access in UI only through `src/data/hooks.ts` (`useSnapshot`, `usePlanContext`, `useApply`,
   `useUpdateTask(s)`); writes are `Change` objects. New entities via `src/domain/factories.ts`.
 - Tests: Vitest + Testing Library, colocated as `*.test.ts(x)`. Style: Prettier config in `.prettierrc`

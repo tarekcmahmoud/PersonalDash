@@ -1,31 +1,16 @@
-import { Label } from '@primer/react'
-import { format, parseISO } from 'date-fns'
 import type { Project } from '../../domain/types'
-import styles from './ProjectObjective.module.css'
+import { cn } from '@/lib/utils'
+import { formatTargetDate } from './format'
 
-/** "Dec 15", plus the year when it is not the current year ("Mar 1 2027"). */
-function formatTargetDate(date: string): string {
-  const d = parseISO(date)
-  const sameYear = d.getFullYear() === new Date().getFullYear()
-  return format(d, sameYear ? 'MMM d' : 'MMM d yyyy')
-}
-
-/** A project's "Done when …" outcome and its target date. */
+/** Objective as one grey line: outcome · "Deadline Dec 15" (hard) or "Target Dec 15" (soft). */
 export function ProjectObjective({ project, compact }: { project: Project; compact?: boolean }) {
-  const outcome = project.outcome.trim()
-  const rootClass = compact ? `${styles.root} ${styles.compact}` : styles.root
-  const outcomeClass = outcome ? styles.outcome : `${styles.outcome} ${styles.empty}`
-
+  const date = project.targetDate
+    ? `${project.dateKind === 'hard' ? 'Deadline' : 'Target'} ${formatTargetDate(project.targetDate)}`
+    : null
   return (
-    <div className={rootClass}>
-      <span className={outcomeClass}>{outcome || 'No outcome set'}</span>
-      {project.targetDate && (
-        <Label variant={project.dateKind === 'hard' ? 'severe' : 'secondary'}>
-          {project.dateKind === 'hard'
-            ? `Deadline · ${formatTargetDate(project.targetDate)}`
-            : `Target · ${formatTargetDate(project.targetDate)}`}
-        </Label>
-      )}
-    </div>
+    <p className={cn('text-sm text-muted-foreground', compact && 'truncate')}>
+      {project.outcome ? project.outcome : <em>No outcome set</em>}
+      {date && <span className="text-muted-foreground/70"> · {date}</span>}
+    </p>
   )
 }
