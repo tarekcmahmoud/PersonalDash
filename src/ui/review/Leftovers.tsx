@@ -1,13 +1,10 @@
-import { CheckCircleIcon, ReplyIcon, ArrowRightIcon, UndoIcon } from '@primer/octicons-react'
-import { Button, Link } from '@primer/react'
-import { Blankslate } from '@primer/react/experimental'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 import { taskHref } from '../../data/taskActions'
-import { CHRONIC_SLIP_THRESHOLD, isChronicSlipper } from '../../domain/review'
+import { isChronicSlipper } from '../../domain/review'
 import type { ISODate, Project, Task } from '../../domain/types'
 import { formatWeekRange } from '../../domain/week'
 import { TaskRow } from '../components/TaskRow'
-import styles from './Leftovers.module.css'
 import { StepIntro } from './StepIntro'
 import type { ReviewSession } from './useReviewSession'
 
@@ -28,75 +25,87 @@ export function Leftovers({
 
   if (retro.leftovers.length === 0) {
     return (
-      <div>
-        <StepIntro title="Leftovers" />
-        <Blankslate border>
-          <Blankslate.Visual>
-            <CheckCircleIcon size="medium" />
-          </Blankslate.Visual>
-          <Blankslate.Heading>Nothing left over</Blankslate.Heading>
-          <Blankslate.Description>
-            {`Everything planned for ${formatWeekRange(pastWeek)} got done. Carry on to the next step.`}
-          </Blankslate.Description>
-        </Blankslate>
-      </div>
+      <StepIntro title="Leftovers">
+        {`Nothing left over. Everything planned for ${formatWeekRange(pastWeek)} got done.`}
+      </StepIntro>
     )
   }
 
   return (
     <div>
       <StepIntro title="Leftovers">
-        {`These were planned for ${formatWeekRange(pastWeek)} but are not done. Carry each one over to ${formatWeekRange(newWeek)}, or send it back to its project.`}
+        {`Planned for ${formatWeekRange(pastWeek)} but not done. Carry each one over to ${formatWeekRange(newWeek)}, or send it back to its project.`}
       </StepIntro>
 
-      <div className={styles.bulk}>
-        <span className={styles.remaining} aria-live="polite">
-          {undecided.length === 0
-            ? 'All decided'
-            : `${undecided.length} of ${retro.leftovers.length} to decide`}
-        </span>
-        <div className={styles.bulkButtons}>
-          <Button size="small" disabled={undecided.length === 0} onClick={() => void session.carryAll()}>
-            Carry over all
-          </Button>
-          <Button size="small" disabled={undecided.length === 0} onClick={() => void session.returnAll()}>
-            Return all
-          </Button>
-        </div>
+      <div className="mb-1 flex justify-end gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground"
+          disabled={undecided.length === 0}
+          onClick={() => void session.carryAll()}
+        >
+          Carry over all
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground"
+          disabled={undecided.length === 0}
+          onClick={() => void session.returnAll()}
+        >
+          Return all
+        </Button>
       </div>
 
-      <ul className={styles.list}>
+      <ul className="divide-y">
         {retro.leftovers.map((task) => {
           const decision = decisions[task.id]
           // The slip is counted by this decision, so a task is chronic once it reaches the threshold *with* it.
           const chronic = isChronicSlipper({ ...task, slipCount: task.slipCount + 1 })
           const slips = task.slipCount + 1
           return (
-            <li key={task.id} className={styles.item} data-decided={decision ? decision.kind : undefined}>
+            <li
+              key={task.id}
+              data-decided={decision ? decision.kind : undefined}
+              className="flex flex-wrap items-center gap-x-3 py-1"
+            >
               <TaskRow
+                className="min-w-0 flex-1 basis-64"
                 task={task}
                 projectName={nameOf(task)}
+                hideDay
                 muted={!!decision}
                 note={
                   decision ? (
-                    <span className={styles.decision}>
-                      {decision.kind === 'carry'
-                        ? `Carried over to ${formatWeekRange(newWeek)}`
-                        : `Back in ${nameOf(task)}, not planned`}
-                    </span>
+                    decision.kind === 'carry' ? (
+                      'Carried over'
+                    ) : (
+                      'Back in project'
+                    )
                   ) : chronic ? (
-                    <span className={styles.chronic}>
-                      {`Slipped ${slips} times — split it, or decide if it still matters`}
-                    </span>
+                    <>
+                      <span className="text-warning">
+                        {`Slipped ${slips} times — split it, or decide if it still matters`}
+                      </span>
+                      {' · '}
+                      <Link
+                        to={taskHref(task)}
+                        aria-label={`Open task ${task.title}`}
+                        className="underline-offset-4 hover:text-foreground hover:underline"
+                      >
+                        Open task
+                      </Link>
+                    </>
                   ) : undefined
                 }
               />
-              <div className={styles.actions}>
+              <div className="flex shrink-0 items-center gap-1 pb-1 max-sm:-ml-3 sm:pb-0">
                 {decision ? (
                   <Button
-                    size="small"
-                    variant="invisible"
-                    leadingVisual={UndoIcon}
+                    variant="link"
+                    size="sm"
+                    className="text-muted-foreground"
                     aria-label={`Undo decision for ${task.title}`}
                     onClick={() => void session.undo(task)}
                   >
@@ -105,16 +114,16 @@ export function Leftovers({
                 ) : (
                   <>
                     <Button
-                      size="small"
-                      leadingVisual={ArrowRightIcon}
+                      variant="ghost"
+                      size="sm"
                       aria-label={`Carry over ${task.title}`}
                       onClick={() => void session.carry(task)}
                     >
                       Carry over
                     </Button>
                     <Button
-                      size="small"
-                      leadingVisual={ReplyIcon}
+                      variant="ghost"
+                      size="sm"
                       aria-label={`Back to project ${task.title}`}
                       onClick={() => void session.giveBack(task)}
                     >
@@ -122,24 +131,11 @@ export function Leftovers({
                     </Button>
                   </>
                 )}
-                {chronic && (
-                  <Link
-                    as={RouterLink}
-                    to={taskHref(task)}
-                    className={styles.open}
-                    aria-label={`Open task ${task.title}`}
-                  >
-                    Open task
-                  </Link>
-                )}
               </div>
             </li>
           )
         })}
       </ul>
-      <p className={styles.hint}>
-        {`Tasks that slip ${CHRONIC_SLIP_THRESHOLD} times are flagged: they are usually too big or no longer important.`}
-      </p>
     </div>
   )
 }

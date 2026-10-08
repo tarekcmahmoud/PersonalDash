@@ -72,36 +72,46 @@ const taskIn = async (snap: () => Promise<Snapshot>, title: string) =>
   (await snap()).tasks.find((t) => t.title === title)!
 
 describe('ReviewPage', () => {
-  it('shows which weeks are reviewed and planned, and the compact step line', async () => {
+  it('shows which weeks are reviewed and planned, and the step line', async () => {
     render(craft().snapshot)
     expect(await screen.findByText('Reviewing Sep 28 – Oct 4 → planning Oct 5 – 11')).toBeInTheDocument()
     expect(await screen.findByText('Step 1 of 4 · Look back')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Look back/ })).toHaveAttribute('aria-current', 'step')
+    expect(screen.getByRole('progressbar', { name: 'Review progress' })).toBeInTheDocument()
   })
 
-  it('step 1 shows last week in numbers: done per project, leftovers, untouched projects', async () => {
+  it('step 1 sums up last week in one sentence, with done tasks per project in collapsibles', async () => {
+    const user = userEvent.setup()
     render(craft().snapshot)
-    expect(await screen.findByText('tasks done')).toBeInTheDocument()
-    expect(screen.getByText('tasks done').previousElementSibling).toHaveTextContent('3')
-    expect(screen.getByText('left over').previousElementSibling).toHaveTextContent('2')
-    expect(screen.getByText('projects untouched').previousElementSibling).toHaveTextContent('2')
+    expect(
+      await screen.findByText(
+        'You finished 3 tasks across 2 projects. 2 left over. 2 projects got no progress.',
+      ),
+    ).toBeInTheDocument()
 
-    const website = screen.getByText('Client website redesign').closest('details')!
-    expect(within(website).getByText('2')).toBeInTheDocument()
-    expect(within(website).getByText('Done A')).toBeInTheDocument()
-    expect(within(website).getByText('Done B')).toBeInTheDocument()
-    const board = screen.getByText('Quarterly board report').closest('details')!
-    expect(within(board).getByText('Done C')).toBeInTheDocument()
+    // Collapsed until opened.
+    expect(screen.queryByText('Done A')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Client website redesign/ }))
+    expect(screen.getByText('Done A')).toBeInTheDocument()
+    expect(screen.getByText('Done B')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Quarterly board report/ }))
+    expect(screen.getByText('Done C')).toBeInTheDocument()
 
+    await user.click(screen.getByRole('button', { name: /No progress/ }))
     expect(screen.getByText('Hire a designer')).toBeInTheDocument()
     expect(screen.getByText('Personal: run a half marathon')).toBeInTheDocument()
-    expect(screen.getAllByText('No progress')).toHaveLength(2)
+  })
+
+  it('step 1 says so when nothing was done', async () => {
+    const crafted = craft()
+    crafted.snapshot.tasks = []
+    render(crafted.snapshot)
+    expect(await screen.findByText(/^Nothing was ticked off last week\./)).toBeInTheDocument()
   })
 
   it('moves between steps with Next/Back and the ?step= param', async () => {
     const user = userEvent.setup()
     render(craft().snapshot)
-    await screen.findByText('tasks done')
+    await screen.findByText(/You finished 3 tasks/)
     await user.click(screen.getByRole('button', { name: /^Next/ }))
     expect(await screen.findByText('Step 2 of 4 · Leftovers')).toBeInTheDocument()
     expect(screen.getByTestId('location')).toHaveTextContent('/review?step=2')
@@ -119,7 +129,7 @@ describe('ReviewPage', () => {
       await waitFor(async () => {
         expect(await taskIn(snapshot, 'Slip once')).toMatchObject({ weekStart: NEW_WEEK, slipCount: 1 })
       })
-      expect(screen.getByText('Carried over to Oct 5 – 11')).toBeInTheDocument()
+      expect(screen.getByText('Carried over')).toBeInTheDocument()
       // The decided row stays visible, with Undo instead of the decision buttons.
       expect(screen.queryByRole('button', { name: 'Carry over Slip once' })).not.toBeInTheDocument()
     })
@@ -149,7 +159,7 @@ describe('ReviewPage', () => {
           slipCount: 1,
         })
       })
-      expect(screen.getByText('Back in Client website redesign, not planned')).toBeInTheDocument()
+      expect(screen.getByText('Back in project')).toBeInTheDocument()
     })
 
     it('Undo reverts the decision', async () => {
@@ -220,11 +230,11 @@ describe('ReviewPage', () => {
       expect(screen.queryByRole('link', { name: 'Open task Slip once' })).not.toBeInTheDocument()
     })
 
-    it('shows a blankslate and an enabled Next when nothing is left over', async () => {
+    it('shows a quiet note and an enabled Next when nothing is left over', async () => {
       const crafted = craft()
       crafted.snapshot.tasks = crafted.snapshot.tasks.filter((t) => !t.title.startsWith('Slip'))
       render(crafted.snapshot, '/review?step=2')
-      expect(await screen.findByText('Nothing left over')).toBeInTheDocument()
+      expect(await screen.findByText(/^Nothing left over\./)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /^Next/ })).toBeEnabled()
     })
   })
@@ -279,7 +289,7 @@ describe('ReviewPage', () => {
       const crafted = craft()
       crafted.snapshot.weeks = [{ weekStart: NEW_WEEK, capacityOverride: 20, reviewedAt: null }]
       const { snapshot } = render(crafted.snapshot, '/review?step=4')
-      expect(await screen.findByText(/h planned of 20h/)).toBeInTheDocument()
+      expect(await screen.findByText(/of 20h planned/)).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Finish review' }))
 

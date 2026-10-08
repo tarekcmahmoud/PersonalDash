@@ -1,86 +1,70 @@
-import { CounterLabel, Details, Label } from '@primer/react'
+import { ChevronRight } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import type { WeekRetro } from '../../domain/review'
 import type { ID, Project } from '../../domain/types'
-import { formatWeekRange } from '../../domain/week'
-import { Section } from '../plan/Section'
-import styles from './LookBack.module.css'
 import { StepIntro } from './StepIntro'
 
 const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
 
-/** Step 1: a minimal look at last week. Numbers and lists only. */
+/** A closed-by-default list: chevron, name, grey count. */
+function Group({ name, count, children }: { name: string; count: number; children: ReactNode }) {
+  return (
+    <Collapsible className="group/collapsible">
+      <CollapsibleTrigger className="flex min-h-9 w-full cursor-pointer items-center gap-2 text-left text-sm">
+        <ChevronRight
+          aria-hidden
+          className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/collapsible:rotate-90"
+        />
+        <span className="min-w-0 truncate">{name}</span>
+        <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <ul className="mb-2 ml-6 flex flex-col gap-1 text-sm text-muted-foreground">{children}</ul>
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
+
+/** Step 1: how last week went, in one grey sentence, with the done tasks tucked into collapsibles. */
 export function LookBack({ retro, projects }: { retro: WeekRetro; projects: Project[] }) {
   const nameOf = new Map<ID | null, string>(projects.map((p) => [p.id, p.name]))
   const { totalDone, doneByProject, leftovers, untouched } = retro
 
+  const sentence = [
+    totalDone === 0
+      ? 'Nothing was ticked off last week.'
+      : `You finished ${plural(totalDone, 'task', 'tasks')} across ${plural(doneByProject.length, 'project', 'projects')}.`,
+    leftovers.length > 0 ? `${leftovers.length} left over.` : null,
+    untouched.length > 0 ? `${plural(untouched.length, 'project', 'projects')} got no progress.` : null,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
-    <div className={styles.root}>
-      <StepIntro title="Look back">{`Here is how ${formatWeekRange(retro.weekStart)} went.`}</StepIntro>
+    <div>
+      <StepIntro title="Look back">{sentence}</StepIntro>
 
-      <div className={styles.tiles}>
-        <div className={styles.tile}>
-          <span className={styles.big}>{totalDone}</span>
-          <span className={styles.caption}>{totalDone === 1 ? 'task done' : 'tasks done'}</span>
-        </div>
-        <div className={styles.tile}>
-          <span className={styles.big}>{leftovers.length}</span>
-          <span className={styles.caption}>left over</span>
-        </div>
-        <div className={styles.tile}>
-          <span className={styles.big}>{untouched.length}</span>
-          <span className={styles.caption}>
-            {untouched.length === 1 ? 'project untouched' : 'projects untouched'}
-          </span>
-        </div>
-      </div>
-
-      <Section title="Done" count={totalDone}>
-        {totalDone === 0 ? (
-          <p className={styles.note}>
-            Nothing was ticked off last week. A fresh start is fine, so let us plan a good one.
-          </p>
-        ) : (
-          <>
-            <p className={styles.note}>Nice work. Here is where it went.</p>
-            {doneByProject.map((group) => (
-              <Details key={group.projectId ?? 'inbox'} className={styles.group}>
-                <Details.Summary className={styles.summary}>
-                  <span className={styles.name}>{nameOf.get(group.projectId) ?? 'Inbox'}</span>
-                  <CounterLabel>{group.tasks.length}</CounterLabel>
-                </Details.Summary>
-                <ul className={styles.titles}>
-                  {group.tasks.map((t) => (
-                    <li key={t.id}>{t.title}</li>
-                  ))}
-                </ul>
-              </Details>
+      <div className="divide-y">
+        {doneByProject.map((group) => (
+          <Group
+            key={group.projectId ?? 'inbox'}
+            name={nameOf.get(group.projectId) ?? 'Inbox'}
+            count={group.tasks.length}
+          >
+            {group.tasks.map((t) => (
+              <li key={t.id}>{t.title}</li>
             ))}
-          </>
-        )}
-      </Section>
-
-      <Section title="Left over" count={leftovers.length}>
-        <p className={styles.note}>
-          {leftovers.length === 0
-            ? 'Everything you planned got done.'
-            : `${plural(leftovers.length, 'planned task is', 'planned tasks are')} still open. You will decide what happens to ${leftovers.length === 1 ? 'it' : 'them'} next.`}
-        </p>
-      </Section>
-
-      <Section title="Untouched projects" count={untouched.length}>
-        {untouched.length === 0 ? (
-          <p className={styles.note}>Every active project moved forward. </p>
-        ) : (
-          <ul className={styles.untouched}>
+          </Group>
+        ))}
+        {untouched.length > 0 && (
+          <Group name="No progress" count={untouched.length}>
             {untouched.map((p) => (
-              <li key={p.id} className={styles.untouchedRow}>
-                <span className={styles.name}>{p.name}</span>
-                <Label variant="attention">No progress</Label>
-              </li>
+              <li key={p.id}>{p.name}</li>
             ))}
-          </ul>
+          </Group>
         )}
-      </Section>
+      </div>
     </div>
   )
 }

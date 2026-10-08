@@ -1,10 +1,9 @@
-import { ChevronLeftIcon, ChevronRightIcon } from '@primer/octicons-react'
-import { Button, IconButton } from '@primer/react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import type { ISODate } from '../../domain/types'
 import { addWeeksISO, formatWeekRange } from '../../domain/week'
-import styles from './WeekSwitcher.module.css'
 
-/** ‹ Oct 5 – 11 › with a "This week" reset. Controlled: the caller owns the week state. */
+/** ‹ Oct 5 – 11 › with a grey "This week" link when another week is shown. Controlled by the caller. */
 export function WeekSwitcher({
   weekStart,
   isCurrentWeek,
@@ -18,24 +17,33 @@ export function WeekSwitcher({
   onReset: () => void
 }) {
   return (
-    <div className={styles.root} role="group" aria-label="Week">
-      <IconButton
-        icon={ChevronLeftIcon}
+    <div className="flex items-center gap-1" role="group" aria-label="Week">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="text-muted-foreground"
         aria-label="Previous week"
-        variant="invisible"
         onClick={() => onChange(addWeeksISO(weekStart, -1))}
-      />
-      <div className={styles.label} aria-live="polite">
-        <strong>{formatWeekRange(weekStart)}</strong>
-        {isCurrentWeek && <span className={styles.current}>This week</span>}
-      </div>
-      <IconButton
-        icon={ChevronRightIcon}
+      >
+        <ChevronLeft />
+      </Button>
+      <span className="min-w-24 text-center text-sm font-medium tabular-nums" aria-live="polite">
+        {formatWeekRange(weekStart)}
+      </span>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="text-muted-foreground"
         aria-label="Next week"
-        variant="invisible"
         onClick={() => onChange(addWeeksISO(weekStart, 1))}
-      />
-      {!isCurrentWeek && <Button onClick={onReset}>This week</Button>}
+      >
+        <ChevronRight />
+      </Button>
+      {!isCurrentWeek && (
+        <Button variant="link" size="sm" className="text-muted-foreground" onClick={onReset}>
+          This week
+        </Button>
+      )}
     </div>
   )
 }

@@ -1,8 +1,10 @@
-import { ArrowLeftIcon, ArrowRightIcon, CheckIcon } from '@primer/octicons-react'
-import { Button, Flash, Spinner } from '@primer/react'
+import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useApply, useSnapshot } from '../../data/hooks'
 import { nowISO } from '../../domain/ids'
 import { addWeeksISO, formatWeekRange } from '../../domain/week'
@@ -16,7 +18,6 @@ import { REVIEW_STEPS } from '../review/steps'
 import { StepIntro } from '../review/StepIntro'
 import { useReviewSession } from '../review/useReviewSession'
 import { useWeekParam } from '../plan/useWeekParam'
-import styles from './ReviewPage.module.css'
 
 const LAST_STEP = REVIEW_STEPS.length
 
@@ -64,19 +65,30 @@ export function ReviewPage() {
     </Page>
   )
 
-  if (isError) return header(<Flash variant="danger">{`Could not load your data: ${String(error)}`}</Flash>)
-  if (!data || !session) return header(<Spinner aria-label="Loading" />)
+  if (isError)
+    return header(
+      <Alert variant="destructive">
+        <AlertDescription>{`Could not load your data: ${String(error)}`}</AlertDescription>
+      </Alert>,
+    )
+  if (!data || !session)
+    return header(
+      <div role="status" aria-label="Loading" className="flex flex-col gap-3">
+        <Skeleton className="h-4 w-48" />
+        <Skeleton className="h-32 w-full" />
+      </div>,
+    )
 
   const week = data.weeks.find((w) => w.weekStart === newWeek)
 
   if (week?.reviewedAt && !rerun) {
     return header(
-      <Flash variant="success" className={styles.reviewed}>
-        <p className={styles.reviewedText}>
-          {`You already reviewed this week on ${format(parseISO(week.reviewedAt), 'EEEE, MMM d')}.`}
-        </p>
-        <Button onClick={() => setRerun(true)}>Review again</Button>
-      </Flash>,
+      <p className="text-sm text-muted-foreground">
+        {`You already reviewed this week on ${format(parseISO(week.reviewedAt), 'EEEE, MMM d')}.`}{' '}
+        <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setRerun(true)}>
+          Review again
+        </Button>
+      </p>,
     )
   }
 
@@ -98,7 +110,7 @@ export function ReviewPage() {
 
   return header(
     <>
-      <Stepper current={step} onSelect={goTo} />
+      <Stepper current={step} />
 
       {step === 1 && <LookBack retro={session.retro} projects={data.projects} />}
       {step === 2 && (
@@ -112,36 +124,29 @@ export function ReviewPage() {
         </div>
       )}
 
-      <div className={styles.footer}>
+      <div className="mt-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div>
           {step > 1 && (
-            <Button leadingVisual={ArrowLeftIcon} onClick={() => goTo(step - 1)}>
+            <Button variant="ghost" onClick={() => goTo(step - 1)}>
+              <ArrowLeft />
               Back
             </Button>
           )}
         </div>
-        <div className={styles.forward}>
+        <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
           {nextDisabled && (
-            <span className={styles.hint}>
+            <span className="text-sm text-muted-foreground">
               {`Decide on ${unresolved} more ${unresolved === 1 ? 'task' : 'tasks'} to continue`}
             </span>
           )}
           {step < LAST_STEP ? (
-            <Button
-              variant="primary"
-              trailingVisual={ArrowRightIcon}
-              disabled={nextDisabled}
-              onClick={() => goTo(step + 1)}
-            >
+            <Button disabled={nextDisabled} onClick={() => goTo(step + 1)}>
               Next
+              <ArrowRight />
             </Button>
           ) : (
-            <Button
-              variant="primary"
-              leadingVisual={CheckIcon}
-              disabled={finishing}
-              onClick={() => void finish()}
-            >
+            <Button disabled={finishing} onClick={() => void finish()}>
+              <Check />
               Finish review
             </Button>
           )}
