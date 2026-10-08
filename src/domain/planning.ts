@@ -1,6 +1,9 @@
 import type { PlanContext } from './context'
+import { projectHealth } from './health'
 import type { HealthFlag } from './health'
+import { orderedProjectTasks, unfinishedBlockers } from './order'
 import type { ISODate, Project, Task } from './types'
+import { daysBetween } from './week'
 
 export interface PickCandidate {
   task: Task
@@ -28,15 +31,12 @@ export const PICK_LIST_DEPTH = 3
 
 /** XL tasks and done tasks can't be scheduled. */
 export function isSchedulable(task: Task): boolean {
-  void task
-  throw new Error('not implemented')
+  return task.size !== 'XL' && task.status !== 'done'
 }
 
 /** Tasks planned in the given week (weekStart matches), any status. */
 export function tasksInWeek(tasks: Task[], weekStart: ISODate): Task[] {
-  void tasks
-  void weekStart
-  throw new Error('not implemented')
+  return tasks.filter((t) => t.weekStart === weekStart)
 }
 
 /**
@@ -46,9 +46,50 @@ export function tasksInWeek(tasks: Task[], weekStart: ISODate): Task[] {
  *   2. then projects with a hard targetDate within settings.deadlineWarningDays (or overdue), soonest first,
  *   3. then by rank ascending.
  * `depth` overrides PICK_LIST_DEPTH (used when the user expands a project).
+ *
+ * A candidate that is already planned is reported as planned, selectable, reason null, whatever its
+ * size or blockers (blockedBy is still reported). Otherwise XL takes precedence over 'blocked'.
  */
 export function buildPickList(ctx: PlanContext, depth?: Record<string, number>): PickGroup[] {
-  void ctx
-  void depth
-  throw new Error('not implemented')
+  const warn = ctx.settings.deadlineWarningDays
+  const urgentDate = (p: Project): string | null =>
+    p.dateKind === 'hard' && p.targetDate !== null && daysBetween(ctx.today, p.targetDate) <= warn
+      ? p.targetDate
+      : null
+
+  const groups: PickGroup[] = ctx.projects
+    .filter((p) => p.status === 'active')
+    .map((project) => {
+      const limit = Math.max(0, depth?.[project.id] ?? PICK_LIST_DEPTH)
+      const todos = orderedProjectTasks(project.id, ctx.milestones, ctx.tasks).filter(
+        (t) => t.status === 'todo',
+      )
+      const candidates = todos.slice(0, limit).map((task): PickCandidate => {
+        const planned = task.weekStart === ctx.weekStart
+        const blockedBy = unfinishedBlockers(task, ctx).filter((b) => b.weekStart !== ctx.weekStart)
+        if (planned) return { task, planned, blockedBy, selectable: true, reason: null }
+        if (task.size === 'XL') return { task, planned, blockedBy, selectable: false, reason: 'xl' }
+        if (blockedBy.length > 0) return { task, planned, blockedBy, selectable: false, reason: 'blocked' }
+        return { task, planned, blockedBy, selectable: true, reason: null }
+      })
+      return {
+        project,
+        flags: projectHealth(project, ctx),
+        candidates,
+        hasMore: todos.length > candidates.length,
+        plannedCount: tasksInWeek(ctx.tasks, ctx.weekStart).filter((t) => t.projectId === project.id).length,
+      }
+    })
+
+  // Array.prototype.sort is stable, so groups that compare equal keep their input order.
+  return groups.sort((a, b) => {
+    const belowA = a.flags.some((f) => f.kind === 'below_min')
+    const belowB = b.flags.some((f) => f.kind === 'below_min')
+    if (belowA !== belowB) return belowA ? -1 : 1
+    const dateA = urgentDate(a.project)
+    const dateB = urgentDate(b.project)
+    if ((dateA !== null) !== (dateB !== null)) return dateA !== null ? -1 : 1
+    if (dateA !== null && dateB !== null && dateA !== dateB) return dateA < dateB ? -1 : 1
+    return a.project.rank - b.project.rank
+  })
 }

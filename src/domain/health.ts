@@ -1,5 +1,6 @@
 import type { PlanContext } from './context'
 import type { ISODate, Project } from './types'
+import { daysBetween } from './week'
 
 export type HealthFlag =
   /** Active, non-system project with no task planned in the week. */
@@ -13,21 +14,49 @@ export type HealthFlag =
   /** Active project with no remaining todo/waiting tasks — needs breakdown or closing. */
   | { kind: 'no_next_step' }
 
-/** Health flags for one project in ctx.weekStart. Only 'active' projects get flags; [] otherwise. */
+/**
+ * Health flags for one project in ctx.weekStart. Only 'active' projects get flags; [] otherwise.
+ * Flag order: neglected, below_min, overdue | deadline_soon, no_next_step.
+ */
 export function projectHealth(project: Project, ctx: PlanContext): HealthFlag[] {
-  void project
-  void ctx
-  throw new Error('not implemented')
+  if (project.status !== 'active') return []
+  const flags: HealthFlag[] = []
+  const mine = ctx.tasks.filter((t) => t.projectId === project.id)
+
+  if (!project.isSystem) {
+    const planned = mine.filter((t) => t.weekStart === ctx.weekStart).length
+    if (planned === 0) flags.push({ kind: 'neglected' })
+    if (project.weeklyMin !== null && planned < project.weeklyMin) {
+      flags.push({ kind: 'below_min', planned, min: project.weeklyMin })
+    }
+  }
+
+  if (project.targetDate !== null) {
+    const daysLeft = daysBetween(ctx.today, project.targetDate)
+    if (daysLeft < 0) {
+      flags.push({
+        kind: 'overdue',
+        date: project.targetDate,
+        dateKind: project.dateKind,
+        daysOver: -daysLeft,
+      })
+    } else if (daysLeft <= ctx.settings.deadlineWarningDays) {
+      flags.push({ kind: 'deadline_soon', date: project.targetDate, dateKind: project.dateKind, daysLeft })
+    }
+  }
+
+  if (!project.isSystem && !mine.some((t) => t.status === 'todo' || t.status === 'waiting')) {
+    flags.push({ kind: 'no_next_step' })
+  }
+  return flags
 }
 
 /** Number of active non-system projects. */
 export function activeProjectCount(projects: Project[]): number {
-  void projects
-  throw new Error('not implemented')
+  return projects.filter((p) => p.status === 'active' && !p.isSystem).length
 }
 
 /** True when activeProjectCount > settings.activeCap. */
 export function isOverActiveCap(ctx: Pick<PlanContext, 'projects' | 'settings'>): boolean {
-  void ctx
-  throw new Error('not implemented')
+  return activeProjectCount(ctx.projects) > ctx.settings.activeCap
 }
