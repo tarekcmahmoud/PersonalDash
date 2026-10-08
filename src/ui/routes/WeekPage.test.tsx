@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { format, parseISO } from 'date-fns'
 import { describe, expect, it } from 'vitest'
+import { seedSnapshot } from '../../data/seed'
 import { addDaysISO, todayISO, weekStartOf } from '../../domain/week'
 import { renderApp } from '../plan/testUtils'
 import { WeekPage } from './WeekPage'
@@ -16,6 +17,21 @@ describe('WeekPage', () => {
     expect(today.getByText('Design homepage')).toBeInTheDocument()
     const anyDay = within(await screen.findByRole('region', { name: 'This week, any day' }))
     expect(anyDay.getByText('Draft sitemap')).toBeInTheDocument()
+  })
+
+  it('shows hours and free time per day', async () => {
+    renderApp(<WeekPage />)
+    const today = await dayRegion(todayISO())
+    expect(today.getByText(/\d+(\.\d)?h · \d+(\.\d)?h (free|over)/)).toBeInTheDocument()
+  })
+
+  it('shows follow-ups on their date as a row', async () => {
+    const snapshot = seedSnapshot(todayISO())
+    const waiting = snapshot.tasks.find((t) => t.status === 'waiting')!
+    waiting.followUpDate = todayISO()
+    renderApp(<WeekPage />, { snapshot })
+    const today = await dayRegion(todayISO())
+    expect(today.getByText('Follow up: Finance team re Collect final cost figures')).toBeInTheDocument()
   })
 
   it('moves a task to another day via the Move to… menu', async () => {
