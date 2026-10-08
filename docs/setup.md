@@ -58,14 +58,10 @@ Vite reads `.env.local` only when it starts. After you change it, stop and resta
 
 ## 2. Google Calendar (optional)
 
-> **Status: not available in this version yet.** Calendar connection is still being built. Settings currently
-> shows "Coming soon", and no calendar events are read. You can prepare the Google side now so it is ready, or
-> skip this section until the feature ships.
+The calendar integration:
 
-When it is available, the calendar integration will:
-
-- Read events from your primary Google calendar, to show your meetings and work out how much time you really have.
-- Write all-day events only into its own calendar named "PersonalDash", and only for tasks you pin to a day. It
+- Reads events from your primary Google calendar, to show your meetings and work out how much time you really have.
+- Writes all-day events only into its own calendar named "PersonalDash", and only for tasks you pin to a day. It
   does not change your other calendars.
 
 Set up the Google side:

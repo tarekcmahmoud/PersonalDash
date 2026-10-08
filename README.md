@@ -8,9 +8,6 @@ A weekly planner for people running many projects at once. PersonalDash helps yo
 - keep every project moving,
 - track who you're waiting on.
 
-> **Work in progress.** The Today, Week and Plan screens work. Projects, Inbox, Templates, Import, Weekly review
-> and Settings are still placeholders, and Google Calendar is not connected yet.
-
 ## Features
 
 - **Projects** with an objective ("done when…") and a hard or soft deadline.

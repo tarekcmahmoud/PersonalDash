@@ -195,6 +195,9 @@ export function seedSnapshot(today: string): Snapshot {
     title: 'Agree budget and contract type',
     size: 'S',
     position: 0,
+    // Left over from last week (and the week before): shows up in the weekly review.
+    weekStart: lastWeek,
+    slipCount: 1,
   })
   const publishPost = makeTask({
     projectId: designer.id,
@@ -240,6 +243,7 @@ export function seedSnapshot(today: string): Snapshot {
     title: 'Pick a training plan',
     size: 'S',
     position: 0,
+    weekStart: lastWeek, // left over from last week
   })
   const shoes = makeTask({
     projectId: marathon.id,

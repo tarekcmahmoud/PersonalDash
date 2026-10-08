@@ -29,3 +29,15 @@
     gap: var(--base-size-24);
   }
 }
+
+.flash {
+  margin-bottom: var(--base-size-16);
+}
+
+.nudge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--base-size-8);
+}
