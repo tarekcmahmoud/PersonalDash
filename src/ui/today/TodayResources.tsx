@@ -1,4 +1,5 @@
 import type { PlanContext } from '../../domain/context'
+import { orderedMilestones } from '../../domain/order'
 import { resourcesForTasks } from '../../domain/resources'
 import { MasonryGrid } from '../components/MasonryGrid'
 import { ResourceCard } from '../project/ResourceCard'
@@ -11,7 +12,7 @@ import { resourceTasks } from './resourceTasks'
  */
 export function TodayResources({ ctx }: { ctx: PlanContext }) {
   const { scope, tasks } = resourceTasks(ctx)
-  const relevant = resourcesForTasks(tasks, ctx.resources)
+  const relevant = resourcesForTasks(tasks, ctx.resources, ctx.milestones)
   const projectNames = new Map(ctx.projects.map((p) => [p.id, p.name]))
 
   return (
@@ -41,7 +42,7 @@ export function TodayResources({ ctx }: { ctx: PlanContext }) {
               <ResourceCard
                 key={resource.id}
                 resource={resource}
-                workstreams={ctx.milestones.filter((m) => m.projectId === resource.projectId)}
+                workstreams={orderedMilestones(resource.projectId, ctx.milestones)}
                 note={`${projectNames.get(resource.projectId) ?? ''} · For ${forTasks}`}
               />
             )

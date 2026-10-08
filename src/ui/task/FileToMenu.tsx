@@ -11,6 +11,7 @@ import {
 import { useApply, useSnapshot } from '../../data/hooks'
 import type { ID, Task } from '../../domain/types'
 import { endPosition } from '../project/ordering'
+import { orderedMilestones, streamLabel } from '../../domain/order'
 
 /**
  * "File to…" menu: move an Inbox task into an active project (optionally into one of its workstreams).
@@ -46,16 +47,14 @@ export function FileToMenu({ task }: { task: Task }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="max-h-80 w-64">
         {projects.map((p, i) => {
-          const milestones = data.milestones
-            .filter((m) => m.projectId === p.id)
-            .sort((a, b) => a.position - b.position)
+          const milestones = orderedMilestones(p.id, data.milestones)
           return (
             <Fragment key={p.id}>
               {i > 0 && <DropdownMenuSeparator />}
               <DropdownMenuItem onSelect={() => fileTo(p.id, null)}>{p.name}</DropdownMenuItem>
               {milestones.map((m) => (
                 <DropdownMenuItem key={m.id} className="pl-5" onSelect={() => fileTo(p.id, m.id)}>
-                  <span className="text-muted-foreground">{`${p.name} ›`}</span> {m.name}
+                  <span className="text-muted-foreground">{`${p.name} ›`}</span> {streamLabel(m, milestones)}
                 </DropdownMenuItem>
               ))}
             </Fragment>

@@ -1,4 +1,4 @@
-import type { OutlineDoc, OutlineTask } from '../../domain/outline'
+import type { OutlineDoc, OutlineMilestone, OutlineTask } from '../../domain/outline'
 import type { DateKind, ISODate } from '../../domain/types'
 import { SizeLabel } from '../components/SizeLabel'
 import { formatDate, outlineStats, summaryText } from './outlineStats'
@@ -69,15 +69,8 @@ export function OutlinePreview({ doc }: { doc: OutlineDoc | null }) {
 
       {doc.milestones.map((m, i) => (
         <section key={i}>
-          <h4 className="mb-0.5 flex flex-wrap items-baseline gap-x-2 text-sm font-medium">
-            <span>{m.name}</span>
-            {m.targetDate && (
-              <span className="text-xs font-normal text-muted-foreground">
-                {targetText(m.targetDate, m.dateKind)}
-              </span>
-            )}
-          </h4>
-          {m.tasks.length === 0 ? (
+          <StreamHeading stream={m} />
+          {m.tasks.length === 0 && !m.substreams ? (
             <p className="text-xs text-muted-foreground">No tasks yet</p>
           ) : (
             <ul className="divide-y divide-border/60">
@@ -86,8 +79,36 @@ export function OutlinePreview({ doc }: { doc: OutlineDoc | null }) {
               ))}
             </ul>
           )}
+          {m.substreams?.map((sub, k) => (
+            <section key={k} className="mt-2 ml-4 border-l pl-3">
+              <StreamHeading stream={sub} />
+              {sub.tasks.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No tasks yet</p>
+              ) : (
+                <ul className="divide-y divide-border/60">
+                  {sub.tasks.map((t, j) => (
+                    <TaskItem key={j} task={t} />
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))}
         </section>
       ))}
     </div>
+  )
+}
+
+/** A workstream or substream name with its grey target date. */
+function StreamHeading({ stream }: { stream: OutlineMilestone }) {
+  return (
+    <h4 className="mb-0.5 flex flex-wrap items-baseline gap-x-2 text-sm font-medium">
+      <span>{stream.name}</span>
+      {stream.targetDate && (
+        <span className="text-xs font-normal text-muted-foreground">
+          {targetText(stream.targetDate, stream.dateKind)}
+        </span>
+      )}
+    </h4>
   )
 }

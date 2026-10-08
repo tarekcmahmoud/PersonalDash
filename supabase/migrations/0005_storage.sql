@@ -1,6 +1,6 @@
--- PersonalDash database setup — PART 5 of 5: image storage for resource cards
+-- PersonalDash database setup — PART 5 of 6: image storage for resource cards
 --
--- Run the five parts in order (0001 to 0005) in Supabase > SQL Editor > New query: paste ONE whole part,
+-- Run the six parts in order (0001 to 0006) in Supabase > SQL Editor > New query: paste ONE whole part,
 -- click Run with nothing selected, then do the next part. Each part is short so it can't get cut off, and each
 -- is safe to run again (anything that already exists is skipped).
 --

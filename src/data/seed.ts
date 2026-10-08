@@ -287,11 +287,47 @@ export function seedSnapshot(today: string): Snapshot {
     size: 'M',
     position: 0,
   })
+  // A workstream with two substreams (cards inside its card).
+  const kitchenDesign = makeMilestone({ projectId: kitchen.id, name: 'Design and ordering', position: 0 })
+  const cabinets = makeMilestone({
+    projectId: kitchen.id,
+    parentId: kitchenDesign.id,
+    name: 'Cabinets',
+    position: 0,
+  })
+  const appliances = makeMilestone({
+    projectId: kitchen.id,
+    parentId: kitchenDesign.id,
+    name: 'Appliances',
+    position: 1,
+  })
+  const measure = makeTask({
+    projectId: kitchen.id,
+    milestoneId: kitchenDesign.id,
+    title: 'Measure the room and draw a floor plan',
+    size: 'S',
+    position: 0,
+  })
   const colours = makeTask({
     projectId: kitchen.id,
+    milestoneId: cabinets.id,
     title: 'Choose cabinet and worktop colours',
     size: 'S',
+    position: 0,
+  })
+  const orderCabinets = makeTask({
+    projectId: kitchen.id,
+    milestoneId: cabinets.id,
+    title: 'Order cabinets and worktop',
+    size: 'M',
     position: 1,
+  })
+  const ovenAndHob = makeTask({
+    projectId: kitchen.id,
+    milestoneId: appliances.id,
+    title: 'Choose oven, hob and extractor',
+    size: 'M',
+    position: 0,
   })
   const electrician = makeTask({
     projectId: kitchen.id,
@@ -379,7 +415,10 @@ export function seedSnapshot(today: string): Snapshot {
     bookRace,
     build15,
     quotes,
+    measure,
     colours,
+    orderCabinets,
+    ovenAndHob,
     electrician,
     dentist,
     insurance,
@@ -401,7 +440,7 @@ export function seedSnapshot(today: string): Snapshot {
 
   return {
     projects: [system, website, board, designer, marathon, kitchen],
-    milestones: [discovery, design, build],
+    milestones: [discovery, design, build, kitchenDesign, cabinets, appliances],
     tasks,
     dependencies,
     checklist: sitemapChecklist,

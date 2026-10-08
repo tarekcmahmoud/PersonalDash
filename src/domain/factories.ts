@@ -19,7 +19,7 @@ export function makeProject(p: Partial<Project> & Pick<Project, 'name'>): Projec
 }
 
 export function makeMilestone(m: Partial<Milestone> & Pick<Milestone, 'projectId' | 'name'>): Milestone {
-  return { id: newId(), position: 0, targetDate: null, dateKind: null, ...m }
+  return { id: newId(), parentId: null, position: 0, targetDate: null, dateKind: null, ...m }
 }
 
 export function makeTask(t: Partial<Task> & Pick<Task, 'title'>): Task {

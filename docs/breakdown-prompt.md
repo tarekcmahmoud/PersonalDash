@@ -51,6 +51,9 @@ Rules of the format:
   (`target: YYYY-MM-DD hard` or `soft`). Omit `min-per-week`.
 - `## Name` starts a workstream: a parallel track of work. Optionally `target: YYYY-MM-DD hard|soft` directly
   under it: when that stream should be done. Tasks above the first `##` belong to no workstream.
+- `### Name` under a workstream starts a substream: a smaller parallel track inside it (for example `### Website`
+  under `## Branding & Communication`). Use substreams only when a workstream clearly splits into separate tracks.
+  A workstream's own tasks come before its first `###`.
 - A task is a line starting with `- ` at column 0: `- Title [S|M|L|XL] #key after:#k1,#k2`.
   The size tag is required. `#key` and `after:` are optional (see below).
 - Lines under a task are indented by 2 spaces: `done: ...`, `note: ...` (one per line), and checklist items

@@ -19,13 +19,16 @@ interface Props {
   projectId: ID
   /** Edit this workstream; omit to add one. */
   milestone?: Milestone
-  /** Position for a new workstream. */
+  /** Position for a new workstream (or substream, among its siblings). */
   nextPosition?: number
+  /** Add a substream of this workstream (ignored when editing). */
+  parentId?: ID | null
   onClose: () => void
 }
 
-/** Add or edit (rename, target date) a workstream. */
-export function MilestoneDialog({ projectId, milestone, nextPosition = 0, onClose }: Props) {
+/** Add or edit (rename, target date) a workstream or a substream. */
+export function MilestoneDialog({ projectId, milestone, nextPosition = 0, parentId = null, onClose }: Props) {
+  const kind = (milestone ? milestone.parentId : parentId) ? 'substream' : 'workstream'
   const apply = useApply()
   const uid = useId()
   const [name, setName] = useState(milestone?.name ?? '')
@@ -44,18 +47,18 @@ export function MilestoneDialog({ projectId, milestone, nextPosition = 0, onClos
     }
     const saved = milestone
       ? { ...milestone, ...fields }
-      : makeMilestone({ projectId, position: nextPosition, ...fields })
+      : makeMilestone({ projectId, parentId, position: nextPosition, ...fields })
     await apply({ kind: 'saveMilestones', milestones: [saved] })
     onClose()
   }
 
-  const nameError = submitted && !name.trim() ? 'Give the workstream a name.' : null
+  const nameError = submitted && !name.trim() ? `Give the ${kind} a name.` : null
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{milestone ? 'Edit workstream' : 'Add workstream'}</DialogTitle>
+          <DialogTitle>{milestone ? `Edit ${kind}` : `Add ${kind}`}</DialogTitle>
           <DialogDescription className="sr-only">Name and optional target date.</DialogDescription>
         </DialogHeader>
         <form className="grid gap-4" onSubmit={(e) => void save(e)} noValidate>
@@ -99,7 +102,7 @@ export function MilestoneDialog({ projectId, milestone, nextPosition = 0, onClos
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit">{milestone ? 'Save' : 'Add workstream'}</Button>
+            <Button type="submit">{milestone ? 'Save' : `Add ${kind}`}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

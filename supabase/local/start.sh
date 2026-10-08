@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Starts a throwaway local "Supabase": Postgres 16 with stubbed auth/storage schemas and the five migrations
+# Starts a throwaway local "Supabase": Postgres 16 with stubbed auth/storage schemas and the migrations
 # (each applied twice, to prove they are re-runnable), PostgREST, and a tiny auth gateway. See README.md.
 #
 # Usage: supabase/local/start.sh <work-dir>

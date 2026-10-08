@@ -1,4 +1,5 @@
 import { makeChecklistItem, makeMilestone, makeProject, makeTask } from './factories'
+import { streamTree } from './order'
 import type { DateKind, EntityBundle, ISODate, Milestone, Project, Snapshot, Task, TaskSize } from './types'
 
 // Parser/serializer for the outline format specified in docs/outline-format.md.
@@ -31,7 +32,10 @@ export interface OutlineMilestone {
   name: string
   targetDate: ISODate | null
   dateKind: DateKind | null
+  /** The workstream's own tasks (before its first `###`), or the substream's tasks. */
   tasks: OutlineTask[]
+  /** `### Name` sections under a workstream (one level only; absent when there are none). */
+  substreams?: OutlineMilestone[]
   line?: number
 }
 
@@ -70,6 +74,7 @@ const ANYTIME_RE = /^anytime$/i
 const KEY_VALUE_RE = /^([A-Za-z][A-Za-z0-9-]*)\s*:\s*(.*)$/
 const HEADER_RE = /^#(?!#)(?:\s+(.*))?$/
 const MILESTONE_RE = /^##(?!#)(?:\s+(.*))?$/
+const SUBSTREAM_RE = /^###(?!#)(?:\s+(.*))?$/
 const TASK_RE = /^-(?:\s+(.*))?$/
 const CHECKLIST_RE = /^-\s+\[([ xX])\]\s*(.*)$/
 const TARGET_RE = /^(\d{4})-(\d{2})-(\d{2})(?:\s+(\S+))?(?:\s+(.*))?$/
@@ -178,7 +183,9 @@ export function parseOutline(text: string): ParseResult {
   let seenHeader = false
   let reportedBeforeHeader = false
   let phase: Phase = 'header'
+  /** Where tasks go: the current workstream, or the current substream inside it. */
   let currentMilestone: OutlineMilestone | null = null
+  let currentWorkstream: OutlineMilestone | null = null
   let currentTask: OutlineTask | null = null
   let noteLines: string[] = []
   let sawDone = false
@@ -230,7 +237,25 @@ export function parseOutline(text: string): ParseResult {
         const name = (m[1] ?? '').trim()
         if (name === '') err(lineNo, 'The milestone name is empty')
         currentMilestone = { name, targetDate: null, dateKind: null, tasks: [], line: lineNo }
+        currentWorkstream = currentMilestone
         doc.milestones.push(currentMilestone)
+        phase = 'milestone-head'
+        seenMilestoneTarget = false
+        return
+      }
+
+      // --- Substream heading --------------------------------------------------------------------------
+      const sub = SUBSTREAM_RE.exec(trimmed)
+      if (sub) {
+        finishTask()
+        const name = (sub[1] ?? '').trim()
+        if (!currentWorkstream) {
+          err(lineNo, 'A "### Substream" must come under a "## Workstream"')
+          return
+        }
+        if (name === '') err(lineNo, 'The substream name is empty')
+        currentMilestone = { name, targetDate: null, dateKind: null, tasks: [], line: lineNo }
+        ;(currentWorkstream.substreams ??= []).push(currentMilestone)
         phase = 'milestone-head'
         seenMilestoneTarget = false
         return
@@ -302,7 +327,7 @@ export function parseOutline(text: string): ParseResult {
         if (phase === 'body' || (phase === 'milestone-head' && key !== 'target')) {
           const where =
             key === 'target'
-              ? 'directly under the "# Name" or "## Milestone" heading'
+              ? 'directly under the "# Name", "## Workstream" or "### Substream" heading'
               : 'directly under the "# Name" heading'
           err(lineNo, `"${key}:" is only valid ${where}`)
           return
@@ -361,8 +386,12 @@ export function parseOutline(text: string): ParseResult {
   return { doc: hasError ? null : doc, issues }
 }
 
-function allTasks(doc: OutlineDoc): OutlineTask[] {
-  return [...doc.tasks, ...doc.milestones.flatMap((m) => m.tasks)]
+/** Every task: workstream-less first, then each workstream's own tasks followed by its substreams' tasks. */
+export function allTasks(doc: OutlineDoc): OutlineTask[] {
+  return [
+    ...doc.tasks,
+    ...doc.milestones.flatMap((m) => [...m.tasks, ...(m.substreams ?? []).flatMap((s) => s.tasks)]),
+  ]
 }
 
 /** Duplicate keys, unknown `after:` references and dependency cycles. */
@@ -442,6 +471,12 @@ export function serializeOutline(doc: OutlineDoc): string {
     out.push(`## ${oneLine(m.name)}`)
     if (m.targetDate) out.push(`target: ${m.targetDate} ${m.dateKind ?? 'soft'}`)
     for (const t of m.tasks) pushTask(t)
+    for (const s of m.substreams ?? []) {
+      blank()
+      out.push(`### ${oneLine(s.name)}`)
+      if (s.targetDate) out.push(`target: ${s.targetDate} ${s.dateKind ?? 'soft'}`)
+      for (const t of s.tasks) pushTask(t)
+    }
   }
   while (out.length > 0 && out[out.length - 1] === '') out.pop()
   return out.join('\n') + '\n'
@@ -515,9 +550,10 @@ export function docToBundle(doc: OutlineDoc, opts: DocToBundleOptions): EntityBu
   }
 
   addTasks(doc.tasks, null)
-  doc.milestones.forEach((m, position) => {
+  const addMilestone = (m: OutlineMilestone, position: number, parentId: string | null) => {
     const milestone = makeMilestone({
       projectId: project.id,
+      parentId,
       name: m.name,
       position,
       targetDate: m.targetDate,
@@ -525,6 +561,11 @@ export function docToBundle(doc: OutlineDoc, opts: DocToBundleOptions): EntityBu
     })
     bundle.milestones.push(milestone)
     addTasks(m.tasks, milestone.id)
+    return milestone
+  }
+  doc.milestones.forEach((m, position) => {
+    const workstream = addMilestone(m, position, null)
+    ;(m.substreams ?? []).forEach((s, i) => addMilestone(s, i, workstream.id))
   })
 
   for (const { taskId, after } of pending) {
@@ -551,18 +592,21 @@ export function projectToDoc(
   const project = snapshot.projects.find((p) => p.id === projectId)
   if (!project) throw new Error(`Project not found: ${projectId}`)
 
-  const milestones = snapshot.milestones
-    .filter((m) => m.projectId === projectId)
-    .sort((a, b) => a.position - b.position)
   const projectTasks = snapshot.tasks.filter((t) => t.projectId === projectId)
   const byPosition = (a: Task, b: Task) => a.position - b.position
   const ungrouped = projectTasks.filter((t) => t.milestoneId === null).sort(byPosition)
-  const groups: { milestone: Milestone; tasks: Task[] }[] = milestones.map((m) => ({
-    milestone: m,
-    tasks: projectTasks.filter((t) => t.milestoneId === m.id).sort(byPosition),
+  const group = (milestone: Milestone) => ({
+    milestone,
+    tasks: projectTasks.filter((t) => t.milestoneId === milestone.id).sort(byPosition),
+  })
+  const nodes = streamTree(projectId, snapshot.milestones).map((n) => ({
+    ...group(n.milestone),
+    substreams: n.substreams.map(group),
   }))
+  // Each list of tasks that the outline writes as one sequence.
+  const sequences = [ungrouped, ...nodes.flatMap((n) => [n.tasks, ...n.substreams.map((s) => s.tasks)])]
 
-  const ordered = [...ungrouped, ...groups.flatMap((g) => g.tasks)]
+  const ordered = sequences.flat()
   const inProject = new Set(ordered.map((t) => t.id))
   const deps = snapshot.dependencies.filter(
     (d) => inProject.has(d.taskId) && inProject.has(d.blockedByTaskId) && d.taskId !== d.blockedByTaskId,
@@ -579,10 +623,10 @@ export function projectToDoc(
   // How each task's links are written: a lone link to the previous task in its group is the format's default;
   // no links after a previous task is `anytime`; anything else is an explicit after: list.
   const linkKind = new Map<string, 'default' | 'anytime' | string[]>()
-  for (const group of [ungrouped, ...groups.map((g) => g.tasks)]) {
-    group.forEach((t, i) => {
+  for (const sequence of sequences) {
+    sequence.forEach((t, i) => {
       const blockers = blockersOf(t)
-      const previous = group[i - 1]
+      const previous = sequence[i - 1]
       if (previous && blockers.length === 1 && blockers[0] === previous.id) linkKind.set(t.id, 'default')
       else if (blockers.length === 0) linkKind.set(t.id, previous ? 'anytime' : 'default')
       else linkKind.set(t.id, blockers)
@@ -609,6 +653,13 @@ export function projectToDoc(
     }
   }
 
+  const toOutlineMilestone = (g: { milestone: Milestone; tasks: Task[] }): OutlineMilestone => ({
+    name: g.milestone.name,
+    targetDate: g.milestone.targetDate,
+    dateKind: g.milestone.dateKind,
+    tasks: g.tasks.map(toOutlineTask),
+  })
+
   return {
     name: project.name,
     outcome: project.outcome,
@@ -616,11 +667,9 @@ export function projectToDoc(
     dateKind: project.dateKind,
     weeklyMin: project.weeklyMin,
     tasks: ungrouped.map(toOutlineTask),
-    milestones: groups.map((g) => ({
-      name: g.milestone.name,
-      targetDate: g.milestone.targetDate,
-      dateKind: g.milestone.dateKind,
-      tasks: g.tasks.map(toOutlineTask),
+    milestones: nodes.map((n) => ({
+      ...toOutlineMilestone(n),
+      ...(n.substreams.length > 0 ? { substreams: n.substreams.map(toOutlineMilestone) } : {}),
     })),
   }
 }

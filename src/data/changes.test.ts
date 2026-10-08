@@ -1,4 +1,11 @@
-import { makeChecklistItem, makeMilestone, makeProject, makeTask, makeTemplate } from '../domain/factories'
+import {
+  makeChecklistItem,
+  makeMilestone,
+  makeProject,
+  makeResource,
+  makeTask,
+  makeTemplate,
+} from '../domain/factories'
 import { DEFAULT_SETTINGS, type Snapshot, type WeekMeta } from '../domain/types'
 import { applyChange, type Change } from './changes'
 
@@ -177,6 +184,37 @@ describe('applyChange', () => {
       expect(next.checklist.map((c) => c.id).sort()).toEqual(['c1', 'c3'])
       expect(next.dependencies).toEqual([{ taskId: 't2', blockedByTaskId: 't1' }])
       expect(ids(next.projects)).toEqual(['p1', 'p2', 'sys'])
+    })
+
+    it("deleteMilestone takes the workstream's substreams and their tasks with it", () => {
+      const s = fixture()
+      const sub = makeMilestone({
+        id: 'm2-sub',
+        projectId: s.milestones[1]!.projectId,
+        parentId: 'm2',
+        name: 'Sub',
+      })
+      const subTask = makeTask({
+        id: 't-sub',
+        title: 'In sub',
+        projectId: sub.projectId,
+        milestoneId: 'm2-sub',
+      })
+      const withSub = {
+        ...s,
+        milestones: [...s.milestones, sub],
+        tasks: [...s.tasks, subTask],
+        resources: [
+          makeResource({ projectId: sub.projectId, url: 'https://a.test', workstreamIds: ['m2-sub'] }),
+        ],
+      }
+      const next = applyChange(withSub, { kind: 'deleteMilestone', id: 'm2' })
+      expect(ids(next.milestones)).toEqual(['m1'])
+      expect(next.tasks.some((t) => t.id === 't-sub')).toBe(false)
+      expect(next.resources[0]!.workstreamIds).toEqual([])
+      // Deleting only the substream keeps the workstream.
+      const onlySub = applyChange(withSub, { kind: 'deleteMilestone', id: 'm2-sub' })
+      expect(ids(onlySub.milestones)).toEqual(['m1', 'm2'])
     })
 
     it('deleteTask removes the task, its checklist and dependencies on either side', () => {

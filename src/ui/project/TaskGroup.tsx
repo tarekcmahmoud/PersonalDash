@@ -4,7 +4,7 @@ import { useApply, useUpdateTasks } from '../../data/hooks'
 import { useTaskActions } from '../../data/taskActions'
 import type { PlanContext } from '../../domain/context'
 import { makeTask } from '../../domain/factories'
-import { explicitBlockerIds, unfinishedBlockers } from '../../domain/order'
+import { explicitBlockerIds, streamLabel, unfinishedBlockers } from '../../domain/order'
 import type { Project, Task, TaskSize } from '../../domain/types'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -31,6 +31,10 @@ interface Props {
   onOpenTask: (task: Task) => void
   /** Starts "Waits for…": the next task picked becomes one this task waits for. */
   onStartLink?: (task: Task) => void
+  /** A substream: a smaller, flat card meant to sit inside its workstream's card. */
+  nested?: boolean
+  /** Shown at the bottom of the card, after the tasks (the workstream's substream cards). */
+  children?: ReactNode
 }
 
 /**
@@ -47,6 +51,8 @@ export function TaskGroup({
   dimmed = false,
   onOpenTask,
   onStartLink,
+  nested = false,
+  children,
 }: Props) {
   const actions = useTaskActions()
   const apply = useApply()
@@ -65,11 +71,10 @@ export function TaskGroup({
 
   /** "Title (Workstream)" for a task outside this list: its workstream, or its project when elsewhere. */
   const elsewhere = (t: Task): string => {
-    const where =
-      t.projectId !== project.id
-        ? (ctx.projects.find((p) => p.id === t.projectId)?.name ?? 'Inbox')
-        : (ctx.milestones.find((m) => m.id === t.milestoneId)?.name ?? 'No workstream')
-    return `${t.title} (${where})`
+    if (t.projectId !== project.id)
+      return `${t.title} (${ctx.projects.find((p) => p.id === t.projectId)?.name ?? 'Inbox'})`
+    const stream = ctx.milestones.find((m) => m.id === t.milestoneId)
+    return `${t.title} (${stream ? streamLabel(stream, ctx.milestones) : 'No workstream'})`
   }
   const linkNote = (task: Task, blockers: Task[]): string | undefined => {
     const after = blockers.filter((b) => !inList.has(b.id))
@@ -158,7 +163,12 @@ export function TaskGroup({
 
   return (
     <section aria-label={group.milestone?.name ?? 'Tasks without a workstream'}>
-      <Card data-testid="workstream-card" data-dimmed={dimmed} className={cn('gap-2', DIMMED_CLASSES)}>
+      <Card
+        data-testid={nested ? 'substream-card' : 'workstream-card'}
+        data-dimmed={dimmed}
+        size={nested ? 'sm' : 'default'}
+        className={cn('gap-2', nested ? 'bg-muted/40 shadow-none' : DIMMED_CLASSES)}
+      >
         {header && <CardHeader>{header}</CardHeader>}
         <CardContent>
           <div ref={setListEl} className="relative" style={{ paddingLeft: railsWidth(rails) }}>
@@ -183,6 +193,7 @@ export function TaskGroup({
               </div>
             </CollapsibleGroup>
           )}
+          {children && <div className="mt-3 flex flex-col gap-3">{children}</div>}
         </CardContent>
       </Card>
     </section>

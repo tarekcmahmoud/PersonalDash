@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { orderedProjectTasks, wouldCreateCycle } from '../../domain/order'
+import { orderedProjectTasks, streamLabel, wouldCreateCycle } from '../../domain/order'
 import type { Dependency, ID, Milestone, Task } from '../../domain/types'
 
 interface Props {
@@ -31,7 +31,10 @@ export function BlockedByEditor({
 }: Props) {
   const [error, setError] = useState<string | null>(null)
   const byId = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks])
-  const milestoneName = (t: Task) => milestones.find((m) => m.id === t.milestoneId)?.name
+  const milestoneName = (t: Task) => {
+    const m = milestones.find((x) => x.id === t.milestoneId)
+    return m ? streamLabel(m, milestones) : undefined
+  }
 
   const candidates = useMemo(
     () =>

@@ -295,7 +295,49 @@ describe('parseOutline: warnings', () => {
   it('warns about unrecognized lines (including indented list items)', () => {
     expect(warningsOf('# P\nrandom text\n')).toHaveLength(1)
     expect(warningsOf('# P\n- a [S]\n  - not a checklist\n')).toHaveLength(1)
-    expect(warningsOf('# P\n### deep\n')).toHaveLength(1)
+    expect(warningsOf('# P\n## W\n#### deep\n')).toHaveLength(1)
+  })
+})
+
+describe('parseOutline: substreams', () => {
+  const text = [
+    '# P',
+    '## Branding & Communication',
+    '- Brief the agency [S]',
+    '### Website',
+    'target: 2026-12-01 hard',
+    '- Draw sitemap [M] #sitemap',
+    '- Write homepage copy [M]',
+    '### Social',
+    '- Plan launch posts [S] after:#sitemap',
+    '## Build',
+    '- Set up hosting [S]',
+  ].join('\n')
+
+  it('nests ### sections under the workstream above them', () => {
+    const d = parseOk(text)
+    expect(d.milestones.map((m) => m.name)).toEqual(['Branding & Communication', 'Build'])
+    const [branding, build] = d.milestones
+    expect(branding!.tasks.map((t) => t.title)).toEqual(['Brief the agency'])
+    expect(branding!.substreams!.map((s) => [s.name, s.targetDate, s.dateKind, s.tasks.length])).toEqual([
+      ['Website', '2026-12-01', 'hard', 2],
+      ['Social', null, null, 1],
+    ])
+    expect(build!.substreams).toBeUndefined()
+    expect(build!.tasks.map((t) => t.title)).toEqual(['Set up hosting'])
+  })
+
+  it('serializes substreams back to the same doc', () => {
+    const d = parseOk(text)
+    expect(stripLines(parseOk(serializeOutline(d)))).toEqual(stripLines(d))
+    expect(serializeOutline(d)).toContain(
+      '\n### Website\ntarget: 2026-12-01 hard\n- Draw sitemap [M] #sitemap',
+    )
+  })
+
+  it('rejects a substream outside a workstream and an empty name', () => {
+    expect(errorsOf('# P\n### Website\n- a [S]\n')).toHaveLength(1)
+    expect(errorsOf('# P\n## W\n###\n')).toHaveLength(1)
   })
 })
 
@@ -598,6 +640,38 @@ describe('docToBundle', () => {
     expect(b.tasks).toHaveLength(2)
     expect(b.dependencies).toHaveLength(1)
     expect(b.checklist[0]).toMatchObject({ text: 'done thing', done: true })
+  })
+})
+
+describe('docToBundle: substreams', () => {
+  it('creates substreams under their workstream, each its own sequence', () => {
+    const d = parseOk(
+      '# P\n## Brand\n- brief [S]\n### Website\n- sitemap [M]\n- copy [M]\n### Social\n- posts [S]\n- ads [S] anytime\n',
+    )
+    const b = docToBundle(d, { rank: 0 })
+    const byName = (name: string) => b.milestones.find((m) => m.name === name)!
+    expect(b.milestones.map((m) => [m.name, m.position, m.parentId])).toEqual([
+      ['Brand', 0, null],
+      ['Website', 0, byName('Brand').id],
+      ['Social', 1, byName('Brand').id],
+    ])
+    const title = (id: string) => b.tasks.find((t) => t.id === id)!.title
+    expect(b.tasks.find((t) => t.title === 'sitemap')!.milestoneId).toBe(byName('Website').id)
+    // The first task of a substream doesn't wait for the workstream's own tasks.
+    expect(b.dependencies.map((x) => `${title(x.taskId)} after ${title(x.blockedByTaskId)}`)).toEqual([
+      'copy after sitemap',
+    ])
+  })
+})
+
+describe('projectToDoc: substreams', () => {
+  it('writes substreams under their workstream and round-trips through docToBundle', () => {
+    const source = parseOk(
+      '# P\n## Brand\n- brief [S]\n### Website\n- sitemap [M] #t1\n- copy [M]\n### Social\n- posts [S] after:#t1\n',
+    )
+    const b = docToBundle(source, { rank: 0 })
+    const again = projectToDoc(b.projects[0]!.id, { ...b, projects: b.projects })
+    expect(stripLines(again)).toEqual(stripLines(source))
   })
 })
 

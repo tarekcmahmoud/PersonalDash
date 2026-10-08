@@ -1,13 +1,14 @@
 import { format, parseISO } from 'date-fns'
-import type { OutlineDoc, OutlineTask } from '../../domain/outline'
+import { allTasks, type OutlineDoc, type OutlineTask } from '../../domain/outline'
 import type { ISODate } from '../../domain/types'
 
 export function allOutlineTasks(doc: OutlineDoc): OutlineTask[] {
-  return [...doc.tasks, ...doc.milestones.flatMap((m) => m.tasks)]
+  return allTasks(doc)
 }
 
 export interface OutlineStats {
   milestones: number
+  substreams: number
   tasks: number
   xl: number
   dependencies: number
@@ -17,6 +18,7 @@ export function outlineStats(doc: OutlineDoc): OutlineStats {
   const tasks = allOutlineTasks(doc)
   return {
     milestones: doc.milestones.length,
+    substreams: doc.milestones.reduce((n, m) => n + (m.substreams?.length ?? 0), 0),
     tasks: tasks.length,
     xl: tasks.filter((t) => t.size === 'XL').length,
     dependencies: tasks.reduce((n, t) => n + t.after.length, 0),
@@ -25,9 +27,16 @@ export function outlineStats(doc: OutlineDoc): OutlineStats {
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
-/** "4 workstreams · 23 tasks · 2 XL to split · 3 dependencies" (XL / dependencies are left out when zero). */
+/**
+ * "4 workstreams · 2 substreams · 23 tasks · 2 XL to split · 3 dependencies" (substreams, XL and dependencies are
+ * left out when zero).
+ */
 export function summaryText(stats: OutlineStats): string {
-  const parts = [plural(stats.milestones, 'workstream'), plural(stats.tasks, 'task')]
+  const parts = [
+    plural(stats.milestones, 'workstream'),
+    ...(stats.substreams > 0 ? [plural(stats.substreams, 'substream')] : []),
+    plural(stats.tasks, 'task'),
+  ]
   if (stats.xl > 0) parts.push(`${stats.xl} XL to split`)
   if (stats.dependencies > 0) parts.push(plural(stats.dependencies, 'dependency', 'dependencies'))
   return parts.join(' · ')

@@ -1,6 +1,6 @@
--- PersonalDash database setup — PART 2 of 5: remaining tables (dependencies, checklist, templates, weeks, settings)
+-- PersonalDash database setup — PART 2 of 6: remaining tables (dependencies, checklist, templates, weeks, settings)
 --
--- Run the five parts in order (0001 to 0005) in Supabase > SQL Editor > New query: paste ONE whole part,
+-- Run the six parts in order (0001 to 0006) in Supabase > SQL Editor > New query: paste ONE whole part,
 -- click Run with nothing selected, then do the next part. Each part is short so it can't get cut off, and each
 -- is safe to run again (anything that already exists is skipped).
 --
@@ -69,4 +69,4 @@ create table if not exists public.settings (
   gcal_calendar_id text
 );
 
-select 'Part 2 of 5 done: dependencies, checklist, templates, weeks, settings. Now run part 3.' as result;
+select 'Part 2 of 6 done: dependencies, checklist, templates, weeks, settings. Now run part 3.' as result;

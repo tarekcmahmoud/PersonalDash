@@ -10,16 +10,55 @@ function byPositionThenCreated(a: Task, b: Task): number {
   return a.position - b.position || cmpStr(a.createdAt, b.createdAt) || cmpStr(a.id, b.id)
 }
 
+const byPosition = (a: Milestone, b: Milestone): number => a.position - b.position || cmpStr(a.id, b.id)
+
+/** A workstream and its substreams, each by position. */
+export interface StreamNode {
+  milestone: Milestone
+  substreams: Milestone[]
+}
+
 /**
- * All tasks of a project in workflow order: milestone-less tasks first (by position),
- * then each milestone by position, its tasks by position. Includes done tasks.
- * Equal positions are tie-broken by createdAt, then id (milestones have no createdAt: by id).
+ * A project's workstreams by position, each with its substreams by position. A milestone whose parent is not a
+ * workstream of the same project (missing, foreign, or itself a substream) is treated as a workstream.
+ */
+export function streamTree(projectId: ID, milestones: Milestone[]): StreamNode[] {
+  const own = milestones.filter((m) => m.projectId === projectId)
+  const byId = new Map(own.map((m) => [m.id, m]))
+  const isSub = (m: Milestone): boolean => {
+    const parent = m.parentId === null ? undefined : byId.get(m.parentId)
+    return parent !== undefined && parent.id !== m.id && parent.parentId === null
+  }
+  return own
+    .filter((m) => !isSub(m))
+    .sort(byPosition)
+    .map((milestone) => ({
+      milestone,
+      substreams: own.filter((m) => isSub(m) && m.parentId === milestone.id).sort(byPosition),
+    }))
+}
+
+/** All of a project's milestones in workflow order: each workstream followed by its substreams. */
+export function orderedMilestones(projectId: ID, milestones: Milestone[]): Milestone[] {
+  return streamTree(projectId, milestones).flatMap((n) => [n.milestone, ...n.substreams])
+}
+
+/** "Workstream › Substream" for a substream, the plain name for a workstream. */
+export function streamLabel(milestone: Milestone, milestones: Milestone[]): string {
+  const parent = milestone.parentId ? milestones.find((m) => m.id === milestone.parentId) : undefined
+  return parent && parent.projectId === milestone.projectId && parent.parentId === null
+    ? `${parent.name} › ${milestone.name}`
+    : milestone.name
+}
+
+/**
+ * All tasks of a project in workflow order: milestone-less tasks first (by position), then each workstream's
+ * own tasks followed by each of its substreams' tasks (see orderedMilestones), each by position. Includes done
+ * tasks. Equal positions are tie-broken by createdAt, then id (milestones have no createdAt: by id).
  * Tasks pointing at a milestone that does not belong to the project are treated as milestone-less.
  */
 export function orderedProjectTasks(projectId: ID, milestones: Milestone[], tasks: Task[]): Task[] {
-  const projectMilestones = milestones
-    .filter((m) => m.projectId === projectId)
-    .sort((a, b) => a.position - b.position || cmpStr(a.id, b.id))
+  const projectMilestones = orderedMilestones(projectId, milestones)
   const milestoneIds = new Set(projectMilestones.map((m) => m.id))
   const projectTasks = tasks.filter((t) => t.projectId === projectId)
 
@@ -40,17 +79,16 @@ export interface Workstream {
 }
 
 /**
- * A project's tasks grouped by workstream, in order: the workstream-less group first (only when it has tasks),
- * then each workstream by position (included even when empty). Workstreams run in parallel.
+ * A project's tasks grouped by stream, in order: the workstream-less group first (only when it has tasks), then
+ * each workstream's own tasks followed by each of its substreams (see orderedMilestones; included even when
+ * empty). Every stream, substreams included, is a parallel track with its own next step.
  */
 export function projectWorkstreams(
   projectId: ID,
   ctx: Pick<OrderInput, 'milestones' | 'tasks'>,
 ): Workstream[] {
   const ordered = orderedProjectTasks(projectId, ctx.milestones, ctx.tasks)
-  const milestones = ctx.milestones
-    .filter((m) => m.projectId === projectId)
-    .sort((a, b) => a.position - b.position || cmpStr(a.id, b.id))
+  const milestones = orderedMilestones(projectId, ctx.milestones)
   const ids = new Set(milestones.map((m) => m.id))
   const loose = ordered.filter((t) => t.milestoneId === null || !ids.has(t.milestoneId))
   return [

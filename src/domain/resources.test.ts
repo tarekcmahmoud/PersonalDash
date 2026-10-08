@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { makeResource, makeTask } from './factories'
+import { makeMilestone, makeResource, makeTask } from './factories'
 import { resourcesForTasks } from './resources'
 
 describe('resourcesForTasks', () => {
@@ -49,5 +49,23 @@ describe('resourcesForTasks', () => {
     expect(result.map((r) => r.resource)).toEqual([mood, brand, folder, hosting])
     expect(result.find((r) => r.resource === mood)!.tasks).toEqual([a, b])
     expect(result.find((r) => r.resource === hosting)!.tasks).toEqual([b])
+  })
+
+  it('gives a substream task its substream resources, then its workstream ones, then project-wide', () => {
+    const sub = makeMilestone({ id: 'm-web', projectId: project, parentId: design, name: 'Website' })
+    const parent = makeMilestone({ id: design, projectId: project, name: 'Design' })
+    const web = makeResource({
+      projectId: project,
+      url: 'https://w.test',
+      position: 9,
+      workstreamIds: ['m-web'],
+    })
+    const task = makeTask({ title: 'Sitemap', projectId: project, milestoneId: 'm-web' })
+    expect(resourcesForTasks([task], [...all, web], [parent, sub]).map((r) => r.resource)).toEqual([
+      web,
+      mood,
+      brand,
+      folder,
+    ])
   })
 })

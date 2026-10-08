@@ -37,6 +37,8 @@ export interface ProjectRow {
 export interface MilestoneRow {
   id: string
   project_id: string
+  /** supabase/migrations/0006_substreams.sql */
+  parent_id: string | null
   name: string
   position: number
   target_date: string | null
@@ -162,6 +164,7 @@ export function milestoneToRow(m: Milestone): MilestoneRow {
   return {
     id: m.id,
     project_id: m.projectId,
+    parent_id: m.parentId,
     name: m.name,
     position: m.position,
     target_date: m.targetDate,
@@ -173,6 +176,7 @@ export function milestoneFromRow(r: MilestoneRow): Milestone {
   return {
     id: r.id,
     projectId: r.project_id,
+    parentId: r.parent_id ?? null,
     name: r.name,
     position: r.position,
     targetDate: r.target_date,

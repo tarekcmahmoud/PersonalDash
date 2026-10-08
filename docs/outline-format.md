@@ -32,24 +32,29 @@ listed: importing links each task to the one before it. Tasks before the first `
 form their own sequence. Use `after:` for links across workstreams or any other order that isn't a simple
 sequence, and `anytime` for a task that doesn't need the one before it.
 
+A **substream** (`### Name`, under a `## Workstream`) is a smaller track inside a workstream, such as Website
+inside Branding & Communication. It has its own tasks, its own sequence and its own next step, and the app shows
+it as a card inside the workstream's card. A workstream's own tasks come before its first `###`.
+
 In the app, these become ordinary links between tasks. A task waits only for the tasks it is linked to, so you
 can add or remove links later (task menu → **Waits for…**, or the task dialog).
 
 ## Rules
 
-| Line                                       | Meaning                                                                             |
-| ------------------------------------------ | ----------------------------------------------------------------------------------- |
-| `# Name`                                   | Project name. Required, exactly one, must be the first non-blank, non-comment line. |
-| `outcome: …`                               | Objective outcome ("Done when …"). Only valid directly under `# Name`.              |
-| `target: YYYY-MM-DD [hard\|soft]`          | Target date. Under `#` → project, under `##` → workstream. Kind defaults to `soft`. |
-| `min-per-week: N`                          | Weekly minimum (integer ≥ 1). Only under `# Name`.                                  |
-| `## Name`                                  | Workstream (a parallel track). Workstreams appear in this order.                    |
-| `- Title [S\|M\|L\|XL] #key after:#k1,#k2` | Task (at column 0). Tasks before the first `##` belong to no workstream.            |
-| `- Title [S] anytime`                      | Task that doesn't wait for the task before it.                                      |
-| `  done: …`                                | Definition of done for the task above (indented ≥ 2 spaces).                        |
-| `  note: …`                                | Note line for the task above; several are joined with newlines.                     |
-| `  - [ ] text` / `  - [x] text`            | Checklist item of the task above.                                                   |
-| `// …`                                     | Comment, ignored. Blank lines are ignored.                                          |
+| Line                                       | Meaning                                                                                 |
+| ------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `# Name`                                   | Project name. Required, exactly one, must be the first non-blank, non-comment line.     |
+| `outcome: …`                               | Objective outcome ("Done when …"). Only valid directly under `# Name`.                  |
+| `target: YYYY-MM-DD [hard\|soft]`          | Target date. Under `#` → project, `##` → workstream, `###` → substream. Default `soft`. |
+| `min-per-week: N`                          | Weekly minimum (integer ≥ 1). Only under `# Name`.                                      |
+| `## Name`                                  | Workstream (a parallel track). Workstreams appear in this order.                        |
+| `### Name`                                 | Substream of the `##` workstream above it. Only one level: no `####`.                   |
+| `- Title [S\|M\|L\|XL] #key after:#k1,#k2` | Task (at column 0). Tasks before the first `##` belong to no workstream.                |
+| `- Title [S] anytime`                      | Task that doesn't wait for the task before it.                                          |
+| `  done: …`                                | Definition of done for the task above (indented ≥ 2 spaces).                            |
+| `  note: …`                                | Note line for the task above; several are joined with newlines.                         |
+| `  - [ ] text` / `  - [x] text`            | Checklist item of the task above.                                                       |
+| `// …`                                     | Comment, ignored. Blank lines are ignored.                                              |
 
 Task line details:
 

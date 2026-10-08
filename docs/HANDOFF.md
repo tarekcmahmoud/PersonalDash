@@ -18,7 +18,7 @@ or later.
   all pass. **But the app has never run against a real Supabase project or real Google APIs.** Those paths have
   only been checked in these ways:
   - Supabase data layer: mappers have unit tests. `src/data/supabaseRepo.ts` now passes an integration test
-    (`src/data/supabaseRepo.local.test.ts`) against real PostgREST + Postgres with the five migrations. The stack
+    (`src/data/supabaseRepo.local.test.ts`) against real PostgREST + Postgres with the migrations. The stack
     is in `supabase/local/`, and auth there is a fake gateway. The test covers first load, concurrent first loads,
     `insertBundle`, `setDependencies`, cascades, the system-project guard, paging past 1000 rows and RLS between
     two users. The UI was also smoke-tested in supabase mode against that stack: sign-in, capture, import,
@@ -35,6 +35,7 @@ or later.
 | Vercel project linked                                         | Done (user said so). **Unconfirmed:** production branch = `main`; env vars set; redeployed after setting them                                                                                                                                                                                                                  |
 | Supabase parts 1–3 (`supabase/migrations/0001…0003`)          | **Unconfirmed.** Two earlier attempts failed because pastes were truncated: "syntax error at or near `;`" at line 100, then "relation public.projects does not exist". The script was then split into short, idempotent parts that each check the previous part ran. Ask the user to re-run and send the part 3 summary output |
 | Supabase parts 4–5 (`0004_resources.sql`, `0005_storage.sql`) | **Not run yet** (new)                                                                                                                                                                                                                                                                                                          |
+| Supabase part 6 (`0006_substreams.sql`)                       | **Not run yet** (new: `milestones.parent_id` for substreams). Must run before deploying the substreams code, or saving workstreams fails                                                                                                                                                                                       |
 | Supabase user + sign-ups off + Site URL                       | Not confirmed                                                                                                                                                                                                                                                                                                                  |
 | Google Calendar OAuth client                                  | Not started (optional)                                                                                                                                                                                                                                                                                                         |
 

@@ -23,7 +23,10 @@ export type Change =
   /** Cascades: milestones, tasks (and their checklist + dependencies), resources. System projects are never deleted. */
   | { kind: 'deleteProject'; id: ID }
   | { kind: 'saveMilestones'; milestones: Milestone[] }
-  /** Cascades: the milestone's tasks (and their checklist + dependencies); removes it from resources' workstreamIds. */
+  /**
+   * Cascades: the milestone's substreams, the tasks of both (and their checklist + dependencies); removes them from
+   * resources' workstreamIds.
+   */
   | { kind: 'deleteMilestone'; id: ID }
   | { kind: 'saveTasks'; tasks: Task[] }
   /** Cascades: checklist items, and dependencies where the task is either side. */
@@ -99,14 +102,19 @@ export function applyChange(snapshot: Snapshot, change: Change): Snapshot {
       }
 
     case 'deleteMilestone': {
-      const taskIds = idsOf(snapshot.tasks.filter((t) => t.milestoneId === change.id))
+      // A workstream takes its substreams with it.
+      const gone = new Set([
+        change.id,
+        ...snapshot.milestones.filter((m) => m.parentId === change.id).map((m) => m.id),
+      ])
+      const taskIds = idsOf(snapshot.tasks.filter((t) => t.milestoneId !== null && gone.has(t.milestoneId)))
       return dropTasks(
         {
           ...snapshot,
-          milestones: snapshot.milestones.filter((m) => m.id !== change.id),
+          milestones: snapshot.milestones.filter((m) => !gone.has(m.id)),
           resources: snapshot.resources.map((r) =>
-            r.workstreamIds.includes(change.id)
-              ? { ...r, workstreamIds: r.workstreamIds.filter((id) => id !== change.id) }
+            r.workstreamIds.some((id) => gone.has(id))
+              ? { ...r, workstreamIds: r.workstreamIds.filter((id) => !gone.has(id)) }
               : r,
           ),
         },

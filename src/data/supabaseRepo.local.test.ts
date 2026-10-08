@@ -142,6 +142,17 @@ describe.skipIf(!URL)('supabaseRepo against a local Supabase stack', () => {
     await step({ kind: 'deleteResource', id: expected.resources[0]!.id })
     await step({ kind: 'deleteTemplate', id: expected.templates[0]!.id })
     await step({ kind: 'deleteProject', id: linked.projectId })
+
+    // A workstream with substreams: add one more, then delete the workstream (substreams and tasks cascade).
+    const parent = expected.milestones.find((m) => m.name === 'Design and ordering')!
+    const extra = makeMilestone({
+      projectId: parent.projectId,
+      parentId: parent.id,
+      name: 'Lighting',
+      position: 2,
+    })
+    await step({ kind: 'saveMilestones', milestones: [extra] })
+    await step({ kind: 'deleteMilestone', id: parent.id })
   })
 
   it('creates new entities with client-side ids and timestamps', async () => {

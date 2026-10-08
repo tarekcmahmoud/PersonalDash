@@ -59,7 +59,10 @@ export function ResourcesPane({
               resource={resource}
               workstreams={workstreams}
               siblings={resources}
-              dimmed={resourceDimmed(resource.workstreamIds, focusId)}
+              dimmed={resourceDimmed(
+                resource.workstreamIds.map((id) => workstreams.find((w) => w.id === id)?.parentId ?? id),
+                focusId,
+              )}
               onMove={move}
             />
           ))}

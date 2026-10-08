@@ -36,11 +36,18 @@ export interface Project {
  * A workstream of a project (named "milestone" in code and storage for historical reasons; the UI says
  * "workstream"). Workstreams run in PARALLEL: each has its own task order and its own next task.
  */
+/**
+ * A workstream (a parallel track of a project), or a substream inside one when `parentId` is set. Only one level
+ * of nesting: a substream's parent is a workstream of the same project (anything else is treated as a
+ * workstream).
+ */
 export interface Milestone {
   id: ID
   projectId: ID
+  /** The workstream this substream belongs to; null for a workstream. */
+  parentId: ID | null
   name: string
-  /** Order within the project; lower first. */
+  /** Order among its siblings (the project's workstreams, or the parent's substreams); lower first. */
   position: number
   targetDate: ISODate | null
   dateKind: DateKind | null

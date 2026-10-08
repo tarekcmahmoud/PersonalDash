@@ -10,7 +10,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import { useApply, useSnapshot } from '../../data/hooks'
 import { nowISO } from '../../domain/ids'
-import { explicitBlockerIds } from '../../domain/order'
+import { explicitBlockerIds, orderedMilestones, streamLabel } from '../../domain/order'
 import { completeTask, reopenTask } from '../../domain/review'
 import type { ChecklistItem, ID, ISODate, Task, TaskSize, TaskStatus } from '../../domain/types'
 import { todayISO, weekDays, weekStartOf } from '../../domain/week'
@@ -112,9 +112,7 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
   const projects = data.projects
     .filter((p) => p.status !== 'done' || p.id === task.projectId)
     .sort((a, b) => a.rank - b.rank)
-  const milestones = data.milestones
-    .filter((m) => m.projectId === projectId)
-    .sort((a, b) => a.position - b.position)
+  const milestones = projectId ? orderedMilestones(projectId, data.milestones) : []
   const projectName = projects.find((p) => p.id === task.projectId)?.name
   // Blockers only make sense inside the chosen project.
   const taskById = new Map(data.tasks.map((t) => [t.id, t]))
@@ -281,7 +279,7 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
                   <SelectItem value={NO_MILESTONE}>No workstream</SelectItem>
                   {milestones.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
-                      {m.name}
+                      {streamLabel(m, milestones)}
                     </SelectItem>
                   ))}
                 </SelectContent>

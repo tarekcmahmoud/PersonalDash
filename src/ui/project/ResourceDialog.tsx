@@ -23,7 +23,7 @@ interface Props {
   projectId: ID
   /** Edit this resource; omit to add one. */
   resource?: Resource
-  /** The project's workstreams, in order. */
+  /** The project's workstreams and substreams, in workflow order (substreams are indented). */
   workstreams: Milestone[]
   onClose: () => void
 }
@@ -348,11 +348,14 @@ export function ResourceDialog({ projectId, resource, workstreams, onClose }: Pr
             {workstreams.length === 0 ? (
               <p className="text-sm text-muted-foreground">This project has no workstreams yet.</p>
             ) : (
-              <div className="grid gap-1 sm:grid-cols-2">
+              <div className={cn('grid gap-1', !workstreams.some((w) => w.parentId) && 'sm:grid-cols-2')}>
                 {workstreams.map((w) => (
                   <label
                     key={w.id}
-                    className="flex min-h-8 cursor-pointer items-center gap-2 rounded-lg px-1 text-sm"
+                    className={cn(
+                      'flex min-h-8 cursor-pointer items-center gap-2 rounded-lg px-1 text-sm',
+                      w.parentId && 'pl-5',
+                    )}
                   >
                     <Checkbox
                       checked={workstreamIds.includes(w.id)}

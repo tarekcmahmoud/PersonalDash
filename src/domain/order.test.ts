@@ -4,8 +4,11 @@ import {
   isReady,
   nextTask,
   nextTasks,
+  orderedMilestones,
   orderedProjectTasks,
   projectWorkstreams,
+  streamLabel,
+  streamTree,
   unfinishedBlockers,
   wouldCreateCycle,
 } from './order'
@@ -287,5 +290,52 @@ describe('workstreams', () => {
     const ctx2 = ctxOf([...tasks, task('loose')], [m1, m2], deps)
     expect(ids(nextTasks(P, ctx2))).toEqual(['loose', 'd2'])
     expect(nextTask(P, ctx2)?.id).toBe('loose')
+  })
+})
+
+describe('substreams', () => {
+  const brand = makeMilestone({ id: 'brand', projectId: P, name: 'Brand', position: 0 })
+  const build = makeMilestone({ id: 'build', projectId: P, name: 'Build', position: 1 })
+  const social = makeMilestone({ id: 'social', projectId: P, parentId: 'brand', name: 'Social', position: 1 })
+  const web = makeMilestone({ id: 'web', projectId: P, parentId: 'brand', name: 'Website', position: 0 })
+  const all = [social, build, web, brand]
+
+  it('nests substreams under their workstream, each level by position', () => {
+    expect(streamTree(P, all).map((n) => [n.milestone.id, n.substreams.map((s) => s.id)])).toEqual([
+      ['brand', ['web', 'social']],
+      ['build', []],
+    ])
+    expect(orderedMilestones(P, all).map((m) => m.id)).toEqual(['brand', 'web', 'social', 'build'])
+    expect(streamLabel(web, all)).toBe('Brand › Website')
+    expect(streamLabel(brand, all)).toBe('Brand')
+  })
+
+  it('treats a milestone with a missing or nested parent as a workstream', () => {
+    const orphan = makeMilestone({ id: 'orphan', projectId: P, parentId: 'gone', name: 'O', position: 2 })
+    const deep = makeMilestone({ id: 'deep', projectId: P, parentId: 'web', name: 'D', position: 3 })
+    expect(streamTree(P, [...all, orphan, deep]).map((n) => n.milestone.id)).toEqual([
+      'brand',
+      'build',
+      'orphan',
+      'deep',
+    ])
+  })
+
+  it("orders tasks: a workstream's own tasks, then its substreams'; each substream has its own next step", () => {
+    const tasks = [
+      task('w1', { milestoneId: 'web' }),
+      task('b1', { milestoneId: 'brand' }),
+      task('s1', { milestoneId: 'social' }),
+      task('w2', { milestoneId: 'web', position: 1 }),
+      task('x1', { milestoneId: 'build' }),
+    ]
+    expect(ids(orderedProjectTasks(P, all, tasks))).toEqual(['b1', 'w1', 'w2', 's1', 'x1'])
+    expect(projectWorkstreams(P, ctxOf(tasks, all)).map((w) => w.id)).toEqual([
+      'brand',
+      'web',
+      'social',
+      'build',
+    ])
+    expect(ids(nextTasks(P, ctxOf(tasks, all)))).toEqual(['b1', 'w1', 's1', 'x1'])
   })
 })

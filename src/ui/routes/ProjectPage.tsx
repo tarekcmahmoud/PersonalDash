@@ -19,7 +19,14 @@ import { cn } from '@/lib/utils'
 import { useApply, usePlanContext } from '../../data/hooks'
 import { useServices } from '../../data/services'
 import { projectHealth } from '../../domain/health'
-import { explicitBlockerIds, nextTasks, projectWorkstreams, wouldCreateCycle } from '../../domain/order'
+import {
+  explicitBlockerIds,
+  nextTasks,
+  orderedMilestones,
+  projectWorkstreams,
+  streamTree,
+  wouldCreateCycle,
+} from '../../domain/order'
 import type { ProjectStatus, Task } from '../../domain/types'
 import { ProjectSignal } from '../components/HealthBadges'
 import { Page } from '../components/Page'
@@ -49,8 +56,10 @@ export function ProjectPage() {
   const [deleting, setDeleting] = useState(false)
   const [addingMilestone, setAddingMilestone] = useState(false)
   const [pane, setPane] = useProjectPane()
-  const projectMilestones = ctx?.milestones.filter((m) => m.projectId === projectId) ?? []
-  const { focusId, setFocus, exitFocus } = useFocus(projectMilestones.map((m) => m.id))
+  // Focus mode works on workstreams (a workstream's substreams come with it).
+  const workstreamIds =
+    ctx && projectId ? streamTree(projectId, ctx.milestones).map((n) => n.milestone.id) : []
+  const { focusId, setFocus, exitFocus } = useFocus(workstreamIds)
   // "Waits for…": the task whose blocker is being picked (the next task clicked).
   const [linking, setLinking] = useState<Task | null>(null)
 
@@ -89,19 +98,23 @@ export function ProjectPage() {
     )
   }
 
-  const milestones = [...projectMilestones].sort((a, b) => a.position - b.position)
-  // Workstreams run in parallel: each has its own next step.
+  const tree = streamTree(project.id, ctx.milestones)
+  /** The project's workstreams (top level), in order. */
+  const milestones = tree.map((n) => n.milestone)
+  /** Workstreams and substreams, in workflow order (resources can link to either). */
+  const allStreams = orderedMilestones(project.id, ctx.milestones)
+  // Streams (substreams included) run in parallel: each has its own next step.
   const nextIds = new Set(nextTasks(project.id, ctx).map((t) => t.id))
-  const streams = projectWorkstreams(project.id, ctx).map((w) => ({
-    milestone: w.id ? (milestones.find((m) => m.id === w.id) ?? null) : null,
-    tasks: w.tasks,
-  }))
+  const tasksByStream = new Map(projectWorkstreams(project.id, ctx).map((w) => [w.id, w.tasks]))
+  const tasksOf = (id: string | null) => tasksByStream.get(id) ?? []
   // A project without any task or workstream still needs a card to add its first tasks to.
-  const groups = streams.length === 0 ? [{ milestone: null, tasks: [] }] : streams
+  const showLoose = tasksOf(null).length > 0 || tree.length === 0
   const hasWorkstreams = milestones.length > 0
   const resources = sortedResources(ctx.resources, project.id)
   const focused = milestones.find((m) => m.id === focusId) ?? null
   const taskCount = ctx.tasks.filter((t) => t.projectId === project.id).length
+
+  const onOpenTask = (t: Task) => (linking ? completeLink(t) : open(t.id))
 
   /** Finishes "Waits for…": `linking` waits for `target` from now on (loops are refused). */
   const completeLink = (target: Task) => {
@@ -274,32 +287,64 @@ export function ProjectPage() {
               </Button>
             </div>
           )}
-          {groups.map((stream) => (
+          {showLoose && (
             <TaskGroup
-              key={stream.milestone?.id ?? 'none'}
               project={project}
-              group={stream}
+              group={{ milestone: null, tasks: tasksOf(null) }}
               ctx={ctx}
               nextIds={nextIds}
-              dimmed={focusId !== null && stream.milestone?.id !== focusId}
-              onOpenTask={(t) => (linking ? completeLink(t) : open(t.id))}
+              dimmed={focusId !== null}
+              onOpenTask={onOpenTask}
               onStartLink={setLinking}
               header={
-                stream.milestone ? (
-                  <MilestoneHeader
-                    milestone={stream.milestone}
-                    siblings={milestones}
-                    taskCount={stream.tasks.length}
-                    focused={stream.milestone.id === focusId}
-                    onToggleFocus={() =>
-                      stream.milestone!.id === focusId ? exitFocus() : setFocus(stream.milestone!.id)
-                    }
-                  />
-                ) : hasWorkstreams ? (
+                hasWorkstreams ? (
                   <h3 className="min-h-8 content-center text-base font-medium">No workstream</h3>
                 ) : undefined
               }
             />
+          )}
+          {tree.map(({ milestone, substreams }) => (
+            <TaskGroup
+              key={milestone.id}
+              project={project}
+              group={{ milestone, tasks: tasksOf(milestone.id) }}
+              ctx={ctx}
+              nextIds={nextIds}
+              dimmed={focusId !== null && milestone.id !== focusId}
+              onOpenTask={onOpenTask}
+              onStartLink={setLinking}
+              header={
+                <MilestoneHeader
+                  milestone={milestone}
+                  siblings={milestones}
+                  substreams={substreams}
+                  taskCount={[milestone, ...substreams].reduce((n, m) => n + tasksOf(m.id).length, 0)}
+                  focused={milestone.id === focusId}
+                  onToggleFocus={() => (milestone.id === focusId ? exitFocus() : setFocus(milestone.id))}
+                />
+              }
+            >
+              {substreams.length > 0 &&
+                substreams.map((sub) => (
+                  <TaskGroup
+                    key={sub.id}
+                    nested
+                    project={project}
+                    group={{ milestone: sub, tasks: tasksOf(sub.id) }}
+                    ctx={ctx}
+                    nextIds={nextIds}
+                    onOpenTask={onOpenTask}
+                    onStartLink={setLinking}
+                    header={
+                      <MilestoneHeader
+                        milestone={sub}
+                        siblings={substreams}
+                        taskCount={tasksOf(sub.id).length}
+                      />
+                    }
+                  />
+                ))}
+            </TaskGroup>
           ))}
           <Button
             variant="ghost"
@@ -312,7 +357,7 @@ export function ProjectPage() {
         </section>
 
         <div data-pane="resources" data-active={pane === 'resources'} className={paneClass('resources')}>
-          <ResourcesPane project={project} resources={resources} workstreams={milestones} focusId={focusId} />
+          <ResourcesPane project={project} resources={resources} workstreams={allStreams} focusId={focusId} />
         </div>
       </div>
 

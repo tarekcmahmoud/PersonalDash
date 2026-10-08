@@ -59,6 +59,71 @@ describe('ProjectPage', () => {
     expect(await screen.findByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/projects')
   })
 
+  it('shows substreams as cards inside their workstream card and adds one from the … menu', async () => {
+    const user = userEvent.setup()
+    const kitchen = seed.projects.find((p) => p.name === 'Kitchen renovation')!
+    const { snapshot } = renderWithApp(<ProjectPage />, {
+      route: `/projects/${kitchen.id}`,
+      path,
+      snapshot: structuredClone(seed),
+    })
+    await screen.findByRole('heading', { level: 1, name: 'Kitchen renovation' })
+
+    const workstream = screen.getByRole('region', { name: 'Design and ordering' })
+    const subs = within(workstream).getAllByTestId('substream-card')
+    expect(subs.map((c) => within(c).getByRole('heading', { level: 4 }).textContent)).toEqual([
+      'Cabinets',
+      'Appliances',
+    ])
+    expect(within(subs[0]!).getByRole('button', { name: 'Order cabinets and worktop' })).toBeInTheDocument()
+    // The workstream's own task comes before its substreams.
+    expect(
+      within(workstream).getByRole('button', { name: 'Measure the room and draw a floor plan' }),
+    ).toBeInTheDocument()
+    // Each substream has its own next step.
+    expect(within(rowOf('Choose cabinet and worktop colours')).getByText('Next')).toBeInTheDocument()
+    expect(within(rowOf('Choose oven, hob and extractor')).getByText('Next')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Workstream actions: Design and ordering' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Add substream…' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Add substream' })
+    await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'Lighting')
+    await user.click(within(dialog).getByRole('button', { name: 'Add substream' }))
+
+    await waitFor(() => expect(within(workstream).getAllByTestId('substream-card')).toHaveLength(3))
+    const added = (await snapshot()).milestones.find((m) => m.name === 'Lighting')!
+    expect(added.position).toBe(2)
+    expect(added.parentId).toBe(
+      (await snapshot()).milestones.find((m) => m.name === 'Design and ordering')!.id,
+    )
+  })
+
+  it('deletes a workstream together with its substreams and their tasks', async () => {
+    const user = userEvent.setup()
+    const kitchen = seed.projects.find((p) => p.name === 'Kitchen renovation')!
+    const { snapshot } = renderWithApp(<ProjectPage />, {
+      route: `/projects/${kitchen.id}`,
+      path,
+      snapshot: structuredClone(seed),
+    })
+    await screen.findByRole('heading', { level: 1, name: 'Kitchen renovation' })
+    await user.click(screen.getByRole('button', { name: 'Workstream actions: Design and ordering' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete workstream…' }))
+    const confirm = await screen.findByRole('alertdialog')
+    expect(confirm).toHaveTextContent('This also deletes its 2 substreams and 4 tasks.')
+    await user.click(within(confirm).getByRole('button', { name: 'Delete workstream' }))
+    await waitFor(async () => {
+      const snap = await snapshot()
+      expect(snap.milestones.filter((m) => m.projectId === kitchen.id)).toEqual([])
+      expect(
+        snap.tasks
+          .filter((t) => t.projectId === kitchen.id)
+          .map((t) => t.title)
+          .sort(),
+      ).toEqual(['Confirm electrician schedule', 'Get three quotes from contractors'])
+    })
+  })
+
   it('has no visible status/edit/delete buttons, only a … menu', async () => {
     const user = userEvent.setup()
     renderPage({ route })
