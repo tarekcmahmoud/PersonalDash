@@ -8,3 +8,7 @@ test-results
 playwright-report
 .vercel
 .DS_Store
+
+# agent worktrees / scratch logs
+.claude/worktrees
+scratch-*.log
