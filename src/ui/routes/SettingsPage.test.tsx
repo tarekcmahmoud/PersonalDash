@@ -1,13 +1,19 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from 'sonner'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { seedSnapshot } from '../../data/seed'
 import { todayISO } from '../../domain/week'
 import { CalendarReconnectBanner } from '../../integrations/gcal/CalendarSync'
-import { renderApp } from '../plan/testUtils'
+import { renderWithServices as renderApp } from '../outline/testUtils'
 import { SettingsPage } from './SettingsPage'
 
-afterEach(() => vi.unstubAllEnvs())
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+  vi.clearAllMocks()
+})
 
 describe('SettingsPage', () => {
   it('shows the saved settings', async () => {
@@ -99,7 +105,7 @@ describe('SettingsPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Save settings' }))
 
-    expect(await screen.findByText('Settings saved.')).toBeInTheDocument()
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Settings saved'))
     const { settings } = await repo.loadSnapshot()
     expect(settings.focusFactor).toBeCloseTo(0.8)
     expect(settings.workHours.sat).toEqual({ start: '10:00', end: '12:30' })
@@ -116,14 +122,14 @@ describe('SettingsPage', () => {
       renderApp(<SettingsPage />)
       expect(await screen.findByText('Not configured')).toBeInTheDocument()
       expect(screen.getByText(/docs\/setup\.md/)).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Connect Google Calendar' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Connect' })).toBeDisabled()
     })
 
     it('offers Connect when configured but not connected', async () => {
       vi.stubEnv('VITE_GOOGLE_CLIENT_ID', 'client-123')
       renderApp(<SettingsPage />)
       expect(await screen.findByText('Not connected')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Connect Google Calendar' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'Connect' })).toBeEnabled()
       expect(screen.getByText(/named “PersonalDash”/)).toBeInTheDocument()
     })
 
@@ -133,7 +139,7 @@ describe('SettingsPage', () => {
       snapshot.settings.calendarConnected = true
       renderApp(<SettingsPage />, { snapshot })
       expect(await screen.findByText('Needs reconnect')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Reconnect calendar' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'Reconnect' })).toBeEnabled()
       expect(screen.getByRole('button', { name: 'Disconnect' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Sync now' })).not.toBeInTheDocument()
     })
@@ -157,15 +163,15 @@ describe('CalendarReconnectBanner', () => {
     const snapshot = seedSnapshot(todayISO())
     snapshot.settings.calendarConnected = true
     renderApp(<CalendarReconnectBanner />, { snapshot })
-    // Primer renders the primary action twice (inline and stacked layouts); CSS hides one.
-    expect((await screen.findAllByRole('button', { name: 'Reconnect calendar' })).length).toBeGreaterThan(0)
+    expect(await screen.findByText(/Google Calendar needs reconnecting/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reconnect' })).toBeEnabled()
   })
 
   it('renders nothing when the calendar is not connected', async () => {
     vi.stubEnv('VITE_GOOGLE_CLIENT_ID', 'client-123')
     const { container } = renderApp(<CalendarReconnectBanner />)
     await new Promise((r) => setTimeout(r, 50))
-    expect(screen.queryByRole('button', { name: 'Reconnect calendar' })).not.toBeInTheDocument()
-    expect(container.querySelector('section')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Reconnect' })).not.toBeInTheDocument()
+    expect(container).toBeEmptyDOMElement()
   })
 })

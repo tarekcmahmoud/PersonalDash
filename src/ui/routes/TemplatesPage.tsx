@@ -1,8 +1,8 @@
-import { PlusIcon } from '@primer/octicons-react'
-import { Button, ConfirmationDialog, Dialog, Flash, FormControl, Label, Select } from '@primer/react'
-import { format, parseISO } from 'date-fns'
+import { format, getYear, parseISO } from 'date-fns'
+import { MoreHorizontal } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { useApply, useSnapshot } from '../../data/hooks'
 import { makeTemplate } from '../../domain/factories'
 import { nowISO } from '../../domain/ids'
@@ -10,8 +10,35 @@ import { parseOutline, projectToDoc, serializeOutline, type ParseResult } from '
 import type { Template } from '../../domain/types'
 import { Page } from '../components/Page'
 import { OutlineEditor } from '../outline/OutlineEditor'
-import { outlineStats } from '../outline/outlineStats'
-import styles from './TemplatesPage.module.css'
+import { outlineStats, type OutlineStats } from '../outline/outlineStats'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const STARTER_OUTLINE = '# New template\n\n## Phase 1\n- First task [S]\n'
 
@@ -21,12 +48,20 @@ function withName(outline: string, name: string): string {
   return header.test(outline) ? outline.replace(header, `# ${name}`) : `# ${name}\n${outline}`
 }
 
+/** "Oct 2" (with the year when it is not the current one). */
 function updatedText(iso: string): string {
   try {
-    return format(parseISO(iso), 'MMM d, yyyy')
+    const date = parseISO(iso)
+    return format(date, getYear(date) === new Date().getFullYear() ? 'MMM d' : 'MMM d, yyyy')
   } catch {
     return ''
   }
+}
+
+const plural = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`
+
+function statsText(stats: OutlineStats): string {
+  return `${plural(stats.milestones, 'milestone')} · ${plural(stats.tasks, 'task')}`
 }
 
 interface EditorState {
@@ -54,31 +89,80 @@ function TemplateEditorDialog({
   const blocked = !parsed?.doc
 
   return (
-    <Dialog
-      title={state.title}
-      subtitle="Templates are copied when a project is created from them; later edits do not change existing projects."
-      width="1100px"
-      height="large"
-      className={styles.dialog}
-      onClose={onClose}
-      footerButtons={[
-        { buttonType: 'normal', content: 'Cancel', onClick: onClose },
-        {
-          buttonType: 'primary',
-          content: 'Save template',
-          disabled: blocked || busy,
-          onClick: () => onSave(text),
-        },
-      ]}
-    >
-      <div className={styles.dialogBody}>
-        <OutlineEditor value={text} onChange={setText} onParse={setParsed} label="Template outline" />
-        {error && (
-          <Flash variant="danger" className={styles.flash}>
-            {error}
-          </Flash>
-        )}
-      </div>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        className="max-sm:top-0 max-sm:left-0 max-sm:h-dvh max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none max-sm:p-4 sm:h-[88vh] sm:max-w-[1100px] grid-rows-[auto_minmax(0,1fr)_auto]"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <DialogHeader className="pr-8 text-left">
+          <DialogTitle>{state.title}</DialogTitle>
+          <DialogDescription>
+            Templates are copied when a project is created from them; later edits do not change existing
+            projects.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="-mx-1 min-h-0 overflow-y-auto px-1">
+          <OutlineEditor value={text} onChange={setText} onParse={setParsed} label="Template outline" />
+          {error && (
+            <p className="mt-3 text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
+        <DialogFooter className="max-sm:flex-row max-sm:justify-end">
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button disabled={blocked || busy} onClick={() => onSave(text)}>
+            Save template
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ProjectPickerDialog({
+  projects,
+  onPick,
+  onClose,
+}: {
+  projects: { id: string; name: string }[]
+  onPick: (projectId: string) => void
+  onClose: () => void
+}) {
+  const [projectId, setProjectId] = useState('')
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Save a project as template</DialogTitle>
+          <DialogDescription>Its milestones and tasks become a reusable outline.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-1.5">
+          <Label htmlFor="template-project">Project</Label>
+          <Select value={projectId} onValueChange={setProjectId}>
+            <SelectTrigger id="template-project" className="w-full">
+              <SelectValue placeholder="Choose a project…" />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button disabled={!projectId} onClick={() => onPick(projectId)}>
+            Continue
+          </Button>
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
   )
 }
@@ -89,9 +173,9 @@ export function TemplatesPage() {
   const { data: snapshot, isPending } = useSnapshot()
 
   const [editor, setEditor] = useState<EditorState | null>(null)
+  const [picking, setPicking] = useState(false)
   const [conflict, setConflict] = useState<{ text: string; name: string; existing: Template } | null>(null)
   const [deleting, setDeleting] = useState<Template | null>(null)
-  const [projectId, setProjectId] = useState('')
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
 
@@ -141,6 +225,7 @@ export function TemplatesPage() {
     if (await run({ kind: 'saveTemplate', template })) {
       setEditor(null)
       setConflict(null)
+      toast.success('Template saved')
     }
   }
 
@@ -149,17 +234,19 @@ export function TemplatesPage() {
     void run({
       kind: 'saveTemplate',
       template: makeTemplate({ name, outline: withName(template.outline, name) }),
-    })
+    }).then((ok) => ok && toast.success('Template duplicated'))
   }
 
-  function openFromProject() {
-    if (!snapshot || !projectId) return
+  function openFromProject(projectId: string) {
+    if (!snapshot) return
     try {
       const text = serializeOutline(projectToDoc(projectId, snapshot))
       const name = snapshot.projects.find((p) => p.id === projectId)?.name ?? 'project'
       setFailure(null)
+      setPicking(false)
       setEditor({ templateId: null, title: `Save "${name}" as a template`, text })
     } catch (err) {
+      setPicking(false)
       setFailure(err instanceof Error ? err.message : 'Could not read that project')
     }
   }
@@ -169,98 +256,107 @@ export function TemplatesPage() {
       title="Templates"
       description="Reusable breakdowns. A project created from a template gets its own copy."
       actions={
-        <Button
-          leadingVisual={PlusIcon}
-          onClick={() => setEditor({ templateId: null, title: 'New template', text: STARTER_OUTLINE })}
-        >
-          New template
-        </Button>
+        <>
+          <Button
+            onClick={() => setEditor({ templateId: null, title: 'New template', text: STARTER_OUTLINE })}
+          >
+            New template
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="More actions">
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setPicking(true)}>
+                Save a project as template…
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
       }
     >
-      <div className={styles.stack}>
-        {failure && !editor && <Flash variant="danger">{failure}</Flash>}
+      {failure && !editor && (
+        <p className="mb-4 text-sm text-destructive" role="alert">
+          {failure}
+        </p>
+      )}
 
-        {isPending ? (
-          <p className={styles.muted}>Loading templates…</p>
-        ) : rows.length === 0 ? (
-          <p className={styles.empty}>
-            No templates yet. Create one with &quot;New template&quot;, or save a project as a template below.
-          </p>
-        ) : (
-          <ul className={styles.list} aria-label="Templates">
-            {rows.map(({ template, stats }) => (
-              <li key={template.id} className={styles.item} aria-label={template.name}>
-                <div className={styles.info}>
-                  <div className={styles.name}>{template.name}</div>
-                  <div className={styles.meta}>
-                    {stats ? (
-                      <>
-                        {stats.tasks} {stats.tasks === 1 ? 'task' : 'tasks'} · {stats.milestones}{' '}
-                        {stats.milestones === 1 ? 'milestone' : 'milestones'}
-                      </>
-                    ) : (
-                      <Label variant="danger">Outline has errors</Label>
-                    )}
-                    {updatedText(template.updatedAt) && <> · Updated {updatedText(template.updatedAt)}</>}
-                  </div>
+      {isPending ? (
+        <p className="text-sm text-muted-foreground">Loading templates…</p>
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No templates yet. Create one with &quot;New template&quot;, or save a project as a template from the
+          … menu.
+        </p>
+      ) : (
+        <ul className="divide-y border-y" aria-label="Templates">
+          {rows.map(({ template, stats }) => (
+            <li
+              key={template.id}
+              aria-label={template.name}
+              className="group flex min-h-14 items-center gap-3 py-2"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium">{template.name}</div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {stats ? statsText(stats) : <span className="text-destructive">Outline has errors</span>}
+                  {updatedText(template.updatedAt) && <> · updated {updatedText(template.updatedAt)}</>}
                 </div>
-                <div className={styles.actions}>
-                  <Button
-                    variant="primary"
-                    size="small"
-                    disabled={!stats}
-                    onClick={() =>
-                      navigate('/import', { state: { outline: template.outline, templateId: template.id } })
-                    }
-                  >
-                    New project from template
-                  </Button>
-                  <Button
-                    size="small"
-                    onClick={() =>
-                      setEditor({
-                        templateId: template.id,
-                        title: `Edit "${template.name}"`,
-                        text: template.outline,
-                      })
-                    }
-                  >
-                    Edit
-                  </Button>
-                  <Button size="small" disabled={busy} onClick={() => duplicate(template)}>
-                    Duplicate
-                  </Button>
-                  <Button size="small" variant="danger" onClick={() => setDeleting(template)}>
-                    Delete
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+              </div>
+              <div className="flex shrink-0 items-center gap-1 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 md:has-[[data-state=open]]:opacity-100 [@media(hover:none)]:opacity-100">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!stats}
+                  onClick={() =>
+                    navigate('/import', { state: { outline: template.outline, templateId: template.id } })
+                  }
+                >
+                  Use
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`More actions for ${template.name}`}
+                      className="data-[state=open]:bg-accent"
+                    >
+                      <MoreHorizontal />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        setEditor({
+                          templateId: template.id,
+                          title: `Edit "${template.name}"`,
+                          text: template.outline,
+                        })
+                      }
+                    >
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem disabled={busy} onSelect={() => duplicate(template)}>
+                      Duplicate
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(template)}>
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
-        <section className={styles.fromProject} aria-labelledby="from-project-heading">
-          <h2 id="from-project-heading" className={styles.heading}>
-            Save a project as template
-          </h2>
-          <div className={styles.fromProjectRow}>
-            <FormControl className={styles.projectSelect}>
-              <FormControl.Label>Project</FormControl.Label>
-              <Select block value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-                <Select.Option value="">Choose a project…</Select.Option>
-                {projects.map((p) => (
-                  <Select.Option key={p.id} value={p.id}>
-                    {p.name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </FormControl>
-            <Button disabled={!projectId} onClick={openFromProject}>
-              Save as template
-            </Button>
-          </div>
-        </section>
-      </div>
+      {picking && (
+        <ProjectPickerDialog projects={projects} onPick={openFromProject} onClose={() => setPicking(false)} />
+      )}
 
       {editor && (
         <TemplateEditorDialog
@@ -273,35 +369,49 @@ export function TemplatesPage() {
         />
       )}
 
-      {conflict && (
-        <ConfirmationDialog
-          title={`A template named "${conflict.name}" already exists`}
-          confirmButtonContent="Replace"
-          cancelButtonContent="Save as new"
-          onClose={(gesture) => {
-            if (gesture === 'confirm') void saveFromEditor(conflict.text, 'replace', conflict.existing)
-            else if (gesture === 'cancel') void saveFromEditor(conflict.text, 'new')
-            else setConflict(null)
-          }}
-        >
-          Replace the existing template with this one, or keep both and save this one as a new template?
-        </ConfirmationDialog>
-      )}
+      <AlertDialog open={!!conflict} onOpenChange={(open) => !open && setConflict(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>A template named &quot;{conflict?.name}&quot; already exists</AlertDialogTitle>
+            <AlertDialogDescription>
+              Replace the existing template with this one, or keep both and save this one as a new template?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => conflict && void saveFromEditor(conflict.text, 'new')}>
+              Save as new
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => conflict && void saveFromEditor(conflict.text, 'replace', conflict.existing)}
+            >
+              Replace
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {deleting && (
-        <ConfirmationDialog
-          title={`Delete "${deleting.name}"?`}
-          confirmButtonContent="Delete"
-          confirmButtonType="danger"
-          onClose={(gesture) => {
-            const target = deleting
-            setDeleting(null)
-            if (gesture === 'confirm') void run({ kind: 'deleteTemplate', id: target.id })
-          }}
-        >
-          Projects already created from this template are not affected.
-        </ConfirmationDialog>
-      )}
+      <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete &quot;{deleting?.name}&quot;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Projects already created from this template are not affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                const target = deleting
+                if (target) void run({ kind: 'deleteTemplate', id: target.id })
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Page>
   )
 }

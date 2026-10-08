@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from 'sonner'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { seedSnapshot } from '../../data/seed'
 import { parseOutline } from '../../domain/outline'
@@ -7,6 +8,8 @@ import { todayISO } from '../../domain/week'
 import { BREAKDOWN_PROMPT, extractPrompt } from './breakdownPrompt'
 import { lineRange, outlineStats, summaryText } from './outlineStats'
 import { renderApp } from './testUtils'
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const VALID = `# Garden shed
 outcome: A shed that keeps the tools dry
@@ -25,11 +28,18 @@ target: 2027-04-01 soft
 
 const BROKEN = '# Broken\n- Fine [S]\n- Needs a blocker [S] after:#nope\n'
 
+/** Opens the "…" menu of a template row and clicks one of its items. */
+async function rowMenu(user: ReturnType<typeof userEvent.setup>, name: string, item: string) {
+  await user.click(screen.getByRole('button', { name: `More actions for ${name}` }))
+  await user.click(await screen.findByRole('menuitem', { name: item }))
+}
+
 function setOutline(text: string) {
   fireEvent.change(screen.getByRole('textbox', { name: 'Outline' }), { target: { value: text } })
 }
 
 afterEach(() => {
+  vi.clearAllMocks()
   vi.unstubAllGlobals()
 })
 
@@ -52,10 +62,16 @@ describe('outline helpers', () => {
 })
 
 describe('ImportPage', () => {
+  it('shows the format cheatsheet in a popover', async () => {
+    renderApp()
+    await userEvent.click(screen.getByRole('button', { name: 'Format' }))
+    expect(await screen.findByText(/min-per-week/)).toBeInTheDocument()
+  })
+
   it('shows a "Line N" issue for an error and disables Create', async () => {
     renderApp()
     setOutline(BROKEN)
-    const issue = await screen.findByRole('button', { name: /Line 3:.*nope/ })
+    const issue = await screen.findByRole('button', { name: /Line 3 ·.*nope/ })
     expect(issue).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create project' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Save as template instead' })).toBeDisabled()
@@ -64,7 +80,7 @@ describe('ImportPage', () => {
   it('selects the line of an issue in the textarea when clicked', async () => {
     renderApp()
     setOutline(BROKEN)
-    await userEvent.click(await screen.findByRole('button', { name: /Line 3:/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /Line 3 ·/ }))
     const area = screen.getByRole('textbox', { name: 'Outline' }) as HTMLTextAreaElement
     expect(area).toHaveFocus()
     expect(area.value.slice(area.selectionStart, area.selectionEnd)).toBe('- Needs a blocker [S] after:#nope')
@@ -109,7 +125,7 @@ describe('ImportPage', () => {
 
     await user.type(screen.getByRole('textbox', { name: /Outcome/ }), 'A shed that keeps tools dry')
     fireEvent.change(screen.getByLabelText(/Target date/), { target: { value: '2027-05-01' } })
-    await user.selectOptions(screen.getByLabelText('Date type'), 'hard')
+    await user.click(screen.getByRole('radio', { name: 'Hard deadline' }))
     await user.click(create)
 
     const stub = await screen.findByTestId('project-stub')
@@ -138,18 +154,17 @@ describe('ImportPage', () => {
     )
     expect(screen.getByRole('textbox', { name: /Outcome/ })).toHaveValue('A shed that keeps the tools dry')
     expect(screen.getByLabelText(/Target date/)).toHaveValue('2027-05-01')
-    expect(screen.getByLabelText('Date type')).toHaveValue('hard')
+    expect(screen.getByRole('radio', { name: 'Hard deadline' })).toHaveAttribute('aria-checked', 'true')
   })
 
   it('suggests "on hold" when over the active-project cap', async () => {
     const snap = seedSnapshot(todayISO())
     snap.settings = { ...snap.settings, activeCap: 1 }
     renderApp({ snapshot: snap, state: { outline: VALID } })
-    const flash = await screen.findByText(/Consider putting this one on hold/, { exact: false })
-    expect(flash).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Put on hold' }))
-    expect(screen.getByLabelText('Status')).toHaveValue('on_hold')
-    expect(screen.queryByText(/Consider putting this one on hold/)).not.toBeInTheDocument()
+    expect(await screen.findByText(/another one spreads your time thinner/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Put on hold instead' }))
+    expect(screen.getByLabelText('Status')).toHaveTextContent('On hold')
+    expect(screen.queryByText(/spreads your time thinner/)).not.toBeInTheDocument()
   })
 
   it('saves the raw text as a template instead and goes to /templates', async () => {
@@ -162,20 +177,20 @@ describe('ImportPage', () => {
     expect(saved?.outline).toBe(VALID)
   })
 
-  it('copies the LLM prompt and confirms, without a clipboard API too', async () => {
+  it('copies the LLM prompt and confirms with a toast', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
     renderApp()
-    await userEvent.click(screen.getByRole('button', { name: 'Copy the LLM prompt' }))
-    expect(await screen.findByText('Copied')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Copy LLM prompt' }))
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Prompt copied'))
     expect(writeText).toHaveBeenCalledWith(BREAKDOWN_PROMPT)
   })
 
   it('does not crash when navigator.clipboard is missing', async () => {
     vi.stubGlobal('navigator', { ...navigator, clipboard: undefined })
     renderApp()
-    await userEvent.click(screen.getByRole('button', { name: 'Copy the LLM prompt' }))
-    expect(await screen.findByText(/Could not copy/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Copy LLM prompt' }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/Could not copy/)))
   })
 })
 
@@ -183,13 +198,13 @@ describe('TemplatesPage', () => {
   it('lists templates with counts', async () => {
     renderApp({ route: '/templates' })
     const item = await screen.findByRole('listitem', { name: 'Client engagement' })
-    expect(within(item).getByText(/\d+ tasks · 4 milestones/)).toBeInTheDocument()
+    expect(within(item).getByText(/4 milestones · \d+ tasks · updated/)).toBeInTheDocument()
   })
 
   it('opens the import page with the template outline', async () => {
     const { repo } = renderApp({ route: '/templates' })
     const item = await screen.findByRole('listitem', { name: 'Client engagement' })
-    await userEvent.click(within(item).getByRole('button', { name: 'New project from template' }))
+    await userEvent.click(within(item).getByRole('button', { name: 'Use' }))
     await waitFor(() => expect(screen.getByTestId('location')).toHaveAttribute('data-pathname', '/import'))
     const template = (await repo.loadSnapshot()).templates[0]!
     expect(screen.getByRole('textbox', { name: 'Outline' })).toHaveValue(template.outline)
@@ -202,9 +217,13 @@ describe('TemplatesPage', () => {
     const user = userEvent.setup()
     const { repo } = renderApp({ route: '/templates' })
     await screen.findByRole('listitem', { name: 'Client engagement' })
-    await user.selectOptions(screen.getByLabelText('Project'), 'Client website redesign')
-    await user.click(screen.getByRole('button', { name: 'Save as template' }))
-    const dialog = await screen.findByRole('dialog')
+    await user.click(screen.getByRole('button', { name: 'More actions' }))
+    await user.click(await screen.findByRole('menuitem', { name: /Save a project as template/ }))
+    const picker = await screen.findByRole('dialog')
+    await user.click(within(picker).getByLabelText('Project'))
+    await user.click(await screen.findByRole('option', { name: 'Client website redesign' }))
+    await user.click(within(picker).getByRole('button', { name: 'Continue' }))
+    const dialog = await screen.findByRole('dialog', { name: /as a template/ })
     const area = within(dialog).getByRole('textbox', { name: 'Template outline' }) as HTMLTextAreaElement
     expect(area.value).toContain('# Client website redesign')
     await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Save template' })).toBeEnabled())
@@ -239,9 +258,9 @@ describe('TemplatesPage', () => {
   it('edits a template and saves it', async () => {
     const user = userEvent.setup()
     const { repo } = renderApp({ route: '/templates' })
-    const item = await screen.findByRole('listitem', { name: 'Client engagement' })
+    await screen.findByRole('listitem', { name: 'Client engagement' })
     const before = (await repo.loadSnapshot()).templates[0]!
-    await user.click(within(item).getByRole('button', { name: 'Edit' }))
+    await rowMenu(user, 'Client engagement', 'Edit')
     const dialog = await screen.findByRole('dialog')
     fireEvent.change(within(dialog).getByRole('textbox', { name: 'Template outline' }), {
       target: { value: '# Renamed engagement\n\n## One\n- Do it [S]\n' },
@@ -256,9 +275,10 @@ describe('TemplatesPage', () => {
   })
 
   it('duplicates a template', async () => {
+    const user = userEvent.setup()
     const { repo } = renderApp({ route: '/templates' })
-    const item = await screen.findByRole('listitem', { name: 'Client engagement' })
-    await userEvent.click(within(item).getByRole('button', { name: 'Duplicate' }))
+    await screen.findByRole('listitem', { name: 'Client engagement' })
+    await rowMenu(user, 'Client engagement', 'Duplicate')
     await waitFor(async () => {
       const templates = (await repo.loadSnapshot()).templates
       const copy = templates.find((t) => t.name === 'Client engagement (copy)')
@@ -270,8 +290,8 @@ describe('TemplatesPage', () => {
   it('deletes a template after confirmation', async () => {
     const user = userEvent.setup()
     const { repo } = renderApp({ route: '/templates' })
-    const item = await screen.findByRole('listitem', { name: 'Client engagement' })
-    await user.click(within(item).getByRole('button', { name: 'Delete' }))
+    await screen.findByRole('listitem', { name: 'Client engagement' })
+    await rowMenu(user, 'Client engagement', 'Delete')
     const confirm = await screen.findByRole('alertdialog')
     expect((await repo.loadSnapshot()).templates).toHaveLength(1)
     await user.click(within(confirm).getByRole('button', { name: 'Delete' }))
