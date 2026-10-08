@@ -6,6 +6,7 @@ import {
   type Milestone,
   type Project,
   type ProjectStatus,
+  type Resource,
   type Settings,
   type SchedulableSize,
   type Task,
@@ -81,6 +82,19 @@ export interface TemplateRow {
   name: string
   outline: string
   updated_at: string
+}
+
+export interface ResourceRow {
+  id: string
+  project_id: string
+  url: string
+  title: string
+  description: string
+  image_url: string | null
+  image_path: string | null
+  workstream_ids: string[]
+  position: number
+  created_at: string
 }
 
 export interface WeekRow {
@@ -231,6 +245,38 @@ export function templateToRow(t: Template): TemplateRow {
 
 export function templateFromRow(r: TemplateRow): Template {
   return { id: r.id, name: r.name, outline: r.outline, updatedAt: r.updated_at }
+}
+
+// ---- resources ---------------------------------------------------------------------------------------
+
+export function resourceToRow(r: Resource): ResourceRow {
+  return {
+    id: r.id,
+    project_id: r.projectId,
+    url: r.url,
+    title: r.title,
+    description: r.description,
+    image_url: r.imageUrl,
+    image_path: r.imagePath,
+    workstream_ids: r.workstreamIds,
+    position: r.position,
+    created_at: r.createdAt,
+  }
+}
+
+export function resourceFromRow(r: ResourceRow): Resource {
+  return {
+    id: r.id,
+    projectId: r.project_id,
+    url: r.url,
+    title: r.title,
+    description: r.description,
+    imageUrl: r.image_url,
+    imagePath: r.image_path,
+    workstreamIds: r.workstream_ids ?? [],
+    position: r.position,
+    createdAt: r.created_at,
+  }
 }
 
 // ---- weeks -------------------------------------------------------------------------------------------

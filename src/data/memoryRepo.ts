@@ -2,6 +2,7 @@ import type { Snapshot } from '../domain/types'
 import { todayISO } from '../domain/week'
 import { applyChange } from './changes'
 import type { AuthService, AuthUser } from './auth'
+import { checkImage } from './images'
 import type { Repo } from './repo'
 import { seedSnapshot } from './seed'
 
@@ -47,13 +48,6 @@ export function createMemoryRepo(initial?: Snapshot, opts?: { latencyMs?: number
       images.delete(path)
     },
   }
-}
-
-/** Upload rules shared by every backend: images only, at most 5 MB. */
-export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
-export function checkImage(file: File): void {
-  if (!file.type.startsWith('image/')) throw new Error('Only image files can be uploaded.')
-  if (file.size > MAX_IMAGE_BYTES) throw new Error('Images must be 5 MB or smaller.')
 }
 
 /**
