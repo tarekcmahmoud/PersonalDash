@@ -1,19 +1,22 @@
 import { Plus } from 'lucide-react'
-import { useState, type KeyboardEvent } from 'react'
+import { useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { TaskSize } from '../../domain/types'
 
 /**
  * Ghost "+ Add task" row that turns into an inline input: Enter adds (size M) and keeps the input open for
- * the next one, Escape (or leaving it empty) closes it.
+ * the next one, Escape (or leaving it empty) closes it. `extra` (e.g. "+ Add substream") sits next to the button
+ * and is hidden while typing.
  */
 export function AddTaskRow({
   groupName,
   onAdd,
+  extra,
 }: {
   groupName: string
   onAdd: (title: string, size: TaskSize) => void
+  extra?: ReactNode
 }) {
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState('')
@@ -39,16 +42,19 @@ export function AddTaskRow({
 
   if (!editing) {
     return (
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        aria-label={`Add task to ${groupName}`}
-        className="-ml-2 h-8 justify-start px-2 font-normal text-muted-foreground"
-        onClick={() => setEditing(true)}
-      >
-        <Plus /> Add task
-      </Button>
+      <div className="flex flex-wrap items-center gap-x-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-label={`Add task to ${groupName}`}
+          className="-ml-2 h-8 justify-start px-2 font-normal text-muted-foreground"
+          onClick={() => setEditing(true)}
+        >
+          <Plus /> Add task
+        </Button>
+        {extra}
+      </div>
     )
   }
 

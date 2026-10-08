@@ -98,6 +98,27 @@ describe('ProjectPage', () => {
     )
   })
 
+  it('offers "Add substream" next to "Add task" on workstreams only', async () => {
+    const user = userEvent.setup()
+    const kitchen = seed.projects.find((p) => p.name === 'Kitchen renovation')!
+    const { snapshot } = renderWithApp(<ProjectPage />, {
+      route: `/projects/${kitchen.id}`,
+      path,
+      snapshot: structuredClone(seed),
+    })
+    await screen.findByRole('heading', { level: 1, name: 'Kitchen renovation' })
+    // One per workstream card; none in substream cards or the "No workstream" card.
+    expect(screen.getAllByRole('button', { name: /^Add substream to / })).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: 'Add substream to Design and ordering' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Add substream' })
+    await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'Flooring')
+    await user.click(within(dialog).getByRole('button', { name: 'Add substream' }))
+    await waitFor(async () =>
+      expect((await snapshot()).milestones.find((m) => m.name === 'Flooring')).toMatchObject({ position: 2 }),
+    )
+  })
+
   it('deletes a workstream together with its substreams and their tasks', async () => {
     const user = userEvent.setup()
     const kitchen = seed.projects.find((p) => p.name === 'Kitchen renovation')!

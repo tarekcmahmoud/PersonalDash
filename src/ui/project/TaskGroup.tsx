@@ -1,4 +1,6 @@
+import { Plus } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import { Button } from '@/components/ui/button'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { useApply, useUpdateTasks } from '../../data/hooks'
 import { useTaskActions } from '../../data/taskActions'
@@ -13,6 +15,7 @@ import { AddTaskRow } from './AddTaskRow'
 import { CollapsibleGroup } from './CollapsibleGroup'
 import { LinkRails } from './LinkRails'
 import { railLanes, railsWidth } from './links'
+import { MilestoneDialog } from './MilestoneDialog'
 import { endPosition, renumberGroup, type TaskGroupData } from './ordering'
 import { RowMenu } from './RowMenu'
 import { SortableList, type SortableControls } from './SortableList'
@@ -60,6 +63,10 @@ export function TaskGroup({
   const groupName = group.milestone?.name ?? 'the project'
   const open = group.tasks.filter((t) => t.status !== 'done')
   const done = group.tasks.filter((t) => t.status === 'done')
+  // A workstream (not a substream) can get substreams: "+ Add substream" next to "+ Add task".
+  const workstream = !nested && group.milestone?.parentId === null ? group.milestone : null
+  const [addingSubstream, setAddingSubstream] = useState(false)
+  const substreams = workstream ? ctx.milestones.filter((m) => m.parentId === workstream.id) : []
   // The list element, as state: the rails measure it once it is attached.
   const [listEl, setListEl] = useState<HTMLDivElement | null>(null)
   const inList = new Set(open.map((t) => t.id))
@@ -182,7 +189,24 @@ export function TaskGroup({
             />
           </div>
           <div className="mt-1">
-            <AddTaskRow groupName={groupName} onAdd={add} />
+            <AddTaskRow
+              groupName={groupName}
+              onAdd={add}
+              extra={
+                workstream && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Add substream to ${workstream.name}`}
+                    className="h-8 px-2 font-normal text-muted-foreground"
+                    onClick={() => setAddingSubstream(true)}
+                  >
+                    <Plus /> Add substream
+                  </Button>
+                )
+              }
+            />
           </div>
           {done.length > 0 && (
             <CollapsibleGroup label={`${done.length} done`} className="mt-1">
@@ -195,6 +219,14 @@ export function TaskGroup({
           )}
           {children && <div className="mt-3 flex flex-col gap-3">{children}</div>}
         </CardContent>
+        {addingSubstream && workstream && (
+          <MilestoneDialog
+            projectId={project.id}
+            parentId={workstream.id}
+            nextPosition={substreams.length > 0 ? Math.max(...substreams.map((s) => s.position)) + 1 : 0}
+            onClose={() => setAddingSubstream(false)}
+          />
+        )}
       </Card>
     </section>
   )
