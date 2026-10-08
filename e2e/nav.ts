@@ -43,3 +43,11 @@ export async function inboxCount(page: Page): Promise<number> {
   const m = /(\d+)/.exec(text)
   return m ? Number(m[1]) : 0
 }
+
+/** Opens the Import breakdown page from Projects ("More actions" menu next to "New project"). */
+export async function openImport(page: Page): Promise<void> {
+  await goTo(page, 'Projects')
+  await page.getByRole('button', { name: 'More actions' }).click()
+  await page.getByRole('menuitem', { name: 'Import breakdown' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Import breakdown' })).toBeVisible()
+}

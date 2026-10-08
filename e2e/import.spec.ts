@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
-import { goTo, openApp } from './nav'
+import { openApp, openImport } from './nav'
 
 /** The worked example's expected LLM output: the code block right after "Expected output". */
 function workedExampleOutline(): string {
@@ -17,15 +17,13 @@ test('import the worked example outline into a new project', async ({ page }) =>
   expect(outline).toContain('# Newsletter landing page')
 
   await openApp(page)
-  await goTo(page, 'Projects')
-  await page.getByRole('link', { name: 'Import breakdown' }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Import breakdown' })).toBeVisible()
+  await openImport(page)
 
   await page.getByRole('textbox', { name: 'Outline' }).fill(outline)
 
   // On the phone the preview lives behind an Edit / Preview switch.
   if (test.info().project.name === 'phone') {
-    await page.getByRole('button', { name: 'Preview', exact: true }).click()
+    await page.getByRole('radio', { name: 'Preview', exact: true }).click()
   }
   const preview = page.getByTestId('outline-preview')
   await expect(preview).toContainText('4 milestones')
@@ -37,7 +35,9 @@ test('import the worked example outline into a new project', async ({ page }) =>
     'Live landing page collects sign-ups and sends a welcome email',
   )
   await expect(page.getByLabel(/Target date/)).toHaveValue('2026-12-15')
-  await expect(page.getByLabel('Date type')).toHaveValue('hard')
+  // "Date type" is a single-select toggle group: the checked item is the current value.
+  await expect(page.getByRole('radio', { name: 'Hard deadline' })).toBeChecked()
+  await expect(page.getByRole('radio', { name: 'Soft target' })).not.toBeChecked()
 
   const create = page.getByRole('button', { name: 'Create project' })
   await expect(create).toBeEnabled()

@@ -16,7 +16,7 @@ test('an XL task cannot be planned until it is split into subtasks', async ({ pa
     has: page.getByRole('button', { name: XL_TASK, exact: true }),
   })
   await expect(planRow).toHaveCount(1)
-  await expect(planRow.getByText('Split this task first')).toBeVisible()
+  await expect(planRow.getByText('Split first', { exact: true })).toBeVisible()
   await expect(card.getByRole('checkbox', { name: `Plan "${XL_TASK}" this week` })).toBeDisabled()
 
   // Project page: open the XL task.
@@ -28,14 +28,15 @@ test('an XL task cannot be planned until it is split into subtasks', async ({ pa
 
   const dialog = page.getByRole('dialog', { name: 'Edit task' })
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByRole('heading', { name: 'Split task' })).toBeVisible()
+  // "Split task" is a collapsible that starts open for XL tasks.
+  await expect(dialog.getByRole('button', { name: 'Split task', expanded: true })).toBeVisible()
 
   // Split it into two subtasks.
   await dialog
     .getByRole('textbox', { name: 'Subtasks, one per line' })
     .fill('Model the content types [S]\nBuild the editor [L]')
   await dialog.getByRole('button', { name: 'Split into subtasks' }).click()
-  await page.getByRole('button', { name: 'Split task', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Split task', exact: true }).click()
 
   // The dialog closes; the XL task is replaced in place by the two new tasks.
   await expect(dialog).toHaveCount(0)
