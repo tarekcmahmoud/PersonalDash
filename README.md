@@ -11,8 +11,11 @@ A weekly planner for people running many projects at once. PersonalDash helps yo
 ## Features
 
 - **Projects** with an objective ("done when…") and a hard or soft deadline.
-- **Milestones** and **tasks** with sizes (S, M, L, XL) and dependencies. An XL task is too big to schedule, so
-  split it first.
+- **Workstreams**: parallel tracks within a project (for example Design and Build), each with its own next step.
+  Tasks within a workstream run in order, and tasks can depend on tasks in other workstreams. Each task has a size
+  (S, M, L, XL); an XL task is too big to schedule, so split it first.
+- **Workstream focus mode** on the project page.
+- **Resources** per project (links with images, descriptions and linked workstreams).
 - **Inbox** for tasks you haven't placed yet.
 - **Weekly pick list** on the Plan screen, with a capacity bar and warnings when a project is neglected or falls
   below its weekly minimum.

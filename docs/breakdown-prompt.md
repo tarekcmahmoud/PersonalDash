@@ -24,7 +24,7 @@ Project name: {{project name}}
 Objective / outcome (what is true when it is done): {{objective or outcome}}
 Deadline: {{deadline as YYYY-MM-DD}} ({{hard or soft}})  -- hard = external deadline, soft = self-set target
 Context and constraints (time I have, budget, tools, skills, things already done): {{context and constraints}}
-Known milestones (optional, otherwise propose your own): {{known milestones}}
+Known workstreams (optional, otherwise propose your own): {{known workstreams}}
 People involved (who I depend on, who decides or approves): {{people involved}}
 
 # OUTPUT FORMAT
@@ -36,9 +36,9 @@ Plain text, one item per line:
 outcome: Done when ...
 target: YYYY-MM-DD hard
 
-- Task in no milestone [S]
+- Task in no workstream [S]
 
-## Milestone name
+## Workstream name
 target: YYYY-MM-DD soft
 - Task title [M] #key after:#otherkey
   done: what must be true for this task to count as finished
@@ -49,7 +49,8 @@ target: YYYY-MM-DD soft
 Rules of the format:
 - The first line is `# Project name`, exactly once. Directly under it: `outcome:` and `target:`
   (`target: YYYY-MM-DD hard` or `soft`). Omit `min-per-week`.
-- `## Name` starts a milestone. Optionally `target: YYYY-MM-DD hard|soft` directly under it.
+- `## Name` starts a workstream: a parallel track of work. Optionally `target: YYYY-MM-DD hard|soft` directly
+  under it: when that stream should be done. Tasks above the first `##` belong to no workstream.
 - A task is a line starting with `- ` at column 0: `- Title [S|M|L|XL] #key after:#k1,#k2`.
   The size tag is required. `#key` and `after:` are optional (see below).
 - Lines under a task are indented by 2 spaces: `done: ...`, `note: ...` (one per line), and checklist items
@@ -59,18 +60,19 @@ Rules of the format:
 
 # BREAKDOWN RULES
 
-1. Use 3 to 7 milestones, in the order the work happens. Each milestone is a meaningful checkpoint, not a
-   category. Put at most a few tasks outside milestones, only for things that must happen before anything else.
+1. Use 2 to 6 workstreams: parallel tracks of work that can progress independently (e.g. Design, Build, Content,
+   Admin). Within a workstream, list tasks in the order they happen. Put at most a few tasks outside
+   workstreams, only for things that must happen before anything else.
 2. Tasks start with a verb and are concrete and observable ("Draft the pricing page copy", not "Pricing").
-   Aim for 3 to 8 tasks per milestone.
+   Aim for 3 to 8 tasks per workstream.
 3. Size every task: S = about 1 hour or less, M = about half a day, L = about a full day.
    Anything bigger than a day, or still unclear, must be `[XL]`. Prefer splitting it into S/M/L tasks; use XL
    only when you genuinely cannot split it yet, and say why in a `note:`.
 4. Add `done:` to any task whose completion is ambiguous (reviews, "finalize", "prepare", decisions).
    Skip it when the title already makes completion obvious.
-5. Tasks run in the order listed: each one implicitly follows the previous one. Use `#key` and `after:`
-   ONLY when a task does not simply follow the previous one, for example parallel tracks that join later.
-   Give a key only to tasks that something else points to.
+5. Tasks within a workstream run in the order listed: each one implicitly follows the previous task in that
+   workstream. Use `#key` and `after:` when a task must wait for a task in ANOTHER workstream, or when the order
+   inside a workstream is not simply sequential. Give a key only to tasks that something else points to.
 6. Wherever the work stalls until someone else responds (hand-offs, approvals, deliveries, replies), add the
    line `note: waiting on <who>` to that task, naming the person or party from my project details.
 7. The very first task must be something I can start today with what I have, and must be S or M.
@@ -94,7 +96,7 @@ Objective / outcome: A live landing page that collects newsletter sign-ups and s
 Deadline: 2026-12-15 (hard)
 Context and constraints: Solo, about 6 hours a week. Domain is already bought. No design skills, so I will
 use a template. Email tool is not chosen yet.
-Known milestones: none
+Known workstreams: none
 People involved: Sam (friend who reviews copy), the email tool's support team
 ```
 
@@ -108,7 +110,7 @@ target: 2026-12-15 hard
 - Write a one-paragraph pitch for the newsletter [S]
   done: pitch is saved in a doc and reads well out loud
 
-## Foundations
+## Setup
 target: 2026-11-01 soft
 - Compare three email tools on price and sign-up forms [M]
   done: one tool picked with a reason written down
@@ -119,15 +121,15 @@ target: 2026-11-01 soft
 ## Content
 target: 2026-11-20 soft
 - Draft headline, sub-headline and call to action [M]
-- Write the welcome email [M] after:#account
-  done: email is saved in the email tool as an automation draft
 - Get Sam's feedback on the copy [S]
   note: waiting on Sam
-- Revise copy with Sam's feedback [S]
+- Revise copy with Sam's feedback [S] #copy
+- Write the welcome email [M] after:#account
+  done: email is saved in the email tool as an automation draft
 
 ## Build
 target: 2026-12-01 soft
-- Set up the template with the final copy [L] after:#template
+- Set up the template with the final copy [L] after:#template,#copy
 - Connect the sign-up form to the email tool [M] #form after:#account,#template
   - [ ] Test on desktop
   - [ ] Test on phone
