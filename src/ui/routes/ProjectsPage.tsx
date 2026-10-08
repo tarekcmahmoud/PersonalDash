@@ -13,11 +13,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useApply, usePlanContext } from '../../data/hooks'
 import { activeProjectCount, isOverActiveCap } from '../../domain/health'
 import type { Project } from '../../domain/types'
-import { Card, CardContent } from '@/components/ui/card'
-import { CardSection, Page } from '../components/Page'
+import { MasonryGrid } from '../components/MasonryGrid'
+import { Page } from '../components/Page'
 import { CollapsibleGroup } from '../project/CollapsibleGroup'
 import { ProjectFormDialog } from '../project/ProjectFormDialog'
-import { ProjectRow } from '../project/ProjectRow'
+import { ProjectCard } from '../project/ProjectCard'
 import { SortableList } from '../project/SortableList'
 
 const byRank = (a: Project, b: Project): number => a.rank - b.rank
@@ -49,11 +49,11 @@ export function ProjectsPage() {
 
   if (!ctx) {
     return (
-      <Page title="Projects" actions={actions}>
+      <Page title="Projects" actions={actions} wide>
         <div role="status" aria-label="Loading projects" className="grid gap-4">
-          <Skeleton className="h-14" />
-          <Skeleton className="h-14" />
-          <Skeleton className="h-14" />
+          <Skeleton className="h-48 rounded-3xl" />
+          <Skeleton className="h-48 rounded-3xl" />
+          <Skeleton className="h-48 rounded-3xl" />
         </div>
       </Page>
     )
@@ -78,63 +78,53 @@ export function ProjectsPage() {
   }
 
   return (
-    <Page title="Projects" actions={actions}>
+    <Page title="Projects" actions={actions} wide>
       {isOverActiveCap(ctx) && (
         <p className="-mt-2 mb-4 text-sm text-warning">
           {`${activeProjectCount(ctx.projects)} active projects — more than your cap of ${ctx.settings.activeCap}. Consider putting one on hold.`}
         </p>
       )}
 
-      <div className="flex flex-col gap-4">
-        <CardSection title="Active" count={active.length}>
-          {active.length === 0 ? (
-            <p className="py-2 text-sm text-muted-foreground">
-              No active projects. Create one, or reactivate a project below.
-            </p>
-          ) : (
-            <SortableList
-              className="divide-y"
-              items={active}
-              onReorder={(items) => void reorder(items)}
-              label={(p) => p.name}
-              renderItem={(p, controls) => <ProjectRow project={p} ctx={ctx} controls={controls} />}
-            />
+      <section aria-label="Active projects" className="flex flex-col gap-8">
+        {active.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No active projects. Create one, or reactivate a project below.
+          </p>
+        )}
+        <SortableList
+          layout="grid"
+          items={active}
+          onReorder={(items) => void reorder(items)}
+          label={(p) => p.name}
+          renderItem={(p, controls) => <ProjectCard project={p} ctx={ctx} controls={controls} />}
+          container={(cards) => (
+            <MasonryGrid>
+              {cards}
+              {system && <ProjectCard key={system.id} project={system} ctx={ctx} />}
+            </MasonryGrid>
           )}
-          {system && (
-            <div className="border-t">
-              <ProjectRow project={system} ctx={ctx} />
-            </div>
-          )}
-        </CardSection>
+        />
 
         {onHold.length > 0 && (
-          <Card size="sm" className="py-2">
-            <CardContent>
-              <CollapsibleGroup heading label="On hold" count={onHold.length}>
-                <div className="divide-y">
-                  {onHold.map((p) => (
-                    <ProjectRow key={p.id} project={p} ctx={ctx} />
-                  ))}
-                </div>
-              </CollapsibleGroup>
-            </CardContent>
-          </Card>
+          <CollapsibleGroup heading label="On hold" count={onHold.length}>
+            <MasonryGrid className="mt-3">
+              {onHold.map((p) => (
+                <ProjectCard key={p.id} project={p} ctx={ctx} />
+              ))}
+            </MasonryGrid>
+          </CollapsibleGroup>
         )}
 
         {done.length > 0 && (
-          <Card size="sm" className="py-2">
-            <CardContent>
-              <CollapsibleGroup heading label="Done" count={done.length}>
-                <div className="divide-y">
-                  {done.map((p) => (
-                    <ProjectRow key={p.id} project={p} ctx={ctx} />
-                  ))}
-                </div>
-              </CollapsibleGroup>
-            </CardContent>
-          </Card>
+          <CollapsibleGroup heading label="Done" count={done.length}>
+            <MasonryGrid className="mt-3">
+              {done.map((p) => (
+                <ProjectCard key={p.id} project={p} ctx={ctx} />
+              ))}
+            </MasonryGrid>
+          </CollapsibleGroup>
         )}
-      </div>
+      </section>
 
       {creating && (
         <ProjectFormDialog

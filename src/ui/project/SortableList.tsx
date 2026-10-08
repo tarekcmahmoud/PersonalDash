@@ -10,6 +10,7 @@ import {
 import {
   SortableContext,
   arrayMove,
+  rectSortingStrategy,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
@@ -37,15 +38,21 @@ interface SortableListProps<T extends { id: string }> {
   label: (item: T) => string
   renderItem: (item: T, controls: SortableControls) => ReactNode
   className?: string
+  /** 'grid' for 2-D layouts (e.g. a masonry of cards); default 'vertical'. */
+  layout?: 'vertical' | 'grid'
+  /** Wraps the rendered items (default: a div with `className`). Use it to lay items out, e.g. MasonryGrid. */
+  container?: (items: ReactNode[]) => ReactNode
 }
 
-/** Vertical sortable list: drag handle (pointer + keyboard) plus `move` for "Move up/down" menu items. */
+/** Sortable list or grid: drag handle (pointer + keyboard) plus `move` for "Move up/down" menu items. */
 export function SortableList<T extends { id: string }>({
   items,
   onReorder,
   label,
   renderItem,
   className,
+  layout = 'vertical',
+  container,
 }: SortableListProps<T>) {
   const dndId = useId()
   const sensors = useSensors(
@@ -68,9 +75,12 @@ export function SortableList<T extends { id: string }>({
 
   return (
     <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-      <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <div className={className}>
-          {items.map((item, index) => (
+      <SortableContext
+        items={items.map((i) => i.id)}
+        strategy={layout === 'grid' ? rectSortingStrategy : verticalListSortingStrategy}
+      >
+        {(container ?? ((rows) => <div className={className}>{rows}</div>))(
+          items.map((item, index) => (
             <SortableRow
               key={item.id}
               id={item.id}
@@ -81,8 +91,8 @@ export function SortableList<T extends { id: string }>({
             >
               {(controls) => renderItem(item, controls)}
             </SortableRow>
-          ))}
-        </div>
+          )),
+        )}
       </SortableContext>
     </DndContext>
   )

@@ -20,18 +20,24 @@ describe('ProjectsPage', () => {
     )
     expect(screen.getByRole('link', { name: 'Quarterly board report' })).toBeInTheDocument()
     // The system project comes last among the active ones.
-    const names = screen.getAllByTestId('project-row').map((r) => within(r).getByRole('link').textContent)
+    const names = screen.getAllByTestId('project-card').map((r) => within(r).getByRole('link').textContent)
     expect(names.at(-1)).toBe('Admin / Misc')
-    expect(within(screen.getAllByTestId('project-row').at(-1)!).getByText('System')).toBeInTheDocument()
+    expect(within(screen.getAllByTestId('project-card').at(-1)!).getByText('System')).toBeInTheDocument()
 
     // On hold is a collapsed group.
     expect(screen.queryByRole('link', { name: 'Kitchen renovation' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /On hold/ }))
     expect(await screen.findByRole('link', { name: 'Kitchen renovation' })).toBeInTheDocument()
 
+    // Each project is its own card: objective date, progress, next step and this week's load.
     const website = screen.getByRole('link', { name: 'Client website redesign' }).closest('[data-testid]')!
-    expect(within(website as HTMLElement).getByText('Next: Draft sitemap')).toBeInTheDocument()
-    expect(within(website as HTMLElement).getByText(/^\d+ open$/)).toBeInTheDocument()
+    const card = within(website as HTMLElement)
+    expect(card.getByText('Next')).toBeInTheDocument()
+    expect(card.getByText('Draft sitemap')).toBeInTheDocument()
+    expect(card.getByText(/^Deadline /)).toBeInTheDocument()
+    expect(card.getByText(/^\d+ of \d+ done$/)).toBeInTheDocument()
+    expect(card.getByText(/^\d+ open · \d+ planned this week$/)).toBeInTheDocument()
+    expect(card.getByLabelText(/Client website redesign: \d+ of \d+ tasks done/)).toBeInTheDocument()
   })
 
   it('has one primary action and puts import and templates in the … menu', async () => {
