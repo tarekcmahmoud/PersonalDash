@@ -1,16 +1,23 @@
-import { CheckIcon, CopyIcon } from '@primer/octicons-react'
-import { Button, Details, Flash, FormControl, Select, Textarea, TextInput } from '@primer/react'
-import { useEffect, useRef, useState } from 'react'
+import { Copy, FileText } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { useApply, useSnapshot } from '../../data/hooks'
 import { makeProject, makeTemplate } from '../../domain/factories'
 import { activeProjectCount, isOverActiveCap } from '../../domain/health'
 import { docToBundle, parseOutline, type OutlineDoc, type ParseResult } from '../../domain/outline'
 import type { DateKind, ProjectStatus } from '../../domain/types'
-import { Page } from '../components/Page'
+import { Page, Section } from '../components/Page'
 import { BREAKDOWN_PROMPT, copyText } from '../outline/breakdownPrompt'
 import { OutlineEditor } from '../outline/OutlineEditor'
-import styles from './ImportPage.module.css'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
 /** Router state accepted by /import: `navigate('/import', { state: { outline, templateId } })`. */
 export interface ImportLocationState {
@@ -78,31 +85,37 @@ function validate(v: FormValues): FieldErrors {
 }
 
 function CopyPromptButton() {
-  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
-  const timer = useRef<number | undefined>(undefined)
-  useEffect(() => () => window.clearTimeout(timer.current), [])
-
   async function onClick() {
     const ok = await copyText(BREAKDOWN_PROMPT)
-    setState(ok ? 'copied' : 'failed')
-    window.clearTimeout(timer.current)
-    timer.current = window.setTimeout(() => setState('idle'), 2500)
+    if (ok) toast.success('Prompt copied')
+    else toast.error('Could not copy. Select the prompt in docs/breakdown-prompt.md instead.')
   }
-
   return (
-    <span className={styles.copyWrap}>
-      <Button variant="invisible" size="small" leadingVisual={CopyIcon} onClick={onClick}>
-        Copy the LLM prompt
-      </Button>
-      <span className={styles.copyStatus} role="status">
-        {state === 'copied' && (
-          <>
-            <CheckIcon size={14} /> Copied
-          </>
-        )}
-        {state === 'failed' && 'Could not copy. Select the prompt in docs/breakdown-prompt.md instead.'}
-      </span>
-    </span>
+    <Button variant="ghost" size="sm" onClick={onClick}>
+      <Copy />
+      Copy LLM prompt
+    </Button>
+  )
+}
+
+function FormatCheatsheet() {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm">
+          <FileText />
+          Format
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[min(34rem,calc(100vw-2rem))] text-sm">
+        <pre className="overflow-x-auto font-mono text-xs leading-5 text-muted-foreground">{CHEATSHEET}</pre>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Sizes: S about 1h, M about half a day, L about a full day, XL too big or unclear (split it before it
+          can be scheduled). Tasks follow the previous one unless you use{' '}
+          <code className="font-mono">after:</code>.
+        </p>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -158,6 +171,7 @@ function ImportForm({ initial }: { initial: ImportLocationState }) {
     try {
       await apply({ kind: 'insertBundle', bundle })
       const project = bundle.projects[0]
+      toast.success('Project created')
       if (project) navigate(`/projects/${project.id}`)
     } catch (err) {
       setFailure(err instanceof Error ? err.message : 'Could not create the project')
@@ -180,6 +194,7 @@ function ImportForm({ initial }: { initial: ImportLocationState }) {
     setFailure(null)
     try {
       await apply({ kind: 'saveTemplate', template })
+      toast.success('Template saved')
       navigate('/templates')
     } catch (err) {
       setFailure(err instanceof Error ? err.message : 'Could not save the template')
@@ -194,144 +209,157 @@ function ImportForm({ initial }: { initial: ImportLocationState }) {
       wide
       title="Import breakdown"
       description="Paste a breakdown in the outline format, check the preview, then create the project."
+      actions={
+        <>
+          <CopyPromptButton />
+          <FormatCheatsheet />
+        </>
+      }
     >
-      <div className={styles.stack}>
-        <p className={styles.help}>
-          No breakdown yet? Ask an LLM for one, then paste its answer below. <CopyPromptButton />
-        </p>
-        <Details className={styles.cheatsheet}>
-          <Details.Summary>Format cheatsheet</Details.Summary>
-          <pre className={styles.code}>{CHEATSHEET}</pre>
-          <p className={styles.small}>
-            Sizes: S about 1h, M about half a day, L about a full day, XL too big or unclear (split it before
-            it can be scheduled). Tasks follow the previous one unless you use <code>after:</code>.
-          </p>
-        </Details>
+      <OutlineEditor
+        value={text}
+        onChange={setText}
+        onParse={setParsed}
+        previewClassName="lg:max-h-[34rem] lg:overflow-y-auto lg:pr-2"
+      />
 
-        <OutlineEditor value={text} onChange={setText} onParse={setParsed} />
-
-        <section className={styles.objective} aria-labelledby="objective-heading">
-          <h2 id="objective-heading" className={styles.heading}>
-            Objective
-          </h2>
-          <div className={styles.fields}>
-            <FormControl required className={styles.wide}>
-              <FormControl.Label>Project name</FormControl.Label>
-              <TextInput
-                block
+      <Section title="Objective" className="mt-10 mb-0 border-t pt-6">
+        <div className="mt-3 max-w-xl">
+          <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
+            <Field id="project-name" label="Project name" error={errorFor('name')} className="sm:col-span-2">
+              <Input
+                id="project-name"
                 value={values.name}
+                aria-invalid={errorFor('name') ? true : undefined}
                 onChange={(e) => setField('name', e.target.value)}
                 onBlur={() => touch('name')}
-                validationStatus={errorFor('name') ? 'error' : undefined}
               />
-              {errorFor('name') && (
-                <FormControl.Validation variant="error">{errors.name}</FormControl.Validation>
-              )}
-            </FormControl>
+            </Field>
 
-            <FormControl required className={styles.wide}>
-              <FormControl.Label>Outcome</FormControl.Label>
+            <Field id="outcome" label="Outcome" error={errorFor('outcome')} className="sm:col-span-2">
               <Textarea
-                block
+                id="outcome"
                 rows={2}
-                resize="vertical"
+                className="resize-y"
                 placeholder="Done when …"
                 value={values.outcome}
+                aria-invalid={errorFor('outcome') ? true : undefined}
                 onChange={(e) => setField('outcome', e.target.value)}
                 onBlur={() => touch('outcome')}
-                validationStatus={errorFor('outcome') ? 'error' : undefined}
               />
-              {errorFor('outcome') && (
-                <FormControl.Validation variant="error">{errors.outcome}</FormControl.Validation>
-              )}
-            </FormControl>
+            </Field>
 
-            <FormControl required>
-              <FormControl.Label>Target date</FormControl.Label>
-              <TextInput
-                block
+            <Field id="target-date" label="Target date" error={errorFor('targetDate')}>
+              <Input
+                id="target-date"
                 type="date"
                 value={values.targetDate}
+                aria-invalid={errorFor('targetDate') ? true : undefined}
                 onChange={(e) => setField('targetDate', e.target.value)}
                 onBlur={() => touch('targetDate')}
-                validationStatus={errorFor('targetDate') ? 'error' : undefined}
               />
-              {errorFor('targetDate') && (
-                <FormControl.Validation variant="error">{errors.targetDate}</FormControl.Validation>
-              )}
-            </FormControl>
+            </Field>
 
-            <FormControl>
-              <FormControl.Label>Date type</FormControl.Label>
-              <Select
-                block
+            <div className="grid gap-1.5">
+              <Label id="date-kind-label">Date type</Label>
+              <ToggleGroup
+                type="single"
+                variant="outline"
+                aria-label="Date type"
                 value={values.dateKind}
-                onChange={(e) => setField('dateKind', e.target.value as DateKind)}
+                onValueChange={(v) => {
+                  if (v === 'soft' || v === 'hard') setField('dateKind', v)
+                }}
               >
-                <Select.Option value="soft">Soft target</Select.Option>
-                <Select.Option value="hard">Hard deadline</Select.Option>
-              </Select>
-            </FormControl>
+                <ToggleGroupItem value="soft">Soft target</ToggleGroupItem>
+                <ToggleGroupItem value="hard">Hard deadline</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
 
-            <FormControl>
-              <FormControl.Label>Weekly minimum (tasks)</FormControl.Label>
-              <TextInput
-                block
+            <Field id="weekly-min" label="Weekly minimum (tasks)" error={errorFor('weeklyMin')}>
+              <Input
+                id="weekly-min"
                 type="number"
                 inputMode="numeric"
                 min={1}
                 placeholder="Optional"
                 value={values.weeklyMin}
+                aria-invalid={errorFor('weeklyMin') ? true : undefined}
                 onChange={(e) => setField('weeklyMin', e.target.value)}
                 onBlur={() => touch('weeklyMin')}
-                validationStatus={errorFor('weeklyMin') ? 'error' : undefined}
               />
-              {errorFor('weeklyMin') && (
-                <FormControl.Validation variant="error">{errors.weeklyMin}</FormControl.Validation>
-              )}
-            </FormControl>
+            </Field>
 
-            <FormControl>
-              <FormControl.Label>Status</FormControl.Label>
-              <Select
-                block
-                value={values.status}
-                onChange={(e) => setField('status', e.target.value as ProjectStatus)}
-              >
-                <Select.Option value="active">Active</Select.Option>
-                <Select.Option value="on_hold">On hold</Select.Option>
+            <div className="grid gap-1.5">
+              <Label htmlFor="status">Status</Label>
+              <Select value={values.status} onValueChange={(v) => setField('status', v as ProjectStatus)}>
+                <SelectTrigger id="status" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="on_hold">On hold</SelectItem>
+                </SelectContent>
               </Select>
-            </FormControl>
+            </div>
           </div>
 
           {overCap && snapshot && (
-            <Flash variant="warning" className={styles.flash}>
-              You already have {activeCount} active {activeCount === 1 ? 'project' : 'projects'} (your limit
-              is {snapshot.settings.activeCap}). Another active project spreads your time thinner. Consider
-              putting this one on hold.{' '}
-              <Button size="small" onClick={() => setField('status', 'on_hold')}>
-                Put on hold
+            <p className="mt-4 text-sm text-warning">
+              You already have {activeCount} active {activeCount === 1 ? 'project' : 'projects'} (limit{' '}
+              {snapshot.settings.activeCap}); another one spreads your time thinner.{' '}
+              <Button
+                variant="link"
+                className="h-auto p-0 text-sm text-warning"
+                onClick={() => setField('status', 'on_hold')}
+              >
+                Put on hold instead
               </Button>
-            </Flash>
+            </p>
           )}
           {failure && (
-            <Flash variant="danger" className={styles.flash}>
+            <p className="mt-4 text-sm text-destructive" role="alert">
               {failure}
-            </Flash>
+            </p>
           )}
 
-          <div className={styles.actions}>
-            <Button variant="primary" disabled={!doc || hasErrors || busy} onClick={onCreate}>
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            <Button disabled={!doc || hasErrors || busy} onClick={onCreate}>
               Create project
             </Button>
-            <Button disabled={!doc || hasErrors || busy} onClick={onSaveTemplate}>
+            <Button variant="ghost" disabled={!doc || hasErrors || busy} onClick={onSaveTemplate}>
               Save as template instead
             </Button>
           </div>
-          {hasErrors && <p className={styles.small}>Fix the errors above to continue.</p>}
-        </section>
-      </div>
+          {hasErrors && (
+            <p className="mt-2 text-xs text-muted-foreground">Fix the errors above to continue.</p>
+          )}
+        </div>
+      </Section>
     </Page>
+  )
+}
+
+/** Label + control + inline validation message. */
+function Field({
+  id,
+  label,
+  error,
+  className,
+  children,
+}: {
+  id: string
+  label: string
+  error?: string
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <div className={cn('grid content-start gap-1.5', className)}>
+      <Label htmlFor={id}>{label}</Label>
+      {children}
+      {error && <p className="text-sm text-destructive">{error}</p>}
+    </div>
   )
 }
 

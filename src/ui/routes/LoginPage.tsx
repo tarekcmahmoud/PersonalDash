@@ -1,8 +1,9 @@
-import { Button, Flash, FormControl, Heading, Stack, TextInput } from '@primer/react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useServices } from '../../data/services'
-import styles from './LoginPage.module.css'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 function redirectTarget(state: unknown): string {
   const from = (state as { from?: unknown } | null)?.from
@@ -51,42 +52,46 @@ export function LoginPage() {
   }
 
   return (
-    <main className={styles.page}>
-      <form className={styles.card} onSubmit={onSubmit} aria-labelledby="login-heading">
-        <Stack gap="normal">
-          <Stack gap="condensed">
-            <Heading as="h1" id="login-heading" variant="medium">
-              PersonalDash
-            </Heading>
-            <p className={styles.subtitle}>Sign in to continue</p>
-          </Stack>
-          {error && <Flash variant="danger">{error}</Flash>}
-          <FormControl required>
-            <FormControl.Label>Email</FormControl.Label>
-            <TextInput
-              block
-              type="email"
-              name="email"
-              autoComplete="username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </FormControl>
-          <FormControl required>
-            <FormControl.Label>Password</FormControl.Label>
-            <TextInput
-              block
-              type="password"
-              name="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </FormControl>
-          <Button type="submit" variant="primary" block loading={submitting}>
-            Sign in
-          </Button>
-        </Stack>
+    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+      <form className="grid w-full max-w-xs gap-5" onSubmit={onSubmit} aria-labelledby="login-heading">
+        <div>
+          <h1 id="login-heading" className="text-2xl font-semibold tracking-tight">
+            PersonalDash
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">Sign in to continue</p>
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="login-email">Email</Label>
+          <Input
+            id="login-email"
+            type="email"
+            name="email"
+            autoComplete="username"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="login-password">Password</Label>
+          <Input
+            id="login-password"
+            type="password"
+            name="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        {error && (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        )}
+        <Button type="submit" disabled={submitting}>
+          {submitting ? 'Signing in…' : 'Sign in'}
+        </Button>
       </form>
     </main>
   )

@@ -1,8 +1,7 @@
-import { AlertIcon, XCircleFillIcon } from '@primer/octicons-react'
 import type { OutlineIssue } from '../../domain/outline'
-import styles from './IssueList.module.css'
+import { cn } from '@/lib/utils'
 
-/** Errors (danger) and warnings (attention) of a parsed outline; each issue jumps to its line. */
+/** Errors and warnings of a parsed outline as quiet lines; each issue jumps to its line. */
 export function IssueList({
   issues,
   onJumpToLine,
@@ -21,36 +20,33 @@ export function IssueList({
     .join(', ')
 
   return (
-    <div className={styles.root}>
-      <div className={styles.summary} role="status">
+    <div className="mt-3">
+      <p className="mb-1 text-xs text-muted-foreground" role="status">
         {summary}
-      </div>
-      <ul className={styles.list} aria-label="Outline issues">
+      </p>
+      <ul className="divide-y divide-border/60" aria-label="Outline issues">
         {issues.map((issue, i) => {
           const isError = issue.severity === 'error'
-          const prefix = issue.line > 0 ? `Line ${issue.line}:` : 'Whole outline:'
+          const prefix = issue.line > 0 ? `Line ${issue.line} ·` : 'Whole outline ·'
           const content = (
             <>
-              <span className={isError ? styles.iconError : styles.iconWarning} aria-hidden="true">
-                {isError ? <XCircleFillIcon size={16} /> : <AlertIcon size={16} />}
-              </span>
-              <span className={styles.text}>
-                <span className={styles.prefix}>{prefix}</span> {issue.message}
-              </span>
+              <span className="text-muted-foreground">{prefix}</span>{' '}
+              <span className={isError ? 'text-destructive' : 'text-warning'}>{issue.message}</span>
             </>
           )
+          const className = 'block w-full py-1.5 text-left text-sm'
           return (
-            <li
-              key={`${issue.line}-${i}`}
-              className={isError ? styles.error : styles.warning}
-              data-severity={issue.severity}
-            >
+            <li key={`${issue.line}-${i}`} data-severity={issue.severity}>
               {issue.line > 0 && onJumpToLine ? (
-                <button type="button" className={styles.item} onClick={() => onJumpToLine(issue.line)}>
+                <button
+                  type="button"
+                  className={cn(className, 'cursor-pointer underline-offset-4 hover:underline')}
+                  onClick={() => onJumpToLine(issue.line)}
+                >
                   {content}
                 </button>
               ) : (
-                <div className={styles.item}>{content}</div>
+                <div className={className}>{content}</div>
               )}
             </li>
           )

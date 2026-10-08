@@ -1,6 +1,6 @@
-import { Banner } from '@primer/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef } from 'react'
+import { Button } from '@/components/ui/button'
 import { SNAPSHOT_KEY, useApply, useSnapshot, useUpdateTasks } from '../../data/hooks'
 import type { Snapshot } from '../../domain/types'
 import { calendarExists, createPersonalDashCalendar, deleteEvent, errorMessage } from './api'
@@ -158,7 +158,7 @@ export function CalendarSync() {
 }
 
 /**
- * Compact banner shown only when the calendar is connected but the access token has expired.
+ * One quiet line shown only when the calendar is connected but the access token has expired.
  * Mount at the top of the main content area.
  */
 export function CalendarReconnectBanner() {
@@ -168,16 +168,12 @@ export function CalendarReconnectBanner() {
   }, [status])
   if (status !== 'needs_reconnect') return null
   return (
-    <Banner
-      variant="warning"
-      layout="compact"
-      title="Google Calendar needs to be reconnected"
-      description={error ?? undefined}
-      primaryAction={
-        <Banner.PrimaryAction disabled={busy} onClick={() => void reconnect()}>
-          Reconnect calendar
-        </Banner.PrimaryAction>
-      }
-    />
+    <p className="text-sm text-muted-foreground" role="status">
+      Google Calendar needs reconnecting.{' '}
+      <Button variant="link" className="h-auto p-0 text-sm" disabled={busy} onClick={() => void reconnect()}>
+        Reconnect
+      </Button>
+      {error && <span className="ml-2 text-destructive">{error}</span>}
+    </p>
   )
 }

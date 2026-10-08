@@ -1,11 +1,12 @@
-import { SegmentedControl, Textarea } from '@primer/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { parseOutline, type ParseResult } from '../../domain/outline'
+import { Textarea } from '@/components/ui/textarea'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { cn } from '@/lib/utils'
 import { IssueList } from './IssueList'
 import { lineRange } from './outlineStats'
 import { OutlinePreview } from './OutlinePreview'
-import styles from './OutlineEditor.module.css'
 
 const DEBOUNCE_MS = 200
 
@@ -18,6 +19,7 @@ export function OutlineEditor({
   onChange,
   onParse,
   label = 'Outline',
+  previewClassName,
   placeholder = '# Project name\noutcome: Done when …\ntarget: 2026-12-31 soft\n\n## Milestone\n- First task [S]',
 }: {
   value: string
@@ -26,6 +28,8 @@ export function OutlineEditor({
   onParse?: (result: ParseResult) => void
   label?: string
   placeholder?: string
+  /** Extra classes for the preview pane (e.g. a max height on desktop). */
+  previewClassName?: string
 }) {
   const [parsed, setParsed] = useState<ParseResult>(() => parseOutline(value))
   const [tab, setTab] = useState<'edit' | 'preview'>('edit')
@@ -64,25 +68,31 @@ export function OutlineEditor({
   const issues = hasText ? parsed.issues : []
 
   return (
-    <div className={styles.root} data-tab={tab}>
-      <div className={styles.switcher}>
-        <SegmentedControl
-          aria-label="Edit or preview"
-          fullWidth
-          onChange={(i) => setTab(i === 0 ? 'edit' : 'preview')}
-        >
-          <SegmentedControl.Button selected={tab === 'edit'}>Edit</SegmentedControl.Button>
-          <SegmentedControl.Button selected={tab === 'preview'}>Preview</SegmentedControl.Button>
-        </SegmentedControl>
-      </div>
-      <div className={styles.panes}>
-        <div className={styles.editPane}>
+    <div data-tab={tab}>
+      <ToggleGroup
+        type="single"
+        variant="outline"
+        size="sm"
+        aria-label="Edit or preview"
+        value={tab}
+        onValueChange={(v) => {
+          if (v === 'edit' || v === 'preview') setTab(v)
+        }}
+        className="mb-3 w-full lg:hidden"
+      >
+        <ToggleGroupItem value="edit" className="flex-1">
+          Edit
+        </ToggleGroupItem>
+        <ToggleGroupItem value="preview" className="flex-1">
+          Preview
+        </ToggleGroupItem>
+      </ToggleGroup>
+      <div className="grid gap-x-10 gap-y-6 lg:grid-cols-2">
+        <div className={cn('min-w-0', tab === 'preview' && 'max-lg:hidden')}>
           <Textarea
             ref={areaRef}
             aria-label={label}
-            className={styles.editor}
-            block
-            resize="vertical"
+            className="field-sizing-fixed min-h-[22rem] resize-y font-mono text-[13px] leading-6 md:text-[13px] lg:min-h-[34rem]"
             rows={20}
             spellCheck={false}
             autoCapitalize="off"
@@ -93,11 +103,15 @@ export function OutlineEditor({
           />
           <IssueList issues={issues} onJumpToLine={jumpToLine} />
         </div>
-        <div className={styles.previewPane} aria-label="Preview" role="region">
+        <div
+          className={cn('min-w-0', tab === 'edit' && 'max-lg:hidden', previewClassName)}
+          aria-label="Preview"
+          role="region"
+        >
           {hasText ? (
             <OutlinePreview doc={parsed.doc} />
           ) : (
-            <p className={styles.hint}>Paste or type an outline on the left to see the plan here.</p>
+            <p className="text-sm text-muted-foreground">Paste or type an outline to see the plan here.</p>
           )}
         </div>
       </div>

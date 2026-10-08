@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { AuthService, AuthUser } from '../../data/auth'
 import type { Repo } from '../../data/repo'
 import { ServicesProvider } from '../../data/services'
@@ -34,23 +34,6 @@ function renderLogin(
     </ServicesProvider>,
   )
 }
-
-// Primer's Spinner (shown by Button's loading state) reads window.matchMedia, which jsdom lacks.
-beforeAll(() => {
-  if (typeof window.matchMedia !== 'function') {
-    window.matchMedia = (query: string) =>
-      ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addEventListener: () => {},
-        removeEventListener: () => {},
-        addListener: () => {},
-        removeListener: () => {},
-        dispatchEvent: () => false,
-      }) as MediaQueryList
-  }
-})
 
 describe('LoginPage', () => {
   it('calls signIn with the entered values and navigates home', async () => {

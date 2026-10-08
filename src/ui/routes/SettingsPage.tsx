@@ -1,6 +1,6 @@
-import { Button, Checkbox, Flash, FormControl, Label, Spinner, Text, TextInput } from '@primer/react'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 import { useApply, usePlanContext, useSnapshot } from '../../data/hooks'
 import { useServices } from '../../data/services'
 import { weekCapacity } from '../../domain/capacity'
@@ -9,10 +9,14 @@ import { WEEKDAYS } from '../../domain/types'
 import { preloadGis } from '../../integrations/gcal/auth'
 import { requestSync, useSyncStatus } from '../../integrations/gcal/syncControl'
 import { useGcalConnection, type GcalStatus } from '../../integrations/gcal/useGcalConnection'
-import { Page } from '../components/Page'
-import { Section } from '../plan/Section'
-import styles from './SettingsPage.module.css'
+import { Page, Section } from '../components/Page'
 import { draftFromSettings, fmtHours, parseDraft, SIZE_KEYS, type SettingsDraft } from './SettingsPage.form'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 
 const DAY_LABELS: Record<Weekday, { short: string; long: string }> = {
   mon: { short: 'Mon', long: 'Monday' },
@@ -24,20 +28,35 @@ const DAY_LABELS: Record<Weekday, { short: string; long: string }> = {
   sun: { short: 'Sun', long: 'Sunday' },
 }
 
+/** A settings block: small heading, hairline above (except the first), generous whitespace. */
+function Block({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <Section title={title} className="mb-0 border-t py-6 first:border-t-0 first:pt-0">
+      <div className="mt-3 grid gap-4">{children}</div>
+    </Section>
+  )
+}
+
+const Help = ({ children, className }: { children: ReactNode; className?: string }) => (
+  <p className={cn('text-sm text-muted-foreground', className)}>{children}</p>
+)
+
 export function SettingsPage() {
   const { data: snapshot, isError } = useSnapshot()
   return (
     <Page title="Settings" description="Working hours, capacity, limits and integrations.">
       {snapshot ? (
-        <div className={styles.stack}>
-          <SettingsForm settings={snapshot.settings} />
+        <SettingsForm settings={snapshot.settings}>
           <GoogleCalendarSection />
           <AccountSection />
-        </div>
+        </SettingsForm>
       ) : isError ? (
-        <Flash variant="danger">Could not load your settings.</Flash>
+        <p className="text-sm text-destructive">Could not load your settings.</p>
       ) : (
-        <Spinner aria-label="Loading settings" />
+        <div role="status" aria-label="Loading settings" className="grid gap-3">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-40 w-full" />
+        </div>
       )}
     </Page>
   )
@@ -47,18 +66,44 @@ export function SettingsPage() {
 
 function FieldError({ children }: { children?: string }) {
   return children ? (
-    <p className={styles.fieldError} role="alert">
+    <p className="text-sm text-destructive" role="alert">
       {children}
     </p>
   ) : null
 }
 
-function SettingsForm({ settings }: { settings: Settings }) {
+/** Label + grey caption on the left, a short control on the right (stacked on phones). */
+function SettingRow({
+  htmlFor,
+  label,
+  caption,
+  children,
+}: {
+  htmlFor: string
+  label: string
+  caption?: string
+  children: ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+      <div className="min-w-0">
+        <Label htmlFor={htmlFor}>{label}</Label>
+        {caption && <p className="mt-0.5 text-sm text-muted-foreground">{caption}</p>}
+      </div>
+      <div className="flex shrink-0 items-center gap-2">{children}</div>
+    </div>
+  )
+}
+
+function Unit({ children }: { children: ReactNode }) {
+  return <span className="text-sm text-muted-foreground">{children}</span>
+}
+
+function SettingsForm({ settings, children }: { settings: Settings; children?: ReactNode }) {
   const apply = useApply()
   const ctx = usePlanContext()
   const [draft, setDraft] = useState<SettingsDraft>(() => draftFromSettings(settings))
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const baseline = useMemo(() => JSON.stringify(draftFromSettings(settings)), [settings])
@@ -67,7 +112,6 @@ function SettingsForm({ settings }: { settings: Settings }) {
 
   const edit = (update: (d: SettingsDraft) => SettingsDraft) => {
     setDraft(update)
-    setSaved(false)
     setSaveError(null)
   }
   const setDay = (day: Weekday, patch: Partial<SettingsDraft['days'][Weekday]>) =>
@@ -86,7 +130,7 @@ function SettingsForm({ settings }: { settings: Settings }) {
     try {
       await apply({ kind: 'saveSettings', settings: parsed })
       setDraft(draftFromSettings(parsed))
-      setSaved(true)
+      toast.success('Settings saved')
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Could not save settings')
     } finally {
@@ -95,191 +139,197 @@ function SettingsForm({ settings }: { settings: Settings }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className={styles.stack} aria-label="Planning settings" noValidate>
-      <Section title="Working hours">
-        <div className={styles.fields}>
-          <p className={styles.help}>The hours you can work each day. Days that are off add no capacity.</p>
-          {WEEKDAYS.map((d) => {
-            const day = draft.days[d]
-            const label = DAY_LABELS[d]
-            return (
-              <div key={d} className={styles.dayRow}>
-                <label className={styles.dayName}>
-                  <Checkbox
-                    checked={day.on}
-                    onChange={(e) => setDay(d, { on: e.target.checked })}
-                    aria-label={`${label.long} is a working day`}
-                  />
-                  {label.short}
-                </label>
-                {day.on ? (
-                  <>
-                    <TextInput
-                      block
-                      type="time"
-                      aria-label={`${label.long} start time`}
-                      value={day.start}
-                      validationStatus={errors[`day.${d}`] ? 'error' : undefined}
-                      onChange={(e) => setDay(d, { start: e.target.value })}
-                    />
-                    <TextInput
-                      block
-                      type="time"
-                      aria-label={`${label.long} end time`}
-                      value={day.end}
-                      validationStatus={errors[`day.${d}`] ? 'error' : undefined}
-                      onChange={(e) => setDay(d, { end: e.target.value })}
-                    />
-                  </>
-                ) : (
-                  <span className={styles.dayOff}>Day off</span>
-                )}
-                {errors[`day.${d}`] && (
-                  <p className={styles.dayError} role="alert">
-                    {errors[`day.${d}`]}
-                  </p>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </Section>
+    <div>
+      <form id="settings-form" onSubmit={onSubmit} aria-label="Planning settings" noValidate>
+        <Block title="Working hours">
+          <Help>The hours you can work each day. Days that are off add no capacity.</Help>
+          <div className="divide-y divide-border/60">
+            {WEEKDAYS.map((d) => {
+              const day = draft.days[d]
+              const label = DAY_LABELS[d]
+              return (
+                <div key={d} className="py-2">
+                  <div className="flex min-h-9 items-center gap-3">
+                    <label className="flex w-20 shrink-0 max-sm:w-16 cursor-pointer items-center gap-3 text-sm">
+                      <Checkbox
+                        checked={day.on}
+                        onCheckedChange={(v) => setDay(d, { on: v === true })}
+                        aria-label={`${label.long} is a working day`}
+                      />
+                      {label.short}
+                    </label>
+                    {day.on ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="time"
+                          className="w-[8.5rem] max-sm:w-[6.75rem] max-sm:[&::-webkit-calendar-picker-indicator]:hidden"
+                          aria-label={`${label.long} start time`}
+                          aria-invalid={errors[`day.${d}`] ? true : undefined}
+                          value={day.start}
+                          onChange={(e) => setDay(d, { start: e.target.value })}
+                        />
+                        <span className="text-muted-foreground" aria-hidden>
+                          –
+                        </span>
+                        <Input
+                          type="time"
+                          className="w-[8.5rem] max-sm:w-[6.75rem] max-sm:[&::-webkit-calendar-picker-indicator]:hidden"
+                          aria-label={`${label.long} end time`}
+                          aria-invalid={errors[`day.${d}`] ? true : undefined}
+                          value={day.end}
+                          onChange={(e) => setDay(d, { end: e.target.value })}
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Day off</span>
+                    )}
+                  </div>
+                  {errors[`day.${d}`] && (
+                    <p
+                      className="mt-1 pl-[5.75rem] max-sm:pl-[4.75rem] text-sm text-destructive"
+                      role="alert"
+                    >
+                      {errors[`day.${d}`]}
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </Block>
 
-      <Section title="Focus factor">
-        <div className={styles.fields}>
-          <FormControl>
-            <FormControl.Label>Share of free time you can plan work into</FormControl.Label>
-            <TextInput
+        <Block title="Capacity">
+          <SettingRow
+            htmlFor="focus-pct"
+            label="Share of free time you can plan work into"
+            caption="Capacity = (working hours − meeting hours) × this share. The rest is buffer for email, interruptions and things that overrun."
+          >
+            <Input
+              id="focus-pct"
               type="number"
               inputMode="decimal"
               min={10}
               max={100}
               step={1}
-              trailingVisual="%"
-              className={styles.numberInput}
+              className="w-20"
               value={draft.focusPct}
-              validationStatus={errors.focus ? 'error' : undefined}
+              aria-invalid={errors.focus ? true : undefined}
               onChange={(e) => edit((d) => ({ ...d, focusPct: e.target.value }))}
             />
-            <FormControl.Caption>
-              Capacity = (working hours − meeting hours) × focus factor. The rest is buffer for email,
-              interruptions and things that overrun.
-            </FormControl.Caption>
-          </FormControl>
+            <Unit>%</Unit>
+          </SettingRow>
           <FieldError>{errors.focus}</FieldError>
           {example && (
-            <p className={styles.example} aria-live="polite" data-testid="capacity-example">
+            <p className="text-sm text-muted-foreground" aria-live="polite" data-testid="capacity-example">
               This week: {fmtHours(example.workHours)}h work − {fmtHours(example.meetingHours)}h meetings →{' '}
-              <strong>{fmtHours(example.capacity)}h capacity</strong>
+              <span className="text-foreground">{fmtHours(example.capacity)}h capacity</span>
             </p>
           )}
-        </div>
-      </Section>
+        </Block>
 
-      <Section title="Task sizes">
-        <div className={styles.fields}>
-          <p className={styles.help}>How many hours a task of each size counts for when planning a week.</p>
-          <div className={styles.sizeGrid}>
+        <Block title="Task sizes">
+          <Help>How many hours a task of each size counts for when planning a week.</Help>
+          <div className="flex flex-wrap gap-x-8 gap-y-3">
             {SIZE_KEYS.map((k) => (
-              <FormControl key={k}>
-                <FormControl.Label>Size {k}</FormControl.Label>
-                <TextInput
-                  block
+              <div key={k} className="flex items-center gap-2">
+                <Label htmlFor={`size-${k}`} className="text-muted-foreground">
+                  Size {k}
+                </Label>
+                <Input
+                  id={`size-${k}`}
                   type="number"
                   inputMode="decimal"
                   min={0.25}
                   step={0.25}
-                  trailingVisual="h"
+                  className="w-20"
                   value={draft.sizeHours[k]}
-                  validationStatus={errors[`size.${k}`] ? 'error' : undefined}
+                  aria-invalid={errors[`size.${k}`] ? true : undefined}
                   onChange={(e) =>
                     edit((d) => ({ ...d, sizeHours: { ...d.sizeHours, [k]: e.target.value } }))
                   }
                 />
-              </FormControl>
+                <Unit>h</Unit>
+              </div>
             ))}
           </div>
           {SIZE_KEYS.map((k) => (
             <FieldError key={k}>{errors[`size.${k}`] && `Size ${k}: ${errors[`size.${k}`]}`}</FieldError>
           ))}
-        </div>
-      </Section>
+        </Block>
 
-      <Section title="Projects">
-        <div className={styles.fields}>
-          <div className={styles.twoCol}>
-            <FormControl>
-              <FormControl.Label>Active project cap</FormControl.Label>
-              <TextInput
-                block
-                type="number"
-                inputMode="numeric"
-                min={1}
-                step={1}
-                value={draft.activeCap}
-                validationStatus={errors.activeCap ? 'error' : undefined}
-                onChange={(e) => edit((d) => ({ ...d, activeCap: e.target.value }))}
-              />
-              <FormControl.Caption>Warn when more projects than this are active.</FormControl.Caption>
-            </FormControl>
-            <FormControl>
-              <FormControl.Label>Deadline warning</FormControl.Label>
-              <TextInput
-                block
-                type="number"
-                inputMode="numeric"
-                min={1}
-                step={1}
-                trailingVisual="days"
-                value={draft.deadlineDays}
-                validationStatus={errors.deadlineDays ? 'error' : undefined}
-                onChange={(e) => edit((d) => ({ ...d, deadlineDays: e.target.value }))}
-              />
-              <FormControl.Caption>A target date this close counts as approaching.</FormControl.Caption>
-            </FormControl>
-          </div>
-          <FieldError>{errors.activeCap && `Active project cap: ${errors.activeCap}`}</FieldError>
-          <FieldError>{errors.deadlineDays && `Deadline warning: ${errors.deadlineDays}`}</FieldError>
-        </div>
-      </Section>
-
-      <div className={styles.saveBar}>
-        <Button type="submit" variant="primary" disabled={!dirty || !valid || saving} loading={saving}>
-          Save settings
-        </Button>
-        {dirty && !saving && (
-          <span className={styles.dirtyNote}>
-            {valid ? 'Unsaved changes' : 'Fix the highlighted fields to save'}
-          </span>
-        )}
-        {dirty && (
-          <Button
-            variant="invisible"
-            onClick={() => {
-              setDraft(draftFromSettings(settings))
-              setSaved(false)
-            }}
+        <Block title="Projects">
+          <SettingRow
+            htmlFor="active-cap"
+            label="Active project cap"
+            caption="Warn when more projects than this are active."
           >
-            Discard
+            <Input
+              id="active-cap"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              step={1}
+              className="w-20"
+              value={draft.activeCap}
+              aria-invalid={errors.activeCap ? true : undefined}
+              onChange={(e) => edit((d) => ({ ...d, activeCap: e.target.value }))}
+            />
+          </SettingRow>
+          <FieldError>{errors.activeCap && `Active project cap: ${errors.activeCap}`}</FieldError>
+          <SettingRow
+            htmlFor="deadline-days"
+            label="Deadline warning"
+            caption="A target date this close counts as approaching."
+          >
+            <Input
+              id="deadline-days"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              step={1}
+              className="w-20"
+              value={draft.deadlineDays}
+              aria-invalid={errors.deadlineDays ? true : undefined}
+              onChange={(e) => edit((d) => ({ ...d, deadlineDays: e.target.value }))}
+            />
+            <Unit>days</Unit>
+          </SettingRow>
+          <FieldError>{errors.deadlineDays && `Deadline warning: ${errors.deadlineDays}`}</FieldError>
+        </Block>
+
+        <div className="flex flex-wrap items-center gap-3 md:pb-6 max-md:sticky max-md:bottom-14 max-md:z-[5] max-md:-mx-4 max-md:border-t max-md:bg-background/95 max-md:px-4 max-md:py-3 max-md:backdrop-blur">
+          <Button type="submit" disabled={!dirty || !valid || saving}>
+            {saving ? 'Saving…' : 'Save settings'}
           </Button>
-        )}
-      </div>
-      {saved && !dirty && <Flash variant="success">Settings saved.</Flash>}
-      {saveError && <Flash variant="danger">{saveError}</Flash>}
-    </form>
+          {dirty && !saving && (
+            <span className="text-sm text-muted-foreground">
+              {valid ? 'Unsaved changes' : 'Fix the highlighted fields to save'}
+            </span>
+          )}
+          {dirty && (
+            <Button type="button" variant="ghost" onClick={() => setDraft(draftFromSettings(settings))}>
+              Discard
+            </Button>
+          )}
+          {saveError && (
+            <p className="w-full text-sm text-destructive" role="alert">
+              {saveError}
+            </p>
+          )}
+        </div>
+      </form>
+      {children}
+    </div>
   )
 }
 
 // ---------------------------------------------------------------------------------------------
 
-const STATUS_LABEL: Record<
-  GcalStatus,
-  { text: string; variant: 'default' | 'success' | 'attention' | 'secondary' }
-> = {
-  not_configured: { text: 'Not configured', variant: 'secondary' },
-  not_connected: { text: 'Not connected', variant: 'default' },
-  connected: { text: 'Connected', variant: 'success' },
-  needs_reconnect: { text: 'Needs reconnect', variant: 'attention' },
+const STATUS_LABEL: Record<GcalStatus, { text: string; attention: boolean }> = {
+  not_configured: { text: 'Not configured', attention: false },
+  not_connected: { text: 'Not connected', attention: false },
+  connected: { text: 'Connected', attention: false },
+  needs_reconnect: { text: 'Needs reconnect', attention: true },
 }
 
 const formatTime = (ms: number): string =>
@@ -299,26 +349,26 @@ function GoogleCalendarSection() {
   if (status === 'not_connected' || status === 'not_configured') {
     actions = (
       <Button
-        variant="primary"
+        variant="secondary"
         disabled={status === 'not_configured' || conn.busy}
         onClick={() => void conn.connect()}
       >
-        Connect Google Calendar
+        Connect
       </Button>
     )
   } else {
     actions = (
       <>
         {status === 'needs_reconnect' ? (
-          <Button variant="primary" disabled={conn.busy} onClick={() => void conn.reconnect()}>
-            Reconnect calendar
+          <Button variant="outline" disabled={conn.busy} onClick={() => void conn.reconnect()}>
+            Reconnect
           </Button>
         ) : (
-          <Button disabled={sync.running} onClick={requestSync}>
+          <Button variant="outline" disabled={sync.running} onClick={requestSync}>
             {sync.running ? 'Syncing…' : 'Sync now'}
           </Button>
         )}
-        <Button variant="danger" disabled={conn.busy} onClick={() => void conn.disconnect()}>
+        <Button variant="ghost" disabled={conn.busy} onClick={() => void conn.disconnect()}>
           Disconnect
         </Button>
       </>
@@ -326,38 +376,44 @@ function GoogleCalendarSection() {
   }
 
   return (
-    <Section title="Google Calendar">
-      <div className={styles.fields}>
-        <div className={styles.statusRow}>
-          <Text weight="semibold">Status</Text>
-          <Label variant={label.variant}>{label.text}</Label>
-          {conn.busy && <Spinner size="small" aria-label="Waiting for Google" />}
-        </div>
-        <p className={styles.help}>
-          Reads your primary calendar to show events in Today and Week, and counts busy meetings against your
-          weekly capacity. Tasks pinned to a day are written as all-day events, only to a separate calendar
-          named “PersonalDash”. Your other calendars are never changed.
+    <Block title="Google Calendar">
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        {label.attention && <span className="size-1.5 rounded-full bg-warning" aria-hidden />}
+        <span>{label.text}</span>
+        {conn.busy && <span className="text-muted-foreground/60">· waiting for Google…</span>}
+      </p>
+      <Help>
+        Reads your primary calendar to show events in Today and Week, and counts busy meetings against your
+        weekly capacity. Tasks pinned to a day are written as all-day events, only to a separate calendar
+        named “PersonalDash”. Your other calendars are never changed.
+      </Help>
+      {status === 'not_configured' && (
+        <Help>
+          <span className="font-mono text-xs">VITE_GOOGLE_CLIENT_ID</span> is missing. See{' '}
+          <span className="font-mono text-xs">docs/setup.md</span> for how to create a client ID.
+        </Help>
+      )}
+      {status === 'needs_reconnect' && (
+        <Help>
+          Google access lasts about an hour per session. Reconnect to resume reading and syncing; it is
+          usually instant.
+        </Help>
+      )}
+      {conn.error && (
+        <p className="text-sm text-destructive" role="alert">
+          {conn.error}
         </p>
-        {status === 'not_configured' && (
-          <Flash variant="warning">
-            Google Calendar is not configured: <span className={styles.mono}>VITE_GOOGLE_CLIENT_ID</span> is
-            missing. See <span className={styles.mono}>docs/setup.md</span> for how to create a client ID.
-          </Flash>
-        )}
-        {status === 'needs_reconnect' && (
-          <p className={styles.help}>
-            Google access lasts about an hour per session. Reconnect to resume reading and syncing; it is
-            usually instant.
-          </p>
-        )}
-        {conn.error && <Flash variant="danger">{conn.error}</Flash>}
-        <div className={styles.actions}>{actions}</div>
-        {status === 'connected' && sync.error && <Flash variant="danger">Sync failed: {sync.error}</Flash>}
-        {status === 'connected' && !sync.error && sync.lastSyncedAt && (
-          <p className={styles.help}>Last synced at {formatTime(sync.lastSyncedAt)}.</p>
-        )}
-      </div>
-    </Section>
+      )}
+      <div className="flex flex-wrap items-center gap-2">{actions}</div>
+      {status === 'connected' && sync.error && (
+        <p className="text-sm text-destructive" role="alert">
+          Sync failed: {sync.error}
+        </p>
+      )}
+      {status === 'connected' && !sync.error && sync.lastSyncedAt && (
+        <Help>Last synced at {formatTime(sync.lastSyncedAt)}.</Help>
+      )}
+    </Block>
   )
 }
 
@@ -381,16 +437,20 @@ function AccountSection() {
   }
 
   return (
-    <Section title="Account">
-      <div className={styles.accountRow}>
-        <span>
-          Signed in as <span className={styles.email}>{user.data?.email ?? '…'}</span>
+    <Block title="Account">
+      <div className="flex items-center justify-between gap-4">
+        <span className="min-w-0 truncate text-sm text-muted-foreground">
+          Signed in as <span>{user.data?.email ?? '…'}</span>
         </span>
-        <Button onClick={() => void signOut()} disabled={signingOut}>
+        <Button variant="ghost" className="-mr-3" onClick={() => void signOut()} disabled={signingOut}>
           Sign out
         </Button>
       </div>
-      {error && <Flash variant="danger">{error}</Flash>}
-    </Section>
+      {error && (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      )}
+    </Block>
   )
 }
