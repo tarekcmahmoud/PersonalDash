@@ -8,3 +8,9 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* Primer overlays (Dialog, ActionMenu, …) render into this portal; keep them above the fixed phone tab bar. */
+#__primerPortalRoot__ {
+  position: relative;
+  z-index: 100;
+}
