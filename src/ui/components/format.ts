@@ -33,3 +33,15 @@ export function topSignal(flags: HealthFlag[]): { text: string; tone: SignalTone
   if (find('no_next_step')) return { text: 'No next step', tone: 'muted' }
   return null
 }
+
+/** Where a task lives: "Project · Workstream" (or its substream), "Project", or "Inbox". */
+export function taskPlace(
+  task: { projectId: string | null; milestoneId: string | null },
+  projects: { id: string; name: string }[],
+  milestones: { id: string; name: string }[],
+): string {
+  if (!task.projectId) return 'Inbox'
+  const project = projects.find((p) => p.id === task.projectId)?.name ?? 'Project'
+  const stream = task.milestoneId ? milestones.find((m) => m.id === task.milestoneId)?.name : undefined
+  return stream ? `${project} · ${stream}` : project
+}

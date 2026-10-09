@@ -9,7 +9,8 @@ import { TodayPage } from './TodayPage'
 
 /** The `<section>` under a Section heading ("Today", "Later this week"). */
 const sectionOf = (heading: HTMLElement) => within(heading.closest('section')!)
-const section = async (name: string | RegExp) => sectionOf(await screen.findByRole('heading', { name, level: 2 }))
+const section = async (name: string | RegExp) =>
+  sectionOf(await screen.findByRole('heading', { name, level: 2 }))
 
 describe('TodayPage', () => {
   it('shows the task pinned for today and marks it done when toggled', async () => {
@@ -58,6 +59,7 @@ describe('TodayPage', () => {
 
     const card = await section(/^Delegated/)
     expect(card.getByText('Follow up: Priya Shah re Design content page templates')).toBeInTheDocument()
+    expect(card.getByText('Client website redesign · Design')).toBeInTheDocument()
     expect(card.getByRole('link', { name: 'All delegated' })).toHaveAttribute('href', '/delegated')
     expect((await section('Today')).queryByText(/Follow up: Priya Shah/)).not.toBeInTheDocument()
     await user.click(card.getByRole('button', { name: 'Done' }))

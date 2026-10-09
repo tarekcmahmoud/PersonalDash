@@ -130,7 +130,15 @@ export function WeekPage() {
                   projectNames={names}
                   {...expandProps(day)}
                 />
-                {delegated.length > 0 && <DelegatedDayCard day={day} items={delegated} people={ctx.people} />}
+                {delegated.length > 0 && (
+                  <DelegatedDayCard
+                    day={day}
+                    items={delegated}
+                    people={ctx.people}
+                    projects={ctx.projects}
+                    milestones={ctx.milestones}
+                  />
+                )}
               </div>
             )
           })}

@@ -44,6 +44,7 @@ describe('WeekPage', () => {
     const card = within(await screen.findByRole('region', { name }))
     expect(card.getByText('Design content page templates')).toBeInTheDocument()
     expect(card.getByText('Priya Shah')).toBeInTheDocument()
+    expect(card.getByText('Client website redesign · Design')).toBeInTheDocument()
     const today = await dayRegion(todayISO())
     expect(today.queryByText('Design content page templates')).not.toBeInTheDocument()
   })

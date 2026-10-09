@@ -4,23 +4,29 @@ import { Link } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import type { FollowUpItem } from '../../domain/followups'
-import type { Person } from '../../domain/types'
+import type { Milestone, Person, Project } from '../../domain/types'
+import { taskPlace } from '../components/format'
 import { SECONDARY_CARD } from '../components/Page'
 import { useTaskLink } from '../task/useTaskParam'
 
 /**
  * The week board's quiet card under a day: follow-ups due that day on tasks you delegated, each as the task
- * title over the person's name (and "Overdue · date" for one carried over from an earlier week).
+ * title over the person's name (and "Overdue · date" for one carried over from an earlier week), then where the
+ * task lives (project · workstream or substream).
  */
 export function DelegatedDayCard({
   day,
   items,
   people,
+  projects,
+  milestones,
   className,
 }: {
   day: string
   items: FollowUpItem[]
   people: Person[]
+  projects: Project[]
+  milestones: Milestone[]
   className?: string
 }) {
   const taskLink = useTaskLink()
@@ -61,6 +67,12 @@ export function DelegatedDayCard({
                 {item.overdue && (
                   <span className="text-destructive">{` · Overdue · ${format(parseISO(item.date), 'MMM d')}`}</span>
                 )}
+              </span>
+              <span
+                className="truncate text-xs text-muted-foreground/60"
+                title={taskPlace(item.task, projects, milestones)}
+              >
+                {taskPlace(item.task, projects, milestones)}
               </span>
             </div>
           </li>

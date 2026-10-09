@@ -7,6 +7,7 @@ import type { PlanContext } from '../../domain/context'
 import type { Task } from '../../domain/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { CardSection } from '../components/Page'
+import { taskPlace } from '../components/format'
 import { TaskRow } from '../components/TaskRow'
 import { eventsOnDay } from '../plan/events'
 import { FollowUpRow } from '../plan/FollowUpRow'
@@ -125,7 +126,13 @@ export function TodayColumn({ ctx }: { ctx: PlanContext }) {
         >
           <div className="divide-y">
             {delegated.map((item) => (
-              <FollowUpRow key={item.task.id} item={item} today={today} quiet />
+              <FollowUpRow
+                key={item.task.id}
+                item={item}
+                today={today}
+                quiet
+                place={taskPlace(item.task, projects, ctx.milestones)}
+              />
             ))}
           </div>
         </CardSection>

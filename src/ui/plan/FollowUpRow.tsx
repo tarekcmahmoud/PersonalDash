@@ -17,11 +17,14 @@ export function FollowUpRow({
   item,
   today,
   quiet = false,
+  place,
 }: {
   item: FollowUpItem
   today: string
   /** Grey label, for a secondary list (the Delegated card on Today). */
   quiet?: boolean
+  /** A small grey line under the label: where the task lives (see taskPlace). */
+  place?: string
 }) {
   const actions = useTaskActions()
   const taskLink = useTaskLink()
@@ -56,6 +59,7 @@ export function FollowUpRow({
         >
           {item.overdue ? `Overdue · ${dateText}` : dateText}
         </span>
+        {place && <span className="basis-full truncate text-xs text-muted-foreground/60">{place}</span>}
       </div>
       <div
         className={cn(
