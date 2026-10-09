@@ -26,7 +26,8 @@ A weekly planner for people running many projects at once. PersonalDash helps yo
 - **Inbox** for tasks you haven't placed yet.
 - **Weekly pick list** on the Plan screen, with a capacity bar and warnings when a project is neglected or falls
   below its weekly minimum.
-- **Today** and **Week** views.
+- **Today** and **Week** views. On a wide screen the Week board shows one day wide (today, or any column you
+  click) and greys out the others.
 - **Weekly review** at the end of each week.
 - **Follow-ups** for tasks you are waiting on from someone else.
 - **Templates** and **outline import**: reuse a project structure, or import a plan written in the outline format.

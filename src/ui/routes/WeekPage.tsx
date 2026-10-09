@@ -1,5 +1,8 @@
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { useState, type MouseEvent } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useMediaQuery } from '@/lib/useMediaQuery'
+import { cn } from '@/lib/utils'
 import { usePlanContext, useSnapshot } from '../../data/hooks'
 import { dayCapacity } from '../../domain/capacity'
 import { isInWeek, weekDays } from '../../domain/week'
@@ -18,11 +21,18 @@ import { TaskDialogHost } from '../task/TaskDialogHost'
  * 1280px and up, four or two on narrower screens, a vertical list on phones. Drag a task onto another day (or "Any day") to move it; the hover "Move to…" menu does the same.
  * Follow-ups on delegated tasks are stacked under their day in a quieter card of their own; on wider screens
  * those cards line up across a row (each column is a two-row subgrid: your day, then delegated).
+ * At 1280px and up, one column (and the cards stacked in it) is twice as wide as the others: today's at
+ * first; click another column (or its day name) to widen that one instead, or the wide one's name to narrow it.
+ * The narrow columns are greyed out and their tasks have no checkboxes.
  */
 export function WeekPage() {
   const { weekStart, setWeek, resetWeek, isCurrentWeek } = useWeekParam()
   const ctx = usePlanContext(weekStart)
   const { isError, error } = useSnapshot()
+  // Only the 8-column board (xl, 1280px) lays days side by side, so only there can a column be widened.
+  const sideBySide = useMediaQuery('(min-width: 80rem)')
+  // The column picked in this week: a day, 'any', or null for none. Other weeks fall back to the default.
+  const [picked, setPicked] = useState<{ weekStart: string; column: string | null } | null>(null)
 
   const body = (() => {
     if (isError)
@@ -48,12 +58,37 @@ export function WeekPage() {
     const followUpDay = (date: string): string => (date < weekStart ? ctx.today : date)
     const onDay = (day: string, kind: 'waiting' | 'delegated') =>
       followUps.filter((f) => f.kind === kind && followUpDay(f.date) === day)
-    const stack = 'flex min-w-0 flex-col gap-2 md:row-span-2 md:grid md:grid-rows-subgrid md:gap-y-2 md:pb-3'
+    const expanded = picked?.weekStart === weekStart ? picked.column : todayInWeek ? ctx.today : null
+    const toggle = (column: string) => setPicked({ weekStart, column: expanded === column ? null : column })
+    // A click on a column's background widens it; clicks on its tasks, links and buttons keep their own meaning.
+    const expandOnClick = (column: string) => (e: MouseEvent) => {
+      const target = e.target as Element
+      if (!sideBySide || column === expanded) return
+      if (target.closest('a, button, input, label, [role="checkbox"], [data-testid="task-row"]')) return
+      setPicked({ weekStart, column })
+    }
+    const stack = (column: string) =>
+      cn(
+        'flex min-w-0 flex-col gap-2 md:row-span-2 md:grid md:grid-rows-subgrid md:gap-y-2 md:pb-3 xl:col-span-2',
+        expanded === column && 'xl:col-span-4',
+        // The other columns are greyed out until hovered (or dragged over).
+        sideBySide && expanded && expanded !== column && 'opacity-60 transition-opacity hover:opacity-100',
+      )
+    const expandProps = (column: string) => ({
+      expanded: sideBySide && expanded === column,
+      onToggleExpand: sideBySide ? () => toggle(column) : undefined,
+    })
 
     return (
       <WeekDndProvider tasks={planned} projectNames={names}>
-        <div className="grid gap-3 md:grid-cols-2 md:gap-y-0 lg:grid-cols-4 xl:grid-cols-8">
-          <div className={stack}>
+        {/* Eight columns of two tracks each, plus two more tracks for the wide column. */}
+        <div
+          className={cn(
+            'grid gap-3 md:grid-cols-2 md:gap-y-0 lg:grid-cols-4',
+            expanded ? 'xl:grid-cols-18' : 'xl:grid-cols-16',
+          )}
+        >
+          <div className={stack('any')} onClick={expandOnClick('any')}>
             <DayColumn
               weekStart={weekStart}
               day={null}
@@ -63,12 +98,13 @@ export function WeekPage() {
               capacity={null}
               settings={ctx.settings}
               projectNames={names}
+              {...expandProps('any')}
             />
           </div>
           {days.map((day) => {
             const delegated = onDay(day, 'delegated')
             return (
-              <div key={day} className={stack}>
+              <div key={day} className={stack(day)} onClick={expandOnClick(day)}>
                 <DayColumn
                   weekStart={weekStart}
                   day={day}
@@ -80,6 +116,7 @@ export function WeekPage() {
                   capacity={dayCapacity(day, ctx.settings, ctx.events).capacity}
                   settings={ctx.settings}
                   projectNames={names}
+                  {...expandProps(day)}
                 />
                 {delegated.length > 0 && <DelegatedDayCard day={day} items={delegated} people={ctx.people} />}
               </div>
