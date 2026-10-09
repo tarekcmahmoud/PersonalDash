@@ -15,7 +15,7 @@ export interface NavItem {
   to: string
   label: string
   icon: LucideIcon
-  /** Top group of the rail and the phone bottom bar; the rest sit at the bottom of the rail / under "More". */
+  /** Left of the dock's divider and on the phone bottom bar; the rest sit right of the divider / under "More". */
   primary: boolean
 }
 

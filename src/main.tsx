@@ -23,9 +23,10 @@ createRoot(document.getElementById('root')!).render(
           <BrowserRouter>
             <App />
           </BrowserRouter>
-          {/* On phones, keep toasts above the fixed bottom tab bar. */}
+          {/* Keep toasts above the dock (desktop) and the fixed bottom tab bar (phones). */}
           <Toaster
             position="bottom-center"
+            offset={{ bottom: 88 }}
             mobileOffset={{ bottom: 'calc(72px + env(safe-area-inset-bottom))' }}
           />
         </TooltipProvider>

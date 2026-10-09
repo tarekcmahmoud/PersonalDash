@@ -13,7 +13,7 @@ function labelMatcher(label: string): RegExp {
 
 /**
  * Navigates with the app's own navigation (never `page.goto`, which would reload and reset memory-mode data).
- * Desktop: sidebar link. Phone: bottom tab, or the "More" menu for the secondary destinations.
+ * Desktop: dock link. Phone: bottom tab, or the "More" menu for the secondary destinations.
  */
 export async function goTo(page: Page, label: NavLabel): Promise<void> {
   const phone = test.info().project.name === 'phone'
@@ -33,7 +33,7 @@ export async function openApp(page: Page): Promise<void> {
   await expect(page.getByText(/of [\d.]+h this week/)).toBeVisible()
 }
 
-/** The inbox count shown in navigation: sidebar counter on desktop, "More (n)" on phone. */
+/** The inbox count shown in navigation: dock counter on desktop, "More (n)" on phone. */
 export async function inboxCount(page: Page): Promise<number> {
   const phone = test.info().project.name === 'phone'
   const nav = page.getByRole('navigation', { name: 'Main' })
