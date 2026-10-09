@@ -28,6 +28,7 @@ details of a change: every commit message describes it. Most of this session's w
 
    Put quick wins first. Flag items that conflict with the design rules in `CLAUDE.md`, and items that undo a
    decision listed below.
+
 3. **Ask** whether the user wants the list as a shareable doc or kept in chat, and which items to build first.
 4. **Build** in the same style as before: short requests, quick turns, screenshots of each UI change, push to
    `main` only when the user says "push".
