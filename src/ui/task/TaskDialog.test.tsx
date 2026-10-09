@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { format, parseISO } from 'date-fns'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { seedSnapshot } from '../../data/seed'
 import { addDaysISO, weekStartOf } from '../../domain/week'
@@ -22,6 +23,9 @@ const pick = async (
   await user.click(trigger)
   await user.click(await screen.findByRole('option', { name: option }))
 }
+
+/** A Day option's name, e.g. "Fri Oct 9". */
+const dayOption = (day: string) => format(parseISO(day), 'EEE MMM d')
 
 const openDialog = async (title: string) => {
   const result = renderWithApp(<TaskDialogHost />, {
@@ -190,7 +194,11 @@ describe('TaskDialog', () => {
     const { dialog, snapshot } = await openDialog('Design homepage')
     const planned = task('Design homepage')
     expect(planned.weekStart).not.toBeNull()
-    await pick(user, within(dialog).getByRole('combobox', { name: 'Day' }), /^Fri /)
+    await pick(
+      user,
+      within(dialog).getByRole('combobox', { name: 'Day' }),
+      dayOption(addDaysISO(planned.weekStart!, 4)),
+    )
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
     await waitFor(async () => {
       const saved = (await snapshot()).tasks.find((t) => t.id === planned.id)!
@@ -204,12 +212,38 @@ describe('TaskDialog', () => {
     const { dialog, snapshot } = await openDialog('Renew car insurance')
     expect(task('Renew car insurance').weekStart).toBeNull()
     expect(within(dialog).getByRole('combobox', { name: 'Day' })).toHaveTextContent('Not planned')
-    await pick(user, within(dialog).getByRole('combobox', { name: 'Day' }), /^Wed /)
-    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
     const monday = weekStartOf(TEST_TODAY)
+    await pick(user, within(dialog).getByRole('combobox', { name: 'Day' }), dayOption(addDaysISO(monday, 2)))
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
     await waitFor(async () => {
       const saved = (await snapshot()).tasks.find((t) => t.id === task('Renew car insurance').id)!
       expect(saved).toMatchObject({ weekStart: monday, pinnedDay: addDaysISO(monday, 2) })
+    })
+  })
+
+  it('schedules a task for next week, with or without a day', async () => {
+    const user = userEvent.setup()
+    const { dialog, snapshot } = await openDialog('Renew car insurance')
+    const nextMonday = addDaysISO(weekStartOf(TEST_TODAY), 7)
+    const day = within(dialog).getByRole('combobox', { name: 'Day' })
+    await pick(user, day, 'Next week, no day')
+    expect(day).toHaveTextContent('Next week, no day')
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(async () => {
+      const saved = (await snapshot()).tasks.find((t) => t.id === task('Renew car insurance').id)!
+      expect(saved).toMatchObject({ weekStart: nextMonday, pinnedDay: null })
+    })
+  })
+
+  it('pins a task to a day of next week', async () => {
+    const user = userEvent.setup()
+    const { dialog, snapshot } = await openDialog('Design homepage')
+    const nextTuesday = addDaysISO(weekStartOf(TEST_TODAY), 8)
+    await pick(user, within(dialog).getByRole('combobox', { name: 'Day' }), dayOption(nextTuesday))
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(async () => {
+      const saved = (await snapshot()).tasks.find((t) => t.id === task('Design homepage').id)!
+      expect(saved).toMatchObject({ weekStart: weekStartOf(nextTuesday), pinnedDay: nextTuesday })
     })
   })
 

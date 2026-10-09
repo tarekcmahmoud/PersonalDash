@@ -39,6 +39,15 @@ describe('TodayPage', () => {
     expect(later.getByText('Draft sitemap')).toBeInTheDocument()
   })
 
+  it('moves a task to next week from its day menu', async () => {
+    const user = userEvent.setup()
+    renderApp(<TodayPage />)
+    const later = await section('Later this week')
+    await user.click(later.getByRole('button', { name: 'Pin "Draft sitemap" to a day' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Next week' }))
+    await waitFor(() => expect(screen.queryByText('Draft sitemap')).not.toBeInTheDocument())
+  })
+
   it('shows follow-ups due today as one line with Received', async () => {
     const snapshot = seedSnapshot(todayISO())
     const waiting = snapshot.tasks.find((t) => t.status === 'waiting')!

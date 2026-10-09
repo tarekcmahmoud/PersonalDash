@@ -1,7 +1,7 @@
 # Handoff: collect usage feedback, then compile improvements
 
-Snapshot taken 2026-10-09. `main` and `claude/awesome-wright-e3f1gq` are identical at `06a8415`, which is
-deployed by Vercel.
+Snapshot taken 2026-10-09. The last commit is "Schedule tasks for next week", on `claude/awesome-wright-e3f1gq`
+and on `main`, which Vercel deploys.
 
 **Purpose of the next session.** The product is done for now. The user will use it day to day and bring
 feedback, probably in short notes over several messages. Collect the notes, then compile them into one
@@ -49,12 +49,14 @@ The Today and Week items below came out of user requests in this session.
   - The other columns are greyed out until you hover them, and their tasks have no checkboxes.
 - **Today:** follow-up rows line up with task rows. The title wraps, the date sits beside its first line, and
   the project line sits underneath.
+- **Schedule ahead:** the task dialog's Day field lists this week and next week (and the task's own week if it
+  is another one). The day menus on task rows have "Next week" (the week after the one shown, without a day).
 - **Navigation:** on desktop and tablet (`md` and up) the left icon rail is replaced by a static dock at the
   bottom centre. Phones keep the bottom tab bar.
   - The user tried icons that grow under the pointer and a bar that bulges around them, and rejected both
     ("keep it static").
   - The preview the user approved is the artifact https://claude.ai/artifact/SMEXfcrfVpd8z7vZcCHqhv.
-- **Checks at `06a8415`:** typecheck, lint, 559 unit tests and 16 Playwright tests (desktop 1280px and phone
+- **Checks at the last commit:** typecheck, lint, 562 unit tests and 16 Playwright tests (desktop 1280px and phone
   390px) pass. The user tested delegation, substreams, task links and image uploads on the live site, and all
   worked.
 

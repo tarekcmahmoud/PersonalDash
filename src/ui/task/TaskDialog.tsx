@@ -4,7 +4,16 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
@@ -25,18 +34,38 @@ import { SplitTask } from './SplitTask'
 const SIZES: TaskSize[] = ['S', 'M', 'L', 'XL']
 const sameIds = (a: ID[], b: ID[]) => a.length === b.length && a.every((id) => b.includes(id))
 
-/** The Day select: not planned, planned in the week without a day, or pinned to a date of that week. */
-type DayChoice = 'unplanned' | 'week' | ISODate
+/** The Day select: not planned, planned in a week without a day (`week:<Monday>`), or pinned to a date. */
+type DayChoice = 'unplanned' | `week:${ISODate}` | ISODate
 
 /**
  * Task fields that realise a Day choice; the same transitions as `useTaskActions().plan/pin/unplan`, merged
  * into the dialog's single save so the write is atomic.
  */
-function dayPatch(task: Task, choice: DayChoice, weekStart: ISODate): Partial<Task> {
+function dayPatch(task: Task, choice: DayChoice): Partial<Task> {
   const keepCalendarInSync = task.gcalEventId ? true : task.gcalDirty
   if (choice === 'unplanned') return { weekStart: null, pinnedDay: null, gcalDirty: keepCalendarInSync }
-  if (choice === 'week') return { weekStart, pinnedDay: null, gcalDirty: keepCalendarInSync }
+  if (choice.startsWith('week:'))
+    return { weekStart: choice.slice('week:'.length), pinnedDay: null, gcalDirty: keepCalendarInSync }
   return { weekStart: weekStartOf(choice), pinnedDay: choice, gcalDirty: true }
+}
+
+/**
+ * The weeks the Day select offers: this week, next week, and the task's own week when it is another one (a
+ * leftover from an earlier week, or one further ahead), in date order.
+ */
+function dayWeeks(task: Task, today: ISODate): { weekStart: ISODate; label: string }[] {
+  const thisWeek = weekStartOf(today)
+  const nextWeek = addDaysISO(thisWeek, 7)
+  const weeks = [...new Set([thisWeek, nextWeek, ...(task.weekStart ? [task.weekStart] : [])])].sort()
+  return weeks.map((weekStart) => ({
+    weekStart,
+    label:
+      weekStart === thisWeek
+        ? 'This week'
+        : weekStart === nextWeek
+          ? 'Next week'
+          : `Week of ${format(parseISO(weekStart), 'MMM d')}`,
+  }))
 }
 
 function Field({
@@ -96,9 +125,8 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
     [data?.dependencies, task.id],
   )
 
-  // The week the Day select offers: the task's own week, or the current one when it is not planned.
-  const dayWeek = task.weekStart ?? weekStartOf(todayISO())
-  const initialDay: DayChoice = task.weekStart === null ? 'unplanned' : (task.pinnedDay ?? 'week')
+  const initialDay: DayChoice =
+    task.weekStart === null ? 'unplanned' : (task.pinnedDay ?? `week:${task.weekStart}`)
 
   const [title, setTitle] = useState(task.title)
   const [size, setSize] = useState<TaskSize>(task.size)
@@ -131,7 +159,6 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
     : []
 
   const titleError = submitted && !title.trim() ? 'A task needs a title.' : null
-  const planned = day !== 'unplanned'
   // Delegation: to the chosen project's collaborators (and whoever it is delegated to already).
   const delegated = assigneeId !== null
   const collaboratorIds = data.projects.find((p) => p.id === projectId)?.collaboratorIds ?? []
@@ -175,11 +202,7 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
         followUpDate: status === 'waiting' || delegated ? followUpDate || null : null,
         assigneeId,
         // A delegated task leaves your weeks; otherwise the Day choice applies.
-        ...(delegated
-          ? { weekStart: null, pinnedDay: null }
-          : day !== initialDay
-            ? dayPatch(task, day, dayWeek)
-            : {}),
+        ...(delegated ? { weekStart: null, pinnedDay: null } : day !== initialDay ? dayPatch(task, day) : {}),
       }
       await apply({ kind: 'saveTasks', tasks: [{ ...task, ...patch }] })
 
@@ -364,26 +387,24 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
               </Select>
             </Field>
             {!delegated && (
-              <Field
-                label="Day"
-                htmlFor={`${uid}-day`}
-                hint={
-                  planned && dayWeek !== weekStartOf(todayISO())
-                    ? `Week of ${format(parseISO(dayWeek), 'MMM d')}`
-                    : undefined
-                }
-              >
+              <Field label="Day" htmlFor={`${uid}-day`}>
                 <Select value={day} onValueChange={(v) => setDay(v as DayChoice)}>
                   <SelectTrigger id={`${uid}-day`} className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="week">{planned ? 'No day' : 'This week, no day'}</SelectItem>
-                    {weekDays(dayWeek).map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {format(parseISO(d), 'EEE MMM d')}
-                      </SelectItem>
+                    {dayWeeks(task, todayISO()).map(({ weekStart, label }) => (
+                      <SelectGroup key={weekStart}>
+                        <SelectLabel>{label}</SelectLabel>
+                        <SelectItem value={`week:${weekStart}`}>{`${label}, no day`}</SelectItem>
+                        {weekDays(weekStart).map((d) => (
+                          <SelectItem key={d} value={d}>
+                            {format(parseISO(d), 'EEE MMM d')}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     ))}
+                    <SelectSeparator />
                     <SelectItem value="unplanned">Not planned</SelectItem>
                   </SelectContent>
                 </Select>
