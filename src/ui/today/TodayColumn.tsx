@@ -6,7 +6,7 @@ import { useTaskActions } from '../../data/taskActions'
 import type { PlanContext } from '../../domain/context'
 import type { Task } from '../../domain/types'
 import { Card, CardContent } from '@/components/ui/card'
-import { CardSection } from '../components/Page'
+import { CardSection, SECONDARY_CARD } from '../components/Page'
 import { TaskRow } from '../components/TaskRow'
 import { eventsOnDay } from '../plan/events'
 import { FollowUpRow } from '../plan/FollowUpRow'
@@ -15,7 +15,10 @@ import { TaskDayMenu } from '../plan/TaskDayMenu'
 import { weekStats } from '../plan/weekStats'
 import { useTaskLink } from '../task/useTaskParam'
 
-/** Today's meetings, pinned tasks, due follow-ups and overdue pins; then the rest of the week. */
+/**
+ * Your own work first: today's meetings, pinned tasks, due "waiting" follow-ups and overdue pins, then the rest of
+ * the week. Below them, in a quieter card of its own, the week's follow-ups on tasks you delegated.
+ */
 export function TodayColumn({ ctx }: { ctx: PlanContext }) {
   const actions = useTaskActions()
   const taskLink = useTaskLink()
@@ -26,7 +29,8 @@ export function TodayColumn({ ctx }: { ctx: PlanContext }) {
   const stats = weekStats(ctx)
   const meetings = eventsOnDay(ctx.events, today).filter((ev) => !ev.allDay)
   const pinnedToday = tasks.filter((t) => t.pinnedDay === today)
-  const followUpsDue = stats.followUps.filter((f) => f.date <= today)
+  const followUpsDue = stats.followUps.filter((f) => f.kind === 'waiting' && f.date <= today)
+  const delegated = stats.followUps.filter((f) => f.kind === 'delegated')
   const overduePinned = tasks.filter(
     (t) => t.pinnedDay !== null && t.pinnedDay < today && t.status !== 'done',
   )
@@ -105,6 +109,25 @@ export function TodayColumn({ ctx }: { ctx: PlanContext }) {
               </div>
             </div>
           ))}
+        </CardSection>
+      )}
+
+      {delegated.length > 0 && (
+        <CardSection
+          title="Delegated"
+          count={delegated.length}
+          cardClassName={SECONDARY_CARD}
+          actions={
+            <Button asChild variant="link" className="h-8 p-0 text-sm font-normal text-muted-foreground">
+              <Link to="/delegated">All delegated</Link>
+            </Button>
+          }
+        >
+          <div className="divide-y">
+            {delegated.map((item) => (
+              <FollowUpRow key={item.task.id} item={item} today={today} />
+            ))}
+          </div>
         </CardSection>
       )}
     </div>

@@ -19,8 +19,8 @@ A weekly planner for people running many projects at once. PersonalDash helps yo
   shown as cards inside its card, each with its own next step. Drag tasks between a workstream, its substreams
   and other workstreams.
 - **Delegation**: each project has collaborators (people you track; they don't sign in). Delegate a task to one
-  of them with a follow-up date: due follow-ups appear on Today, and the Delegated page lists everything you've
-  handed off, by person.
+  of them with a follow-up date. Its follow-ups sit apart from your own tasks: in a Delegated card on Today and
+  in a Delegated card under their day on Week. The Delegated page lists everything you've handed off, by person.
 - **Workstream focus mode** on the project page.
 - **Resources** per project (links with images, descriptions and linked workstreams).
 - **Inbox** for tasks you haven't placed yet.

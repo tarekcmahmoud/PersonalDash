@@ -54,6 +54,13 @@ export function Page({
 }
 
 /**
+ * A quieter card for what others do for you (delegated work), stacked under your own: no shadow, a muted fill.
+ * The fill is opaque and exposed as `--surface`, so hover overlays inside (FollowUpRow's actions) can match it.
+ */
+export const SECONDARY_CARD =
+  'shadow-none bg-(--surface) [--surface:color-mix(in_oklab,var(--color-muted)_40%,var(--color-background))]'
+
+/**
  * The right-hand pane of a two-column page (Project, Today) on desktop: it stays in view while the page (the
  * left column) scrolls, and scrolls on its own when it is taller than the window. The 4px padding keeps the
  * cards' outlines from being clipped. Phones show one pane at a time, so nothing changes there.
@@ -99,6 +106,7 @@ export function CardSection({
   actions,
   children,
   className,
+  cardClassName,
   contentClassName,
 }: {
   title: string
@@ -106,11 +114,12 @@ export function CardSection({
   actions?: ReactNode
   children: ReactNode
   className?: string
+  cardClassName?: string
   contentClassName?: string
 }) {
   return (
     <section className={className}>
-      <Card className="gap-3">
+      <Card className={cn('gap-3', cardClassName)}>
         <CardHeader>
           <CardTitle>
             <h2>

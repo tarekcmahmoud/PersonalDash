@@ -44,7 +44,7 @@ export function FollowUpRow({ item, today }: { item: FollowUpItem; today: string
       </div>
       <div
         className={cn(
-          '-mt-1 flex basis-full shrink-0 items-center gap-0.5 bg-card pl-6 md:mt-0 md:basis-auto transition-opacity md:absolute md:top-1/2 md:right-0 md:-translate-y-1/2 md:pl-2 md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 [@media(hover:none)]:opacity-100',
+          '-mt-1 flex basis-full shrink-0 items-center gap-0.5 bg-(--surface,var(--color-card)) pl-6 md:mt-0 md:basis-auto transition-opacity md:absolute md:top-1/2 md:right-0 md:-translate-y-1/2 md:pl-2 md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 [@media(hover:none)]:opacity-100',
           open && 'md:opacity-100',
         )}
       >

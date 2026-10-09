@@ -34,6 +34,20 @@ describe('WeekPage', () => {
     expect(today.getByText('Follow up: Finance team re Collect final cost figures')).toBeInTheDocument()
   })
 
+  it('stacks follow-ups on delegated tasks in a Delegated card under their day', async () => {
+    const snapshot = seedSnapshot(todayISO())
+    const delegated = snapshot.tasks.find((t) => t.assigneeId !== null)!
+    delegated.followUpDate = todayISO()
+    renderApp(<WeekPage />, { snapshot })
+
+    const name = `Delegated, ${format(parseISO(todayISO()), 'EEEE MMMM d')}`
+    const card = within(await screen.findByRole('region', { name }))
+    expect(card.getByText('Design content page templates')).toBeInTheDocument()
+    expect(card.getByText('Priya Shah')).toBeInTheDocument()
+    const today = await dayRegion(todayISO())
+    expect(today.queryByText('Design content page templates')).not.toBeInTheDocument()
+  })
+
   it('moves a task to another day via the Move to… menu', async () => {
     const user = userEvent.setup()
     renderApp(<WeekPage />)

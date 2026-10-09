@@ -15,13 +15,17 @@ import { TaskDayMenu } from './TaskDayMenu'
 import { DraggableTask } from './WeekDnd'
 import { useTaskLink } from '../task/useTaskParam'
 
-/** One column of the week board: a day (or "any day"), its meetings, hours line, follow-ups and tasks. */
+/**
+ * One column of the week board: a day (or "any day"), its meetings, hours line, follow-ups you wait on and tasks.
+ * Follow-ups on delegated tasks get their own card under it (DelegatedDayCard) but still count toward the hours.
+ */
 export function DayColumn({
   weekStart,
   day,
   isToday,
   tasks,
   followUps,
+  delegatedFollowUps = 0,
   meetings,
   capacity,
   settings,
@@ -34,6 +38,8 @@ export function DayColumn({
   isToday?: boolean
   tasks: Task[]
   followUps: FollowUpItem[]
+  /** How many follow-ups on delegated tasks fall on this day (shown elsewhere; each counts as an S). */
+  delegatedFollowUps?: number
   meetings: CalendarEvent[]
   /** Hours available that day (null for the any-day column). */
   capacity: number | null
@@ -47,7 +53,7 @@ export function DayColumn({
   // Drop target for the week board's drag-and-drop ("any" = this week, no day). See WeekDnd.
   const { setNodeRef: setDropRef, isOver, active: dragActive } = useDroppable({ id: day ?? 'any' })
   const dragging = dragActive !== null
-  const hours = plannedHours(tasks, settings, followUps.length)
+  const hours = plannedHours(tasks, settings, followUps.length + delegatedFollowUps)
   const over = capacity !== null ? Math.round(hours * 10) - Math.round(capacity * 10) : 0
   const empty = tasks.length === 0 && followUps.length === 0
 
