@@ -9,7 +9,7 @@ import { SECONDARY_CARD } from '../components/Page'
 import { useTaskLink } from '../task/useTaskParam'
 
 /**
- * The week board's quieter card under a day: follow-ups due that day on tasks you delegated, each as the task
+ * The week board's quiet card under a day: follow-ups due that day on tasks you delegated, each as the task
  * title over the person's name (and "Overdue · date" for one carried over from an earlier week).
  */
 export function DelegatedDayCard({
@@ -31,9 +31,13 @@ export function DelegatedDayCard({
       size="sm"
       role="region"
       aria-label={`Delegated, ${format(parseISO(day), 'EEEE MMMM d')}`}
-      className={cn('min-w-0 gap-2 rounded-2xl xl:[--card-spacing:--spacing(3)]', SECONDARY_CARD, className)}
+      className={cn(
+        'min-w-0 gap-2 self-start rounded-2xl xl:[--card-spacing:--spacing(3)]',
+        SECONDARY_CARD,
+        className,
+      )}
     >
-      <h3 className="px-(--card-spacing) text-xs font-medium text-muted-foreground">Delegated</h3>
+      <h3 className="px-(--card-spacing) text-xs text-muted-foreground">Delegated</h3>
       <ul className="flex flex-col gap-2 px-(--card-spacing)">
         {items.map((item) => (
           <li key={item.task.id} className="flex items-start gap-1.5">
@@ -47,12 +51,12 @@ export function DelegatedDayCard({
             <div className="flex min-w-0 flex-col">
               <Link
                 to={taskLink(item.task)}
-                className="min-w-0 text-xs underline-offset-4 hover:underline"
+                className="min-w-0 text-xs text-muted-foreground underline-offset-4 hover:underline"
                 aria-label={item.label}
               >
                 {item.task.title}
               </Link>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground/60">
                 {nameOf(item.task.assigneeId) ?? 'Someone'}
                 {item.overdue && (
                   <span className="text-destructive">{` · Overdue · ${format(parseISO(item.date), 'MMM d')}`}</span>

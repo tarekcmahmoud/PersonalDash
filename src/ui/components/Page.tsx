@@ -54,11 +54,11 @@ export function Page({
 }
 
 /**
- * A quieter card for what others do for you (delegated work), stacked under your own: no shadow, a muted fill.
- * The fill is opaque and exposed as `--surface`, so hover overlays inside (FollowUpRow's actions) can match it.
+ * A quiet card for what others do for you (delegated work), kept below your own: no fill or shadow, only the
+ * card's faint outline on the page background. That background is exposed as `--surface`, so hover overlays
+ * inside (FollowUpRow's actions) can match it.
  */
-export const SECONDARY_CARD =
-  'shadow-none bg-(--surface) [--surface:color-mix(in_oklab,var(--color-muted)_40%,var(--color-background))]'
+export const SECONDARY_CARD = 'shadow-none bg-(--surface) [--surface:var(--color-background)]'
 
 /**
  * The right-hand pane of a two-column page (Project, Today) on desktop: it stays in view while the page (the
@@ -106,7 +106,7 @@ export function CardSection({
   actions,
   children,
   className,
-  cardClassName,
+  quiet = false,
   contentClassName,
 }: {
   title: string
@@ -114,14 +114,15 @@ export function CardSection({
   actions?: ReactNode
   children: ReactNode
   className?: string
-  cardClassName?: string
+  /** A secondary card (SECONDARY_CARD) with a small grey title, for content that should not compete. */
+  quiet?: boolean
   contentClassName?: string
 }) {
   return (
     <section className={className}>
-      <Card className={cn('gap-3', cardClassName)}>
+      <Card className={cn('gap-3', quiet && SECONDARY_CARD)}>
         <CardHeader>
-          <CardTitle>
+          <CardTitle className={cn(quiet && 'text-sm text-muted-foreground')}>
             <h2>
               {title}
               {count !== undefined && (

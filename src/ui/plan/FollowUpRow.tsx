@@ -13,7 +13,16 @@ import { FollowUpAgain } from './FollowUpAgain'
  * One line: "Follow up: X re Y" + grey date. On hover: "Still waiting…" (new date) and "Received" for a task you
  * wait on; "Follow up again…" and "Done" for a delegated one.
  */
-export function FollowUpRow({ item, today }: { item: FollowUpItem; today: string }) {
+export function FollowUpRow({
+  item,
+  today,
+  quiet = false,
+}: {
+  item: FollowUpItem
+  today: string
+  /** Grey label, for a secondary list (the Delegated card on Today). */
+  quiet?: boolean
+}) {
   const actions = useTaskActions()
   const taskLink = useTaskLink()
   const [open, setOpen] = useState(false)
@@ -30,7 +39,13 @@ export function FollowUpRow({ item, today }: { item: FollowUpItem; today: string
         aria-hidden
       />
       <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-        <Link to={taskLink(item.task)} className="min-w-0 text-sm underline-offset-4 hover:underline">
+        <Link
+          to={taskLink(item.task)}
+          className={cn(
+            'min-w-0 text-sm underline-offset-4 hover:underline',
+            quiet && 'text-muted-foreground',
+          )}
+        >
           {item.label}
         </Link>
         <span

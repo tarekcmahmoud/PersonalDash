@@ -6,7 +6,7 @@ import { useTaskActions } from '../../data/taskActions'
 import type { PlanContext } from '../../domain/context'
 import type { Task } from '../../domain/types'
 import { Card, CardContent } from '@/components/ui/card'
-import { CardSection, SECONDARY_CARD } from '../components/Page'
+import { CardSection } from '../components/Page'
 import { TaskRow } from '../components/TaskRow'
 import { eventsOnDay } from '../plan/events'
 import { FollowUpRow } from '../plan/FollowUpRow'
@@ -116,7 +116,7 @@ export function TodayColumn({ ctx }: { ctx: PlanContext }) {
         <CardSection
           title="Delegated"
           count={delegated.length}
-          cardClassName={SECONDARY_CARD}
+          quiet
           actions={
             <Button asChild variant="link" className="h-8 p-0 text-sm font-normal text-muted-foreground">
               <Link to="/delegated">All delegated</Link>
@@ -125,7 +125,7 @@ export function TodayColumn({ ctx }: { ctx: PlanContext }) {
         >
           <div className="divide-y">
             {delegated.map((item) => (
-              <FollowUpRow key={item.task.id} item={item} today={today} />
+              <FollowUpRow key={item.task.id} item={item} today={today} quiet />
             ))}
           </div>
         </CardSection>
