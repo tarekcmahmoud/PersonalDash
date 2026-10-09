@@ -1,113 +1,102 @@
-# Handoff: take PersonalDash live and fix real-data issues
+# Handoff: verify the live site, fix real-data issues, then keep iterating
 
-**Goal of the next session:** finish the go-live (Supabase, Vercel, optional Google Calendar). Then sign in on
-the live site and fix whatever breaks against real services.
+Snapshot taken 2026-10-09. `main` and `claude/wizardly-ride-09zaaj` are identical at `360a330`.
 
-Snapshot taken 2026-10-08. `main` and `claude/multi-project-task-planner-d7gcr3` are identical, at `0eb5fe3`
-or later.
+**Purpose of the next session.** First, the user tries the new features on the live site and reports errors.
+Fix those errors. Then continue with feature requests in the same style as the last session.
 
-## Where things stand
+Read `README.md` (features) and `CLAUDE.md` (conventions and design rules) first. The work of the last session is
+in the 10 commits `5edae2d..360a330` (`git log 5edae2d..360a330`). Each commit message describes its change.
 
-- **App:** feature-complete v1.
-  - Screens: Today, Week (drag tasks between days), Plan, Weekly review, Projects (masonry of cards), Project page
-    (parallel workstreams on the left, resources on the right, workstream focus mode), Inbox, Import, Templates,
-    Settings.
-  - Design: shadcn/ui, Rhea style, yellow accent, grey page.
-  - Product overview: `README.md`. Conventions and design rules: `CLAUDE.md`. Read both first.
-- **Verified so far:** typecheck, lint, 509 unit tests and 15 Playwright tests (memory mode, desktop and phone)
-  all pass. **But the app has never run against a real Supabase project or real Google APIs.** Those paths have
-  only been checked in these ways:
-  - Supabase data layer: mappers have unit tests. `src/data/supabaseRepo.ts` now passes an integration test
-    (`src/data/supabaseRepo.local.test.ts`) against real PostgREST + Postgres with the migrations. The stack
-    is in `supabase/local/`, and auth there is a fake gateway. The test covers first load, concurrent first loads,
-    `insertBundle`, `setDependencies`, cascades, the system-project guard, paging past 1000 rows and RLS between
-    two users. The UI was also smoke-tested in supabase mode against that stack: sign-in, capture, import,
-    settings and sign-out. It found one bug, now fixed: timestamps came back as `+00:00` strings.
-  - SQL: validated on a local Postgres 16 with stubbed `auth`/`storage` schemas (recipe below).
-  - Google Calendar code: tested against mocked `fetch` and a mocked `google` global only.
-- **GitHub:** works from cloud sessions. Vercel deploys from GitHub.
+## State
 
-## What the user has done, and what's still open
+- **Live:** Vercel deploys `main`. The PR preview is https://tcgmpersonaldash.vercel.app. The production URL
+  was never shared in the session, so ask the user if you need it.
+- **Supabase:** the user ran all seven parts in `supabase/migrations/` (0001–0007). Any schema change needs a new
+  `0008_…sql` file, and the user must run it **before** the code reaches `main`. Code that is deployed before its
+  migration breaks loading and saving for the whole app. Follow the existing files: they are idempotent, check
+  that the previous part ran, end with a summary query, and come with a "PART n of N" header. When you add a
+  part, update the other files' "of N" headers, `docs/setup.md` and `supabase/README.md`.
+- **Google Calendar:** dropped by the user ("forget about it"). The code remains. Settings still shows a
+  "VITE_GOOGLE_CLIENT_ID is missing" block. The session offered to hide that block when it isn't configured, but
+  the user never answered.
+- **PR:** [tarekcmahmoud/PersonalDash#1](https://github.com/tarekcmahmoud/PersonalDash/pull/1) (opened by the
+  user from the UI). Its **base is the old branch `claude/multi-project-task-planner-d7gcr3`**, not `main`.
+  Everything in it is already on `main`. The user hasn't yet chosen between two options: keep pushing straight
+  to `main`, or retarget the PR to `main` and merge through it. The last session subscribed to PR activity and
+  armed a `send_later` check-in (`trig_01FZ2n1FsKsG2aqma5CVftit`). Delete it if it's still pending and no longer
+  wanted.
+- **Checks at `360a330`:** typecheck, lint, 557 unit tests and 16 Playwright tests (desktop and phone, memory
+  mode) pass. `src/data/supabaseRepo.local.test.ts` passes, 8 of 8, against the local stack.
 
-| Step                                                          | Status                                                                                                                                                                                                                                                                                                                         |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| GitHub repo + Claude GitHub App                               | Done                                                                                                                                                                                                                                                                                                                           |
-| Vercel project linked                                         | Done (user said so). **Unconfirmed:** production branch = `main`; env vars set; redeployed after setting them                                                                                                                                                                                                                  |
-| Supabase parts 1–3 (`supabase/migrations/0001…0003`)          | **Unconfirmed.** Two earlier attempts failed because pastes were truncated: "syntax error at or near `;`" at line 100, then "relation public.projects does not exist". The script was then split into short, idempotent parts that each check the previous part ran. Ask the user to re-run and send the part 3 summary output |
-| Supabase parts 4–5 (`0004_resources.sql`, `0005_storage.sql`) | **Not run yet** (new)                                                                                                                                                                                                                                                                                                          |
-| Supabase part 6 (`0006_substreams.sql`)                       | **Not run yet** (new: `milestones.parent_id` for substreams). Must run before deploying the substreams code, or saving workstreams fails                                                                                                                                                                                       |
-| Supabase part 7 (`0007_collaborators.sql`)                    | **Not run yet** (new: `people`, `projects.collaborator_ids`, `tasks.assignee_id`). Must run before deploying the delegation code, or saving projects and tasks fails                                                                                                                                                           |
-| Supabase user + sign-ups off + Site URL                       | Not confirmed                                                                                                                                                                                                                                                                                                                  |
-| Google Calendar OAuth client                                  | Not started (optional)                                                                                                                                                                                                                                                                                                         |
+## What to verify on the live site (never run against real Supabase)
 
-Step-by-step instructions for the user are in `docs/setup.md` (sections 1–3, plus troubleshooting) and
-`supabase/README.md`. Point the user there rather than rewriting them. Expected Vercel env vars:
-`VITE_DATA_MODE=supabase`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and optionally `VITE_GOOGLE_CLIENT_ID`.
-Without `VITE_DATA_MODE=supabase` the live site silently runs in demo (memory) mode.
+Ask the user to try each item and to report anything that breaks or isn't saved after a reload:
 
-## Likely real-data problems to watch for
+1. **Delegation** (parts 7 and `360a330`):
+   - add collaborators through the project's **…** menu
+   - **Delegate to…** from a task's **…** menu
+   - the Delegated page
+   - a follow-up due on Today
+2. **Substreams** (part 6): **Add substream**, dragging tasks between cards, deleting a workstream that has
+   substreams.
+3. **Task links:** **Waits for…** from a task's **…** menu, and the connector lines.
+4. **Resource image uploads** (Storage, part 5). This is the one data path with no local stand-in.
 
-1. **Supabase repo behaviour** (`src/data/supabaseRepo.ts`), all unverified against a real project:
-   - first load creating default settings and the Admin/Misc system project
-   - paging
-   - `insertBundle` FK order
-   - `setDependencies` upsert-then-prune
-   - timestamps coming back as `+00:00` strings
-2. **Part 5 (storage):** the `insert into storage.buckets (…, file_size_limit, allowed_mime_types)` may fail if
-   Supabase's columns differ. The fallback is to create the bucket in Dashboard → Storage (private, 5 MB,
-   `image/*`); the policies still apply. Uploads go to `resource-images/<userId>/<uuid>.<ext>`, and images are
-   shown through 1-hour signed URLs (`useImageSrc` in `src/data/hooks.ts`).
-3. **Auth:** sign-in is email + password (`LoginPage`). `RequireAuth` redirects; there's no sign-up flow by
-   design.
-4. **Google Calendar** (`src/integrations/gcal/*`):
-   - browser-only GIS token flow; tokens last about 1 hour
-   - the "Reconnect calendar" line appears when the token expires
-   - the scopes are `calendar.events.readonly` and `calendar.app.created`
-   - `calendarExists` under the `calendar.app.created` scope is an untested assumption
-   - the GIS script is preloaded on Settings; the consent popup may be blocked if the click happens before it loads
-5. **Optimistic writes:** `useApply` rolls back on error. Watch for toasts or rollbacks that point to RLS or
-   column mismatches.
+All other data paths pass against real PostgREST and Postgres locally. The stack is in `supabase/local/`, and its
+`README.md` covers both running it and the "not covered" list.
 
-## Environment constraints (cloud container)
+## Conventions the user relies on
 
-- **Blocked egress:** `api.supabase.com` (and likely `*.supabase.co`) and the shadcn registry. The session can't
-  reach the user's Supabase project, so debugging means asking the user for error text or screenshots, or
-  getting the host allowed. Call `read_documentation` with topic `environment.network`. The GitHub raw host is
-  reachable.
-- **Local Postgres 16** is at `/usr/lib/postgresql/16/bin`. The validation recipe:
-  - `runuser -u postgres -- initdb/pg_ctl` into a scratchpad dir, after `chmod o+x` on the path (don't use
-    `su -c` scripts; a safety check blocks them)
-  - stub `auth.users`, `auth.uid()` (reads `request.jwt.claim.sub`), the `authenticated` role, and a minimal
-    `storage` schema (`buckets`, `objects`, `foldername()`)
-  - run parts 1–5 twice, then smoke-test RLS between two users, the system-project guard, cascades, and the
-    storage folder policies
+- The user writes "push" to mean push to `main`, after the checks pass. Push to `claude/wizardly-ride-09zaaj`
+  first. Fast-forward `main` with `git push origin HEAD:main` only after the user says "push".
+- Before any push, run `npm run typecheck && npm run lint && npm test && npm run e2e`.
+- The user sends short requests, often while you're mid-task. Answer briefly, do the work, and show screenshots
+  of UI changes (Playwright with `executablePath: '/opt/pw-browsers/chromium'`, desktop 1280px and phone 390px).
+- `CLAUDE.md` calls the contracts frozen. The user explicitly asked for this session's changes to them:
+  `Milestone.parentId`, `Person`, `Project.collaboratorIds`, `Task.assigneeId`, and the Change kinds
+  `savePeople` and `deletePerson`.
+- The demo data in `src/data/seed.ts` feeds the unit and e2e tests. The Kitchen renovation project holds the
+  substream example. The delegated example's follow-up is set 15 days out so that this week's and next week's
+  numbers don't change.
 
-  The scripts weren't committed; they're easy to recreate from this description.
+## Gotchas found this session
 
-- **Playwright:** uses the pre-installed Chromium at `/opt/pw-browsers/chromium`. Don't run `playwright install`.
-- When killing dev servers, use a pattern that can't match your own shell, e.g. `pkill -f "port 519[4]"`.
+- **No access to Supabase or Vercel from the container** (both blocked). Use the local stack:
+  `supabase/local/start.sh /var/tmp/pd-supabase`. The work dir must be under `/var/tmp`: the scratchpad's
+  directory permissions get reset, which kills Postgres. The stack also stops when the container idles, so
+  restart it, after removing `data/`, if you get connection errors.
+- **Killing processes:**
+  - Never `pkill -f` a pattern that occurs in your own command line; it kills your shell (exit 144).
+  - Use bracketed patterns, e.g. `pgrep -f "gateway[.]mjs"`.
+  - Start a server and kill it in separate commands.
+- **Never run `prettier --write src` as a whole.** It reformats the vendored `src/styles/shadcn-tailwind.css`.
+  Format only the files you touched.
+- **React Compiler lint rules (`eslint-plugin-react-hooks` v7):**
+  - no `setState` inside an effect body: use observer callbacks instead (see `src/ui/project/LinkRails.tsx`)
+  - no reading refs during render: pass elements through state
+- **Radix submenus don't open by pointer in jsdom.** Open them with the keyboard in tests (`focus()`, then
+  ArrowRight, then Enter). See `ProjectPage.test.tsx`.
+- **Drag tests in Playwright:** use a tall viewport. dnd-kit auto-scrolls near the edges and shifts the target
+  under the pointer (see `e2e/substreams.spec.ts`).
 
-## Working conventions used so far
+## Open product questions (ask when relevant)
 
-- An orchestrator plus lower-cost agents (Sonnet or Haiku) in git worktrees, each owning separate files. The
-  orchestrator reviews, merges, runs all checks and pushes. The user asked for this delegation style.
-- Push to the branch; update `main` only when the user asks ("push" / "merge to main" has meant updating
-  `main`). `main` is what Vercel deploys.
-- Before any push: `npm run typecheck && npm run lint && npm test && npm run e2e`.
-
-## Open product assumptions to confirm with the user
-
-- Meetings reduce weekly capacity (an assumption; the user's answers were ambiguous).
-- The Week board fits 8 columns at 1280px, so project names truncate. The alternative is 4 columns on 2 rows.
-- "Connect Google Calendar" is a grey button because "Save settings" is the page's single yellow button.
+- **Week board:** 8 columns at 1280px truncate project names. The alternative is 4 columns on 2 rows.
+- **"Next":** marks the first ready task in each workstream or substream, including a delegated one. Your own
+  other ready tasks are full strength but not marked "Next".
+- **Phones:** dragging between lists is desktop-only. On phones, the task dialog's **Workstream** field moves a
+  task.
+- **Not done yet:** a security review of the database access rules, file storage, sign-in and the public key
+  (suggested twice, never run).
 
 ## Suggested skills for the next session
 
-- **`run`**: launch the app (`npm run dev:memory`, or supabase mode with a local `.env.local`) and look at screens.
-- **`security-review`**: before real data lands, review RLS, storage policies, the anon key exposure and auth flows.
-- **`code-review`**: on any fixes to `supabaseRepo.ts` and `src/integrations/gcal/*`.
-- **`read_documentation`** (`environment.network`, `environment.secrets`): if the session needs to reach
-  Supabase or Google, or hold test credentials.
-- **`anthropic-skills:chrome-browser` / `anthropic-skills:built-in-browser`**: if available, inspect the live
-  Vercel site, its console errors and the Supabase dashboard with the user's own sign-ins.
-- **`session-start-hook`**: optional, so cloud sessions run `npm ci` automatically.
+- **`run`:** launch the app (`npm run dev:memory`) and screenshot changes.
+- **`anthropic-skills:chrome-browser` or `anthropic-skills:built-in-browser`**, if available: look at the live
+  site and its console errors with the user's sign-in.
+- **`read_documentation`** (`environment.network`): if the user wants the container to reach their
+  `*.supabase.co` or Vercel host directly.
+- **`security-review`:** the pending review above.
+- **`code-review`:** on fixes to `src/data/supabaseRepo.ts` or the migrations.
+- **`session-start-hook`** (optional): run `npm ci` automatically at session start.
