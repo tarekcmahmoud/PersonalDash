@@ -82,8 +82,10 @@ describe('WeekPage', () => {
     expect(expandedOf(other)).toBe('true')
     expect(expandedOf(todayISO())).toBe('false')
 
+    // Narrowing it again goes back to the default: today.
     await user.click(screen.getByRole('button', { name: otherName }))
     expect(expandedOf(other)).toBe('false')
+    expect(expandedOf(todayISO())).toBe('true')
     matchMedia.mockRestore()
   })
 

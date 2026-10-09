@@ -21,8 +21,9 @@ import { TaskDialogHost } from '../task/TaskDialogHost'
  * 1280px and up, four or two on narrower screens, a vertical list on phones. Drag a task onto another day (or "Any day") to move it; the hover "Move to…" menu does the same.
  * Follow-ups on delegated tasks are stacked under their day in a quieter card of their own; on wider screens
  * those cards line up across a row (each column is a two-row subgrid: your day, then delegated).
- * At 1280px and up, one column (and the cards stacked in it) is twice as wide as the others: today's at
- * first; click another column (or its day name) to widen that one instead, or the wide one's name to narrow it.
+ * At 1280px and up, one column (and the cards stacked in it) is twice as wide as the others: today's
+ * by default (also after switching weeks); click another column (or its day name) to widen that one instead, and
+ * its name again to go back to today.
  * The narrow columns are greyed out and their tasks have no checkboxes.
  */
 export function WeekPage() {
@@ -31,8 +32,17 @@ export function WeekPage() {
   const { isError, error } = useSnapshot()
   // Only the 8-column board (xl, 1280px) lays days side by side, so only there can a column be widened.
   const sideBySide = useMediaQuery('(min-width: 80rem)')
-  // The column picked in this week: a day, 'any', or null for none. Other weeks fall back to the default.
-  const [picked, setPicked] = useState<{ weekStart: string; column: string | null } | null>(null)
+  // The column picked instead of the default (today's): a day or 'any'. Cleared when the week changes, so the
+  // board always opens with today wide.
+  const [picked, setPicked] = useState<{ weekStart: string; column: string } | null>(null)
+  const changeWeek = (next: string) => {
+    setPicked(null)
+    setWeek(next)
+  }
+  const backToThisWeek = () => {
+    setPicked(null)
+    resetWeek()
+  }
 
   const body = (() => {
     if (isError)
@@ -58,8 +68,10 @@ export function WeekPage() {
     const followUpDay = (date: string): string => (date < weekStart ? ctx.today : date)
     const onDay = (day: string, kind: 'waiting' | 'delegated') =>
       followUps.filter((f) => f.kind === kind && followUpDay(f.date) === day)
-    const expanded = picked?.weekStart === weekStart ? picked.column : todayInWeek ? ctx.today : null
-    const toggle = (column: string) => setPicked({ weekStart, column: expanded === column ? null : column })
+    // Today is wide by default; narrowing a picked column goes back to that default.
+    const defaultColumn = todayInWeek ? ctx.today : null
+    const expanded = picked?.weekStart === weekStart ? picked.column : defaultColumn
+    const toggle = (column: string) => setPicked(expanded === column ? null : { weekStart, column })
     // A click on a column's background widens it; clicks on its tasks, links and buttons keep their own meaning.
     const expandOnClick = (column: string) => (e: MouseEvent) => {
       const target = e.target as Element
@@ -132,8 +144,8 @@ export function WeekPage() {
       <WeekSwitcher
         weekStart={weekStart}
         isCurrentWeek={isCurrentWeek}
-        onChange={setWeek}
-        onReset={resetWeek}
+        onChange={changeWeek}
+        onReset={backToThisWeek}
       />
       <div className="mt-4">{body}</div>
       <TaskDialogHost />
