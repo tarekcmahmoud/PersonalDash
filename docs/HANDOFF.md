@@ -1,102 +1,112 @@
-# Handoff: verify the live site, fix real-data issues, then keep iterating
+# Handoff: collect usage feedback, then compile improvements
 
-Snapshot taken 2026-10-09. `main` and `claude/wizardly-ride-09zaaj` are identical at `360a330`.
+Snapshot taken 2026-10-09. The last commit is "Schedule tasks for next week", on `claude/awesome-wright-e3f1gq`
+and on `main`, which Vercel deploys.
 
-**Purpose of the next session.** First, the user tries the new features on the live site and reports errors.
-Fix those errors. Then continue with feature requests in the same style as the last session.
+**Purpose of the next session.** The product is done for now. The user will use it day to day and bring
+feedback, probably in short notes over several messages. Collect the notes, then compile them into one
+prioritized list of improvements. Don't build anything until the user picks items from that list.
 
-Read `README.md` (features) and `CLAUDE.md` (conventions and design rules) first. The work of the last session is
-in the 10 commits `5edae2d..360a330` (`git log 5edae2d..360a330`). Each commit message describes its change.
+Read `README.md` (features) and `CLAUDE.md` (conventions and design rules) first. Read the git log for the
+details of a change: every commit message describes it. Most of this session's work is in
+`git log 360a330..06a8415`.
 
-## State
+## How to run the next session
 
-- **Live:** Vercel deploys `main`. The PR preview is https://tcgmpersonaldash.vercel.app. The production URL
-  was never shared in the session, so ask the user if you need it.
-- **Supabase:** the user ran all seven parts in `supabase/migrations/` (0001–0007). Any schema change needs a new
-  `0008_…sql` file, and the user must run it **before** the code reaches `main`. Code that is deployed before its
-  migration breaks loading and saving for the whole app. Follow the existing files: they are idempotent, check
-  that the previous part ran, end with a summary query, and come with a "PART n of N" header. When you add a
-  part, update the other files' "of N" headers, `docs/setup.md` and `supabase/README.md`.
-- **Google Calendar:** dropped by the user ("forget about it"). The code remains. Settings still shows a
-  "VITE_GOOGLE_CLIENT_ID is missing" block. The session offered to hide that block when it isn't configured, but
-  the user never answered.
-- **PR:** [tarekcmahmoud/PersonalDash#1](https://github.com/tarekcmahmoud/PersonalDash/pull/1) (opened by the
-  user from the UI). Its **base is the old branch `claude/multi-project-task-planner-d7gcr3`**, not `main`.
-  Everything in it is already on `main`. The user hasn't yet chosen between two options: keep pushing straight
-  to `main`, or retarget the PR to `main` and merge through it. The last session subscribed to PR activity and
-  armed a `send_later` check-in (`trig_01FZ2n1FsKsG2aqma5CVftit`). Delete it if it's still pending and no longer
-  wanted.
-- **Checks at `360a330`:** typecheck, lint, 557 unit tests and 16 Playwright tests (desktop and phone, memory
-  mode) pass. `src/data/supabaseRepo.local.test.ts` passes, 8 of 8, against the local stack.
+1. **Gather feedback.**
+   - Record each note in the user's own words.
+   - Ask a short question only when a note is ambiguous, for example which screen, phone or desktop, or what
+     the user expected.
+   - Ask for a screenshot when it would settle the question.
+   - Don't propose fixes while gathering, unless the user asks.
+2. **Compile.** Once the user says the list is complete, group the notes by screen or theme. For each item give:
+   - the problem, as the user experienced it
+   - a proposed change, in a sentence or two
+   - its size (S/M/L)
+   - whether it needs a database change (see "Schema changes" below)
+   - any open question
 
-## What to verify on the live site (never run against real Supabase)
+   Put quick wins first. Flag items that conflict with the design rules in `CLAUDE.md`, and items that undo a
+   decision listed below.
 
-Ask the user to try each item and to report anything that breaks or isn't saved after a reload:
+3. **Ask** whether the user wants the list as a shareable doc or kept in chat, and which items to build first.
+4. **Build** in the same style as before: short requests, quick turns, screenshots of each UI change, push to
+   `main` only when the user says "push".
 
-1. **Delegation** (parts 7 and `360a330`):
-   - add collaborators through the project's **…** menu
-   - **Delegate to…** from a task's **…** menu
-   - the Delegated page
-   - a follow-up due on Today
-2. **Substreams** (part 6): **Add substream**, dragging tasks between cards, deleting a workstream that has
-   substreams.
-3. **Task links:** **Waits for…** from a task's **…** menu, and the connector lines.
-4. **Resource image uploads** (Storage, part 5). This is the one data path with no local stand-in.
+## What changed this session (all on `main`)
 
-All other data paths pass against real PostgREST and Postgres locally. The stack is in `supabase/local/`, and its
-`README.md` covers both running it and the "not covered" list.
+The Today and Week items below came out of user requests in this session.
 
-## Conventions the user relies on
+- **Delegated work:**
+  - Delegated follow-ups are now separate from your own tasks: in a "Delegated" card at the bottom of Today,
+    and in a card under each day on Week.
+  - The cards are deliberately quiet: no fill or shadow, grey text. Overdue follow-ups stay red.
+  - Each follow-up shows where its task lives ("Project · Workstream", or the substream's name when the task is
+    in one).
+- **Week board (desktop, 1280px and up):**
+  - Today's column is twice as wide as the others. Click any column, or its day name, to make it the wide one.
+    Clicking the wide column's name again goes back to today, and switching weeks resets to today.
+  - The other columns are greyed out until you hover them, and their tasks have no checkboxes.
+- **Today:** follow-up rows line up with task rows. The title wraps, the date sits beside its first line, and
+  the project line sits underneath.
+- **Schedule ahead:** the task dialog's Day field lists this week and next week (and the task's own week if it
+  is another one). The day menus on task rows have "Next week" (the week after the one shown, without a day).
+- **Navigation:** on desktop and tablet (`md` and up) the left icon rail is replaced by a static dock at the
+  bottom centre. Phones keep the bottom tab bar.
+  - The user tried icons that grow under the pointer and a bar that bulges around them, and rejected both
+    ("keep it static").
+  - The preview the user approved is the artifact https://claude.ai/artifact/SMEXfcrfVpd8z7vZcCHqhv.
+- **Checks at the last commit:** typecheck, lint, 562 unit tests and 16 Playwright tests (desktop 1280px and phone
+  390px) pass. The user tested delegation, substreams, task links and image uploads on the live site, and all
+  worked.
 
-- The user writes "push" to mean push to `main`, after the checks pass. Push to `claude/wizardly-ride-09zaaj`
-  first. Fast-forward `main` with `git push origin HEAD:main` only after the user says "push".
-- Before any push, run `npm run typecheck && npm run lint && npm test && npm run e2e`.
-- The user sends short requests, often while you're mid-task. Answer briefly, do the work, and show screenshots
-  of UI changes (Playwright with `executablePath: '/opt/pw-browsers/chromium'`, desktop 1280px and phone 390px).
-- `CLAUDE.md` calls the contracts frozen. The user explicitly asked for this session's changes to them:
-  `Milestone.parentId`, `Person`, `Project.collaboratorIds`, `Task.assigneeId`, and the Change kinds
-  `savePeople` and `deletePerson`.
-- The demo data in `src/data/seed.ts` feeds the unit and e2e tests. The Kitchen renovation project holds the
-  substream example. The delegated example's follow-up is set 15 days out so that this week's and next week's
-  numbers don't change.
+## Decisions the user made (don't undo them without asking)
 
-## Gotchas found this session
+- The delegated cards sit below your own cards on Today and stay quiet. The user asked for "less present".
+- The wide column on Week defaults to today. Only the 8-column layout (xl) widens a column, greys out the others
+  and hides checkboxes.
+- The dock is static: no magnification and no bulge. It has no dashed borders, and the user rejected dashes on
+  cards as well.
 
-- **No access to Supabase or Vercel from the container** (both blocked). Use the local stack:
-  `supabase/local/start.sh /var/tmp/pd-supabase`. The work dir must be under `/var/tmp`: the scratchpad's
-  directory permissions get reset, which kills Postgres. The stack also stops when the container idles, so
-  restart it, after removing `data/`, if you get connection errors.
-- **Killing processes:**
-  - Never `pkill -f` a pattern that occurs in your own command line; it kills your shell (exit 144).
-  - Use bracketed patterns, e.g. `pgrep -f "gateway[.]mjs"`.
-  - Start a server and kill it in separate commands.
-- **Never run `prettier --write src` as a whole.** It reformats the vendored `src/styles/shadcn-tailwind.css`.
-  Format only the files you touched.
-- **React Compiler lint rules (`eslint-plugin-react-hooks` v7):**
-  - no `setState` inside an effect body: use observer callbacks instead (see `src/ui/project/LinkRails.tsx`)
-  - no reading refs during render: pass elements through state
-- **Radix submenus don't open by pointer in jsdom.** Open them with the keyboard in tests (`focus()`, then
-  ArrowRight, then Enter). See `ProjectPage.test.tsx`.
-- **Drag tests in Playwright:** use a tall viewport. dnd-kit auto-scrolls near the edges and shifts the target
-  under the pointer (see `e2e/substreams.spec.ts`).
+## State and open items
 
-## Open product questions (ask when relevant)
+- **Schema changes:** none this session. Supabase still has migrations 0001–0007. Any change that needs a
+  column means a new `supabase/migrations/0008_…sql`, and the user must run it before the code reaches `main`.
+  Follow the conventions in the existing files and in `supabase/README.md`.
+- **Pull request:** [tarekcmahmoud/PersonalDash#1](https://github.com/tarekcmahmoud/PersonalDash/pull/1) is
+  still open, with its base on the old branch. The user never chose between pushing straight to `main` (what
+  happens now) and merging through the pull request. A safety-net check-in (`trig_01FZ2n1FsKsG2aqma5CVftit`)
+  was due to run once at 07:37 UTC on 2026-10-09 in the previous session. Check it with `list_triggers` if
+  it matters.
+- **Still unanswered:**
+  - Hide the "VITE_GOOGLE_CLIENT_ID is missing" block in Settings? Google Calendar was dropped.
+  - Run the security review of database access rules, storage, sign-in and the public key? It was suggested
+    three times and never run.
+  - "Next" marks the first ready task per workstream, including a delegated one. Is that wanted?
+- **Production URL:** never shared. The preview URL is https://tcgmpersonaldash.vercel.app.
 
-- **Week board:** 8 columns at 1280px truncate project names. The alternative is 4 columns on 2 rows.
-- **"Next":** marks the first ready task in each workstream or substream, including a delegated one. Your own
-  other ready tasks are full strength but not marked "Next".
-- **Phones:** dragging between lists is desktop-only. On phones, the task dialog's **Workstream** field moves a
-  task.
-- **Not done yet:** a security review of the database access rules, file storage, sign-in and the public key
-  (suggested twice, never run).
+## Gotchas
 
-## Suggested skills for the next session
+- **Screenshots of delegated cards:** the demo data has only one delegated task, with its follow-up 15 days
+  out, so the cards don't show by default.
+  - For screenshots, temporarily change `src/data/seed.ts`: set its `followUpDate` to `today`, and delegate
+    "Order cabinets and worktop" to Sam with a follow-up tomorrow.
+  - Restore the file afterwards. The e2e tests and the weekly numbers depend on it.
+- **Playwright screenshots:** use `executablePath: '/opt/pw-browsers/chromium'`. Run the dev server with
+  `npm run dev:memory -- --port 5180 --strictPort`, and stop it with `pgrep -f "vite[ ].*5180" | xargs -r kill`.
+- **Never run `prettier --write src` as a whole.** Format only the files you touched.
+- **Media queries in UI logic:** use `useMediaQuery` (`src/lib/useMediaQuery.ts`). jsdom's `matchMedia` never
+  matches; `WeekPage.test.tsx` shows how to stub it.
+- The other gotchas from the previous handoff still apply: the React Compiler lint rules, opening Radix
+  submenus with the keyboard in tests, and using tall viewports for drag tests. See `git show 5edae2d:docs/HANDOFF.md`.
 
-- **`run`:** launch the app (`npm run dev:memory`) and screenshot changes.
-- **`anthropic-skills:chrome-browser` or `anthropic-skills:built-in-browser`**, if available: look at the live
-  site and its console errors with the user's sign-in.
-- **`read_documentation`** (`environment.network`): if the user wants the container to reach their
-  `*.supabase.co` or Vercel host directly.
-- **`security-review`:** the pending review above.
-- **`code-review`:** on fixes to `src/data/supabaseRepo.ts` or the migrations.
-- **`session-start-hook`** (optional): run `npm ci` automatically at session start.
+## Suggested skills
+
+- **`anthropic-skills:to-questionnaire`** or plain chat: collect feedback in a consistent shape.
+- **`anthropic-skills:docs`**: if the user wants the compiled list as a shareable, commentable doc.
+- **`anthropic-skills:grilling`**: if the user wants the list stress-tested before choosing what to build.
+- **`run`**: launch the app (`npm run dev:memory`) to reproduce feedback and screenshot fixes.
+- **`anthropic-skills:chrome-browser` or `anthropic-skills:built-in-browser`**, if available: see the live
+  site as the user sees it.
+- **`security-review`**: the pending review above.
+- **`code-review`**: on any change to `src/data/supabaseRepo.ts` or the migrations.

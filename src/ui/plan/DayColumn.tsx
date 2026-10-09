@@ -15,17 +15,23 @@ import { TaskDayMenu } from './TaskDayMenu'
 import { DraggableTask } from './WeekDnd'
 import { useTaskLink } from '../task/useTaskParam'
 
-/** One column of the week board: a day (or "any day"), its meetings, hours line, follow-ups and tasks. */
+/**
+ * One column of the week board: a day (or "any day"), its meetings, hours line, follow-ups you wait on and tasks.
+ * Follow-ups on delegated tasks get their own card under it (DelegatedDayCard) but still count toward the hours.
+ */
 export function DayColumn({
   weekStart,
   day,
   isToday,
   tasks,
   followUps,
+  delegatedFollowUps = 0,
   meetings,
   capacity,
   settings,
   projectNames,
+  expanded = false,
+  onToggleExpand,
   className,
 }: {
   weekStart: ISODate
@@ -34,11 +40,20 @@ export function DayColumn({
   isToday?: boolean
   tasks: Task[]
   followUps: FollowUpItem[]
+  /** How many follow-ups on delegated tasks fall on this day (shown elsewhere; each counts as an S). */
+  delegatedFollowUps?: number
   meetings: CalendarEvent[]
   /** Hours available that day (null for the any-day column). */
   capacity: number | null
   settings: Settings
   projectNames: Map<string, string>
+  /** Shown wider than the other columns (the week board's expanded day). */
+  expanded?: boolean
+  /**
+   * Makes the day name a button that widens (or narrows back) this column. While given and not `expanded`, the
+   * column is one of the narrow ones: its tasks have no checkbox.
+   */
+  onToggleExpand?: () => void
   className?: string
 }) {
   const actions = useTaskActions()
@@ -47,7 +62,7 @@ export function DayColumn({
   // Drop target for the week board's drag-and-drop ("any" = this week, no day). See WeekDnd.
   const { setNodeRef: setDropRef, isOver, active: dragActive } = useDroppable({ id: day ?? 'any' })
   const dragging = dragActive !== null
-  const hours = plannedHours(tasks, settings, followUps.length)
+  const hours = plannedHours(tasks, settings, followUps.length + delegatedFollowUps)
   const over = capacity !== null ? Math.round(hours * 10) - Math.round(capacity * 10) : 0
   const empty = tasks.length === 0 && followUps.length === 0
 
@@ -59,6 +74,25 @@ export function DayColumn({
     hoursText = `${formatHours(hours)}h · ${formatHours(capacity - hours)}h free`
   else if (capacity > 0) hoursText = `${formatHours(capacity)}h free`
 
+  // Side by side, only the wide (selected) column has room for checkboxes; the narrow ones show titles only.
+  const narrow = onToggleExpand !== undefined && !expanded
+
+  const dayName = (
+    <>
+      {day ? (
+        <>
+          <span>{format(parseISO(day), 'EEE')}</span>
+          <span className={cn('font-normal', !isToday && 'text-muted-foreground/70')}>
+            {format(parseISO(day), 'MMM d')}
+          </span>
+        </>
+      ) : (
+        'Any day'
+      )}
+      {isToday && <span className="size-1.5 rounded-full bg-primary" aria-label="Today" role="img" />}
+    </>
+  )
+
   return (
     <Card
       ref={setDropRef}
@@ -67,6 +101,8 @@ export function DayColumn({
       className={cn(
         'min-w-0 gap-2 rounded-2xl transition-shadow xl:[--card-spacing:--spacing(3)]',
         isToday && 'ring-2 ring-primary/40',
+        // Any column can be widened by clicking it (see WeekPage); hint at that on hover.
+        onToggleExpand && !expanded && 'cursor-pointer hover:ring-foreground/15',
         // Drop target highlight while a task is dragged over this column.
         isOver && 'bg-primary/5 ring-2 ring-primary',
         className,
@@ -82,17 +118,18 @@ export function DayColumn({
             isToday ? 'text-foreground' : 'text-muted-foreground',
           )}
         >
-          {day ? (
-            <>
-              <span>{format(parseISO(day), 'EEE')}</span>
-              <span className={cn('font-normal', !isToday && 'text-muted-foreground/70')}>
-                {format(parseISO(day), 'MMM d')}
-              </span>
-            </>
+          {onToggleExpand ? (
+            <button
+              type="button"
+              aria-expanded={expanded}
+              onClick={onToggleExpand}
+              className="-mx-1 flex cursor-pointer items-center gap-1.5 rounded-md px-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {dayName}
+            </button>
           ) : (
-            'Any day'
+            dayName
           )}
-          {isToday && <span className="size-1.5 rounded-full bg-primary" aria-label="Today" role="img" />}
         </h2>
         {hoursText && (
           <p className={cn('text-xs tabular-nums', over > 0 ? 'text-destructive' : 'text-muted-foreground')}>
@@ -127,7 +164,7 @@ export function DayColumn({
                   hideDay
                   compact
                   projectName={task.projectId ? projectNames.get(task.projectId) : 'Inbox'}
-                  onToggleDone={(t) => void actions.toggleDone(t)}
+                  onToggleDone={narrow ? undefined : (t) => void actions.toggleDone(t)}
                   onOpen={(t) => navigate(taskLink(t))}
                   actions={
                     <>

@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { format, parseISO } from 'date-fns'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { seedSnapshot } from '../../data/seed'
 import { addDaysISO, todayISO, weekStartOf } from '../../domain/week'
 import { renderApp } from '../plan/testUtils'
@@ -32,6 +32,62 @@ describe('WeekPage', () => {
     renderApp(<WeekPage />, { snapshot })
     const today = await dayRegion(todayISO())
     expect(today.getByText('Follow up: Finance team re Collect final cost figures')).toBeInTheDocument()
+  })
+
+  it('stacks follow-ups on delegated tasks in a Delegated card under their day', async () => {
+    const snapshot = seedSnapshot(todayISO())
+    const delegated = snapshot.tasks.find((t) => t.assigneeId !== null)!
+    delegated.followUpDate = todayISO()
+    renderApp(<WeekPage />, { snapshot })
+
+    const name = `Delegated, ${format(parseISO(todayISO()), 'EEEE MMMM d')}`
+    const card = within(await screen.findByRole('region', { name }))
+    expect(card.getByText('Design content page templates')).toBeInTheDocument()
+    expect(card.getByText('Priya Shah')).toBeInTheDocument()
+    expect(card.getByText('Client website redesign · Design')).toBeInTheDocument()
+    const today = await dayRegion(todayISO())
+    expect(today.queryByText('Design content page templates')).not.toBeInTheDocument()
+  })
+
+  it('widens today on wide screens (the only column with checkboxes), and another column when its day name is clicked', async () => {
+    // Pretend to be the 8-column board (xl); jsdom's matchMedia otherwise never matches.
+    const matchMedia = vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query) =>
+        ({
+          matches: query === '(min-width: 80rem)',
+          media: query,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+        }) as unknown as MediaQueryList,
+    )
+    const user = userEvent.setup()
+    renderApp(<WeekPage />)
+    const expandedOf = (day: string) =>
+      within(screen.getByRole('region', { name: format(parseISO(day), 'EEEE MMMM d') }))
+        .getByRole('button', { name: new RegExp(`^${format(parseISO(day), 'EEE')}`) })
+        .getAttribute('aria-expanded')
+    const ws = weekStartOf(todayISO())
+    const other = todayISO() === ws ? addDaysISO(ws, 1) : ws
+
+    const today = await dayRegion(todayISO())
+    expect(expandedOf(todayISO())).toBe('true')
+    expect(expandedOf(other)).toBe('false')
+    // Only the wide column has checkboxes.
+    expect(today.getByRole('checkbox', { name: 'Mark "Design homepage" done' })).toBeInTheDocument()
+    const anyDay = within(screen.getByRole('region', { name: 'This week, any day' }))
+    expect(anyDay.getByText('Draft sitemap')).toBeInTheDocument()
+    expect(anyDay.queryByRole('checkbox')).not.toBeInTheDocument()
+
+    const otherName = new RegExp(`^${format(parseISO(other), 'EEE')}`)
+    await user.click(screen.getByRole('button', { name: otherName }))
+    expect(expandedOf(other)).toBe('true')
+    expect(expandedOf(todayISO())).toBe('false')
+
+    // Narrowing it again goes back to the default: today.
+    await user.click(screen.getByRole('button', { name: otherName }))
+    expect(expandedOf(other)).toBe('false')
+    expect(expandedOf(todayISO())).toBe('true')
+    matchMedia.mockRestore()
   })
 
   it('moves a task to another day via the Move to… menu', async () => {

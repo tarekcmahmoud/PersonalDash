@@ -17,7 +17,7 @@ function isActive(pathname: string, to: string) {
   return to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(to + '/')
 }
 
-function RailLink({ item, active, badge }: { item: NavItem; active: boolean; badge: number }) {
+function DockLink({ item, active, badge }: { item: NavItem; active: boolean; badge: number }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -26,23 +26,27 @@ function RailLink({ item, active, badge }: { item: NavItem; active: boolean; bad
           aria-label={badge > 0 ? `${item.label} (${badge})` : item.label}
           aria-current={active ? 'page' : undefined}
           className={cn(
-            'relative flex size-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground',
+            'relative flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring',
             active && 'text-foreground',
           )}
         >
-          {active && (
-            <span aria-hidden className="absolute top-2 bottom-2 -left-2 w-0.5 rounded-full bg-primary" />
-          )}
           <item.icon className="size-5" strokeWidth={1.75} />
+          {/* The current page: a small yellow dot under the icon. */}
+          {active && (
+            <span
+              aria-hidden
+              className="absolute -bottom-1.5 left-1/2 size-1 -translate-x-1/2 rounded-full bg-primary"
+            />
+          )}
           {badge > 0 && (
             <span
               aria-hidden
-              className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary ring-2 ring-background"
+              className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary ring-2 ring-card"
             />
           )}
         </NavLink>
       </TooltipTrigger>
-      <TooltipContent side="right">
+      <TooltipContent side="top" sideOffset={10}>
         {item.label}
         {badge > 0 ? ` (${badge})` : ''}
       </TooltipContent>
@@ -50,7 +54,10 @@ function RailLink({ item, active, badge }: { item: NavItem; active: boolean; bad
   )
 }
 
-/** Layout: a quiet 56px icon rail on wide screens; a slim bottom tab bar (+ "More" menu) on phones. */
+/**
+ * Layout: on wider screens a static dock of icons floats at the bottom centre (main pages, a divider, the rest);
+ * on phones a slim bottom tab bar (+ "More" menu).
+ */
 export function AppShell() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -59,24 +66,21 @@ export function AppShell() {
   const badgeFor = (item: NavItem) => (item.to === '/inbox' ? inboxCount : 0)
 
   return (
-    <div className="min-h-screen md:grid md:grid-cols-[56px_minmax(0,1fr)]">
+    <div className="min-h-screen">
       <nav
         aria-label="Main"
-        className="sticky top-0 hidden h-screen flex-col items-center justify-between border-r py-3 md:flex"
+        className="fixed bottom-4 left-1/2 z-20 hidden -translate-x-1/2 items-center gap-1 rounded-[20px] bg-card/85 px-2 pt-1.5 pb-2 shadow-lg ring-1 ring-foreground/5 backdrop-blur-md backdrop-saturate-150 md:flex dark:ring-foreground/10"
       >
-        <div className="flex flex-col items-center gap-1">
-          {NAV_ITEMS.filter((i) => i.primary).map((item) => (
-            <RailLink key={item.to} item={item} active={isActive(pathname, item.to)} badge={badgeFor(item)} />
-          ))}
-        </div>
-        <div className="flex flex-col items-center gap-1">
-          {NAV_ITEMS.filter((i) => !i.primary).map((item) => (
-            <RailLink key={item.to} item={item} active={isActive(pathname, item.to)} badge={badgeFor(item)} />
-          ))}
-        </div>
+        {NAV_ITEMS.filter((i) => i.primary).map((item) => (
+          <DockLink key={item.to} item={item} active={isActive(pathname, item.to)} badge={badgeFor(item)} />
+        ))}
+        <span aria-hidden className="mx-1 h-6 w-px bg-border" />
+        {NAV_ITEMS.filter((i) => !i.primary).map((item) => (
+          <DockLink key={item.to} item={item} active={isActive(pathname, item.to)} badge={badgeFor(item)} />
+        ))}
       </nav>
 
-      <main className="min-w-0 px-4 pt-6 pb-24 md:px-10 md:pt-10 md:pb-12">
+      <main className="min-w-0 px-4 pt-6 pb-24 md:px-10 md:pt-10 md:pb-28">
         <CalendarSync />
         <div className="mx-auto max-w-[760px] empty:hidden [&:not(:empty)]:mb-4">
           <CalendarReconnectBanner />
