@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { makeProject, makeTask } from '../../domain/factories'
 import type { HealthFlag } from '../../domain/health'
 import { CapacityBar, CapacityLine } from './CapacityBar'
-import { topSignal } from './format'
+import { plannedLabel, topSignal } from './format'
 import { ProjectSignal } from './HealthBadges'
 import { ProjectObjective } from './ProjectObjective'
 import { SizeLabel } from './SizeLabel'
@@ -130,5 +130,19 @@ describe('TaskRow', () => {
     expect(onOpen).toHaveBeenCalledWith(task)
     expect(screen.getByRole('button', { name: 'Act' })).toBeInTheDocument()
     expect(screen.getByText('After: X')).toBeInTheDocument()
+  })
+})
+
+describe('plannedLabel', () => {
+  const today = '2026-10-08' // Thursday; the week starts Mon Oct 5
+  it('shows the weekday in this week and the date in other weeks', () => {
+    expect(plannedLabel({ weekStart: '2026-10-05', pinnedDay: '2026-10-09' }, today)).toBe('Fri')
+    expect(plannedLabel({ weekStart: '2026-11-02', pinnedDay: '2026-11-04' }, today)).toBe('Wed Nov 4')
+  })
+  it('names a later week planned without a day, and nothing otherwise', () => {
+    expect(plannedLabel({ weekStart: '2026-11-02', pinnedDay: null }, today)).toBe('Week of Nov 2')
+    expect(plannedLabel({ weekStart: '2026-10-05', pinnedDay: null }, today)).toBeNull()
+    expect(plannedLabel({ weekStart: '2026-09-28', pinnedDay: null }, today)).toBeNull()
+    expect(plannedLabel({ weekStart: null, pinnedDay: null }, today)).toBeNull()
   })
 })
