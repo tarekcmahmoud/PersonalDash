@@ -1,5 +1,7 @@
 import { format, parseISO } from 'date-fns'
 import type { HealthFlag } from '../../domain/health'
+import type { ISODate } from '../../domain/types'
+import { weekStartOf } from '../../domain/week'
 
 /** Hours rounded to 1 decimal, without a trailing ".0". */
 export function formatHours(hours: number): string {
@@ -10,6 +12,23 @@ export function formatHours(hours: number): string {
 export function formatTargetDate(iso: string, now: Date = new Date()): string {
   const d = parseISO(iso)
   return d.getFullYear() === now.getFullYear() ? format(d, 'MMM d') : format(d, 'MMM d, yyyy')
+}
+
+/**
+ * When a planned task is scheduled, as row metadata: the weekday ("Tue") for a day in the current week, the date
+ * ("Tue Oct 27") for a day in another week, "Week of Oct 26" for a later week without a day. null when unplanned
+ * or planned in the current (or an earlier) week without a day.
+ */
+export function plannedLabel(
+  task: { weekStart: ISODate | null; pinnedDay: ISODate | null },
+  today: ISODate,
+): string | null {
+  const thisWeek = weekStartOf(today)
+  if (task.pinnedDay)
+    return format(parseISO(task.pinnedDay), weekStartOf(task.pinnedDay) === thisWeek ? 'EEE' : 'EEE MMM d')
+  if (task.weekStart && task.weekStart > thisWeek)
+    return `Week of ${format(parseISO(task.weekStart), 'MMM d')}`
+  return null
 }
 
 export type SignalTone = 'danger' | 'warning' | 'muted'

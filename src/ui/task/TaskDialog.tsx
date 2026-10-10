@@ -32,6 +32,7 @@ import { ChecklistEditor } from './ChecklistEditor'
 import { SplitTask } from './SplitTask'
 
 const SIZES: TaskSize[] = ['S', 'M', 'L', 'XL']
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 const sameIds = (a: ID[], b: ID[]) => a.length === b.length && a.every((id) => b.includes(id))
 
 /** The Day select: not planned, planned in a week without a day (`week:<Monday>`), or pinned to a date. */
@@ -50,13 +51,16 @@ function dayPatch(task: Task, choice: DayChoice): Partial<Task> {
 }
 
 /**
- * The weeks the Day select offers: this week, next week, and the task's own week when it is another one (a
- * leftover from an earlier week, or one further ahead), in date order.
+ * The weeks the Day select offers: this week, next week, the task's own week when it is another one (a leftover
+ * from an earlier week, or one further ahead) and the week of the date picked with "Another date…", in date order.
  */
-function dayWeeks(task: Task, today: ISODate): { weekStart: ISODate; label: string }[] {
+function dayWeeks(task: Task, today: ISODate, day: DayChoice): { weekStart: ISODate; label: string }[] {
   const thisWeek = weekStartOf(today)
   const nextWeek = addDaysISO(thisWeek, 7)
-  const weeks = [...new Set([thisWeek, nextWeek, ...(task.weekStart ? [task.weekStart] : [])])].sort()
+  const chosen =
+    day === 'unplanned' ? [] : [weekStartOf(day.startsWith('week:') ? day.slice('week:'.length) : day)]
+  const own = task.weekStart ? [task.weekStart] : []
+  const weeks = [...new Set([thisWeek, nextWeek, ...own, ...chosen])].sort()
   return weeks.map((weekStart) => ({
     weekStart,
     label:
@@ -99,6 +103,8 @@ function Field({
 }
 
 const NO_PROJECT = 'inbox'
+/** Day select item that reveals a date field for any day from this week on. */
+const OTHER_DATE = 'other'
 const NO_MILESTONE = 'none'
 const ME = 'me'
 /**
@@ -139,6 +145,7 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
   const [followUpDate, setFollowUpDate] = useState<ISODate>(task.followUpDate ?? '')
   const [assigneeId, setAssigneeId] = useState<ID | null>(task.assigneeId)
   const [day, setDay] = useState<DayChoice>(initialDay)
+  const [pickingDate, setPickingDate] = useState(false)
   const [checklist, setChecklist] = useState<ChecklistItem[]>(savedChecklist)
   const [blockedBy, setBlockedBy] = useState<ID[]>(savedBlockers)
   const [submitted, setSubmitted] = useState(false)
@@ -388,12 +395,15 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
             </Field>
             {!delegated && (
               <Field label="Day" htmlFor={`${uid}-day`}>
-                <Select value={day} onValueChange={(v) => setDay(v as DayChoice)}>
+                <Select
+                  value={day}
+                  onValueChange={(v) => (v === OTHER_DATE ? setPickingDate(true) : setDay(v as DayChoice))}
+                >
                   <SelectTrigger id={`${uid}-day`} className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {dayWeeks(task, todayISO()).map(({ weekStart, label }) => (
+                    {dayWeeks(task, todayISO(), day).map(({ weekStart, label }) => (
                       <SelectGroup key={weekStart}>
                         <SelectLabel>{label}</SelectLabel>
                         <SelectItem value={`week:${weekStart}`}>{`${label}, no day`}</SelectItem>
@@ -405,9 +415,24 @@ export function TaskDialog({ task, onClose }: { task: Task; onClose: () => void 
                       </SelectGroup>
                     ))}
                     <SelectSeparator />
+                    <SelectItem value={OTHER_DATE}>Another date…</SelectItem>
                     <SelectItem value="unplanned">Not planned</SelectItem>
                   </SelectContent>
                 </Select>
+              </Field>
+            )}
+            {!delegated && pickingDate && (
+              <Field label="Date" htmlFor={`${uid}-date`}>
+                <Input
+                  id={`${uid}-date`}
+                  type="date"
+                  min={weekStartOf(todayISO())}
+                  value={ISO_DATE.test(day) ? day : ''}
+                  onChange={(e) => {
+                    const date = e.target.value
+                    if (ISO_DATE.test(date) && date >= weekStartOf(todayISO())) setDay(date)
+                  }}
+                />
               </Field>
             )}
 

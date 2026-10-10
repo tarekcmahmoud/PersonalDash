@@ -247,6 +247,30 @@ describe('TaskDialog', () => {
     })
   })
 
+  it('plans a task on any later date with "Another date…"', async () => {
+    const user = userEvent.setup()
+    const { dialog, snapshot } = await openDialog('Renew car insurance')
+    const later = addDaysISO(weekStartOf(TEST_TODAY), 7 * 5 + 3)
+    const day = within(dialog).getByRole('combobox', { name: 'Day' })
+    await pick(user, day, 'Another date…')
+    await user.type(within(dialog).getByLabelText('Date'), later)
+    expect(day).toHaveTextContent(dayOption(later))
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(async () => {
+      const saved = (await snapshot()).tasks.find((t) => t.id === task('Renew car insurance').id)!
+      expect(saved).toMatchObject({ weekStart: weekStartOf(later), pinnedDay: later })
+    })
+  })
+
+  it('ignores a date before this week', async () => {
+    const user = userEvent.setup()
+    const { dialog } = await openDialog('Renew car insurance')
+    const day = within(dialog).getByRole('combobox', { name: 'Day' })
+    await pick(user, day, 'Another date…')
+    await user.type(within(dialog).getByLabelText('Date'), addDaysISO(weekStartOf(TEST_TODAY), -1))
+    expect(day).toHaveTextContent('Not planned')
+  })
+
   it('unplans a planned task with "Not planned"', async () => {
     const user = userEvent.setup()
     const { dialog, snapshot } = await openDialog('Design homepage')

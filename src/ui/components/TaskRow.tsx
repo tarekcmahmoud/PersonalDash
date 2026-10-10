@@ -2,8 +2,10 @@ import { format, parseISO } from 'date-fns'
 import { Clock, UserRound } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Task } from '../../domain/types'
+import { todayISO } from '../../domain/week'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
+import { plannedLabel } from './format'
 import { SizeLabel } from './SizeLabel'
 
 const SLIP_WARNING_AT = 2
@@ -30,7 +32,7 @@ export interface TaskRowProps {
   muted?: boolean
   /** Small grey line under the title (e.g. "After: Draft sitemap"). */
   note?: ReactNode
-  /** Hide the pinned-day metadata (e.g. inside a day column). */
+  /** Hide the planned day/week metadata (e.g. inside a day column). */
   hideDay?: boolean
   /** Hide the delegated-to metadata (e.g. in a list grouped by person). */
   hideAssignee?: boolean
@@ -74,7 +76,8 @@ export function TaskRow({
       </span>,
     )
   items.push(<SizeLabel key="s" size={task.size} />)
-  if (task.pinnedDay && !hideDay) items.push(<span key="d">{format(parseISO(task.pinnedDay), 'EEE')}</span>)
+  const planned = hideDay ? null : plannedLabel(task, todayISO())
+  if (planned) items.push(<span key="d">{planned}</span>)
   if (checklist && checklist.total > 0)
     items.push(<span key="c" className="tabular-nums">{`${checklist.done}/${checklist.total}`}</span>)
   if (task.status === 'waiting')
