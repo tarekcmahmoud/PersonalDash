@@ -60,6 +60,13 @@ describe('moveIntoGroup', () => {
     expect(byId.has('a')).toBe(false)
   })
 
+  it('inserts before the next open task when dropped on a done task still in view', () => {
+    const saved = moveIntoGroup(target, moving, 'sub', 'done')
+    const byId = new Map(saved.map((s) => [s.id, s]))
+    expect(byId.get('x')).toMatchObject({ milestoneId: 'sub', position: 2 })
+    expect(byId.get('b')!.position).toBe(3)
+  })
+
   it('appends when dropped on the group itself', () => {
     const saved = moveIntoGroup(target, moving, 'sub', null)
     expect(saved).toEqual([{ ...moving, milestoneId: 'sub', position: 3 }])

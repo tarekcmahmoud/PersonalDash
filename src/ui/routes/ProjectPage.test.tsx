@@ -54,6 +54,18 @@ describe('ProjectPage', () => {
     expect(screen.queryByRole('button', { name: 'Kickoff call with client' })).not.toBeInTheDocument()
   })
 
+  it('keeps a task ticked off today in its list, struck through, outside the done count', async () => {
+    const user = userEvent.setup()
+    const { snapshot } = renderPage({ route })
+    await user.click(await screen.findByRole('checkbox', { name: /Draft sitemap/ }))
+    await waitFor(() => expect(rowOf('Draft sitemap')).toHaveAttribute('data-status', 'done'))
+    expect(screen.getByRole('button', { name: 'Draft sitemap' })).toHaveClass('line-through')
+    expect(screen.getByRole('button', { name: '3 done' })).toBeInTheDocument()
+    await waitFor(async () =>
+      expect((await snapshot()).tasks.find((t) => t.id === sitemap.id)!.status).toBe('done'),
+    )
+  })
+
   it('links back to the projects list', async () => {
     renderPage({ route })
     expect(await screen.findByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/projects')

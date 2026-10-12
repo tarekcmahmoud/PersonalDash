@@ -1,6 +1,6 @@
 import type { PlanContext } from './context'
 import type { ID, ISODate, Project, Task } from './types'
-import { addDaysISO, fromISODate } from './week'
+import { addDaysISO, fromISODate, toISODate } from './week'
 
 export const CHRONIC_SLIP_THRESHOLD = 2
 
@@ -83,6 +83,19 @@ export const isChronicSlipper = (task: Task): boolean => task.slipCount >= CHRON
 /** Patch for completing a task (status done, completedAt = nowIso, gcalDirty if pinned with an event). */
 export function completeTask(task: Task, nowIso: string): Partial<Task> {
   return { status: 'done', completedAt: nowIso, gcalDirty: dirtyAfter(task) }
+}
+
+/** True when the task is done and was completed on `day` (the local date of completedAt). */
+export function completedOn(task: Task, day: ISODate): boolean {
+  return task.status === 'done' && task.completedAt !== null && toISODate(new Date(task.completedAt)) === day
+}
+
+/**
+ * Whether a task stays in task lists on `today`: open tasks do, and so do tasks completed today (shown struck
+ * through until the day ends).
+ */
+export function inViewOn(task: Task, today: ISODate): boolean {
+  return task.status !== 'done' || completedOn(task, today)
 }
 
 /** Patch for un-completing a task. */

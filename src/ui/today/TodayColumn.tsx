@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useTaskActions } from '../../data/taskActions'
 import type { PlanContext } from '../../domain/context'
+import { inViewOn } from '../../domain/review'
 import type { Task } from '../../domain/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { CardSection } from '../components/Page'
@@ -32,12 +33,11 @@ export function TodayColumn({ ctx }: { ctx: PlanContext }) {
   const pinnedToday = tasks.filter((t) => t.pinnedDay === today)
   const followUpsDue = stats.followUps.filter((f) => f.kind === 'waiting' && f.date <= today)
   const delegated = stats.followUps.filter((f) => f.kind === 'delegated')
-  const overduePinned = tasks.filter(
-    (t) => t.pinnedDay !== null && t.pinnedDay < today && t.status !== 'done',
-  )
-  const unpinned = stats.planned.filter((t) => t.status !== 'done' && t.pinnedDay === null)
+  // Tasks ticked off today stay where they were, struck through, until the day ends.
+  const overduePinned = tasks.filter((t) => t.pinnedDay !== null && t.pinnedDay < today && inViewOn(t, today))
+  const unpinned = stats.planned.filter((t) => inViewOn(t, today) && t.pinnedDay === null)
   const laterPinned = stats.planned
-    .filter((t) => t.status !== 'done' && t.pinnedDay !== null && t.pinnedDay > today)
+    .filter((t) => inViewOn(t, today) && t.pinnedDay !== null && t.pinnedDay > today)
     .sort((a, b) => (a.pinnedDay ?? '').localeCompare(b.pinnedDay ?? ''))
   const laterDays = [...new Set(laterPinned.map((t) => t.pinnedDay!))]
 

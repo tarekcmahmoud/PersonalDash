@@ -18,6 +18,25 @@ describe('delegationByPerson', () => {
     makeTask({ title: 'Mine', followUpDate: TODAY }),
   ]
 
+  it("keeps a task finished today in its person's list, never due; earlier ones drop out", () => {
+    const finishedToday = makeTask({
+      title: 'Just done',
+      assigneeId: ana.id,
+      followUpDate: '2026-10-06',
+      status: 'done',
+      completedAt: new Date(2026, 9, 8, 9).toISOString(),
+    })
+    const finishedBefore = makeTask({
+      title: 'Done Monday',
+      assigneeId: ana.id,
+      status: 'done',
+      completedAt: new Date(2026, 9, 5, 9).toISOString(),
+    })
+    const [ana_] = delegationByPerson([finishedToday, finishedBefore], [ana], TODAY)
+    expect(ana_!.items.map((i) => [i.task.title, i.due, i.overdue])).toEqual([['Just done', false, false]])
+    expect(ana_!.dueCount).toBe(0)
+  })
+
   it('groups open delegated tasks by person, people with follow-ups due first', () => {
     const groups = delegationByPerson(tasks, [sam, priya, ana], TODAY)
     expect(groups.map((g) => g.person.name)).toEqual(['Priya', 'Sam'])

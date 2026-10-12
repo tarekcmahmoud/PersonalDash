@@ -31,6 +31,8 @@ A weekly planner for people running many projects at once. PersonalDash helps yo
 - **Schedule ahead**: a task's Day field offers this week and next week (a day, or the week without a day), and
   "Another date…" for any date from this week on; the day menu on Today, Plan and Week has "Next week" and
   "Another date…". Task rows show the date (or "Week of …") when it isn't this week.
+- **Done stays in view for the day**: a task you tick off stays where it was, struck through, until the day ends
+  (Today, project pages, Inbox, Delegated). Older done tasks are under each list's collapsed "n done".
 - **Weekly review** at the end of each week.
 - **Follow-ups** for tasks you are waiting on from someone else.
 - **Templates** and **outline import**: reuse a project structure, or import a plan written in the outline format.

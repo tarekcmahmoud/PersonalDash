@@ -39,6 +39,20 @@ describe('TodayPage', () => {
     expect(later.getByText('Draft sitemap')).toBeInTheDocument()
   })
 
+  it('keeps a task ticked off today where it was, struck through', async () => {
+    const user = userEvent.setup()
+    renderApp(<TodayPage />)
+    const later = await section('Later this week')
+    await user.click(later.getByRole('checkbox', { name: /Draft sitemap/ }))
+    await waitFor(() =>
+      expect(later.getByText('Draft sitemap').closest('[data-testid="task-row"]')).toHaveAttribute(
+        'data-status',
+        'done',
+      ),
+    )
+    expect(later.getByText('Draft sitemap')).toHaveClass('line-through')
+  })
+
   it('moves a task to next week from its day menu', async () => {
     const user = userEvent.setup()
     renderApp(<TodayPage />)

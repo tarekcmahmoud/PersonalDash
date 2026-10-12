@@ -4,6 +4,8 @@ import {
   CHRONIC_SLIP_THRESHOLD,
   carryOver,
   completeTask,
+  completedOn,
+  inViewOn,
   isChronicSlipper,
   reopenTask,
   returnToProject,
@@ -183,5 +185,25 @@ describe('completeTask / reopenTask', () => {
 
   it('reopening keeps an existing dirty flag', () => {
     expect(reopenTask(makeTask({ title: 'x', status: 'done', gcalDirty: true })).gcalDirty).toBe(true)
+  })
+})
+
+describe('completedOn / inViewOn', () => {
+  const today = '2026-10-08'
+  it('keeps open tasks and tasks completed today (local date) in view', () => {
+    const open = makeTask({ title: 'Open' })
+    const doneLate = doneAt('Late tonight', null, local(10, 8, 23, 30))
+    const doneEarly = doneAt('Early today', null, local(10, 8, 0, 5))
+    const doneYesterday = doneAt('Yesterday', null, local(10, 7, 23, 59))
+    expect(completedOn(doneLate, today)).toBe(true)
+    expect(completedOn(doneYesterday, today)).toBe(false)
+    expect(completedOn(open, today)).toBe(false)
+    expect(
+      [open, doneLate, doneEarly, doneYesterday].filter((t) => inViewOn(t, today)).map((t) => t.title),
+    ).toEqual(['Open', 'Late tonight', 'Early today'])
+  })
+
+  it('treats a done task without a completion time as out of view', () => {
+    expect(inViewOn(makeTask({ title: 'Old', status: 'done', completedAt: null }), today)).toBe(false)
   })
 })

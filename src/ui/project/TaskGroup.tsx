@@ -14,6 +14,7 @@ import type { PlanContext } from '../../domain/context'
 import { makeTask } from '../../domain/factories'
 import { explicitBlockerIds, streamLabel, unfinishedBlockers } from '../../domain/order'
 import { FIRST_FOLLOW_UP_DAYS } from '../../domain/delegation'
+import { inViewOn } from '../../domain/review'
 import type { Person, Project, Task, TaskSize } from '../../domain/types'
 import { addDaysISO } from '../../domain/week'
 import { cn } from '@/lib/utils'
@@ -75,8 +76,9 @@ export function TaskGroup({
   const apply = useApply()
   const updateTasks = useUpdateTasks()
   const groupName = group.milestone?.name ?? 'the project'
-  const open = group.tasks.filter((t) => t.status !== 'done')
-  const done = group.tasks.filter((t) => t.status === 'done')
+  // The list: open tasks, plus tasks ticked off today (struck through in place until the day ends).
+  const open = group.tasks.filter((t) => inViewOn(t, ctx.today))
+  const done = group.tasks.filter((t) => !inViewOn(t, ctx.today))
   // A workstream (not a substream) can get substreams: "+ Add substream" next to "+ Add task".
   const workstream = !nested && group.milestone?.parentId === null ? group.milestone : null
   const [addingSubstream, setAddingSubstream] = useState(false)

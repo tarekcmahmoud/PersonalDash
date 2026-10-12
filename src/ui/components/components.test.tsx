@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { makeProject, makeTask } from '../../domain/factories'
 import type { HealthFlag } from '../../domain/health'
 import { CapacityBar, CapacityLine } from './CapacityBar'
+import { todayISO, weekStartOf } from '../../domain/week'
 import { plannedLabel, topSignal } from './format'
 import { ProjectSignal } from './HealthBadges'
 import { ProjectObjective } from './ProjectObjective'
@@ -100,7 +101,8 @@ describe('TaskRow', () => {
         task={makeTask({
           title: 'T',
           size: 'M',
-          pinnedDay: '2026-10-08',
+          // A day of the current week shows as its weekday.
+          pinnedDay: weekStartOf(todayISO()),
           status: 'waiting',
           waitingOn: 'Finance',
           followUpDate: '2026-10-09',
@@ -114,7 +116,7 @@ describe('TaskRow', () => {
     for (const text of [
       'Board report',
       'M',
-      'Thu',
+      'Mon',
       '1/3',
       'Waiting on Finance · Oct 9',
       'Slipped ×2',

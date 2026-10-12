@@ -1,4 +1,5 @@
 import { isDelegated } from './followups'
+import { completedOn } from './review'
 import type { ISODate, Person, Task } from './types'
 
 /** Days until the first follow-up when a task is delegated. */
@@ -14,7 +15,7 @@ export interface DelegatedItem {
 
 export interface PersonDelegation {
   person: Person
-  /** Their open tasks: by follow-up date (no date last), then title. */
+  /** Their open tasks, plus those finished today: by follow-up date (no date last), then title. */
   items: DelegatedItem[]
   /** How many follow-ups are due (today or earlier). */
   dueCount: number
@@ -29,19 +30,23 @@ const byFollowUp = (a: Task, b: Task): number =>
 
 /**
  * Everything delegated, grouped by person: people with follow-ups due first (then by their earliest follow-up),
- * then by name. People without open delegated tasks are left out.
+ * then by name. People without open delegated tasks (or ones finished today) are left out. A finished task is
+ * never due.
  */
 export function delegationByPerson(tasks: Task[], people: Person[], today: ISODate): PersonDelegation[] {
   return people
     .map((person) => {
       const items = tasks
-        .filter((t) => isDelegated(t) && t.assigneeId === person.id)
+        .filter((t) => t.assigneeId === person.id && (isDelegated(t) || completedOn(t, today)))
         .sort(byFollowUp)
-        .map((task) => ({
-          task,
-          due: task.followUpDate !== null && task.followUpDate <= today,
-          overdue: task.followUpDate !== null && task.followUpDate < today,
-        }))
+        .map((task) => {
+          const open = task.status !== 'done' && task.followUpDate !== null
+          return {
+            task,
+            due: open && task.followUpDate! <= today,
+            overdue: open && task.followUpDate! < today,
+          }
+        })
       return { person, items, dueCount: items.filter((i) => i.due).length }
     })
     .filter((g) => g.items.length > 0)

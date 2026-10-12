@@ -3,9 +3,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useApply, useSnapshot } from '../../data/hooks'
+import { useApply, useSnapshot, useToday } from '../../data/hooks'
 import { useTaskActions } from '../../data/taskActions'
 import { makeTask } from '../../domain/factories'
+import { inViewOn } from '../../domain/review'
 import type { Task } from '../../domain/types'
 import { Page } from '../components/Page'
 import { TaskRow } from '../components/TaskRow'
@@ -17,6 +18,7 @@ import { useTaskParam } from '../task/useTaskParam'
 
 export function InboxPage() {
   const { data } = useSnapshot()
+  const today = useToday()
   const apply = useApply()
   const actions = useTaskActions()
   const { open } = useTaskParam()
@@ -36,8 +38,9 @@ export function InboxPage() {
   }
 
   const inbox = data ? groupTasks(data.tasks, null, null) : []
-  const openTasks = inbox.filter((t) => t.status !== 'done')
-  const doneTasks = inbox.filter((t) => t.status === 'done')
+  // Tasks ticked off today stay in the list, struck through, until the day ends.
+  const openTasks = inbox.filter((t) => inViewOn(t, today))
+  const doneTasks = inbox.filter((t) => !inViewOn(t, today))
   const checklistOf = (taskId: string) => {
     const items = data?.checklist.filter((c) => c.taskId === taskId) ?? []
     return { done: items.filter((c) => c.done).length, total: items.length }

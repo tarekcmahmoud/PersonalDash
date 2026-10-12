@@ -48,7 +48,8 @@ export function renumberGroup(full: Task[], openInNewOrder: Task[]): Task[] {
 
 /**
  * Moves an open `task` into another group (`milestoneId`; `target` = that group's tasks in order, done included),
- * before the open task `beforeId`, or after the last open task when it is null or not in the group. Returns the
+ * before the task `beforeId` (a done one: before the next open task), or after the last open task when it is null
+ * or not in the group. Returns the
  * tasks to save: the moved task (new milestoneId and position) and the target tasks whose position changed. The
  * group it left keeps its gaps, which ordering ignores.
  */
@@ -61,7 +62,10 @@ export function moveIntoGroup(
   const moved = { ...task, milestoneId }
   const others = target.filter((t) => t.id !== task.id)
   const open = others.filter((t) => t.status !== 'done')
-  const at = beforeId === null ? -1 : open.findIndex((t) => t.id === beforeId)
+  // Dropped above a done task still in view: before the next open task after it.
+  const from = beforeId === null ? -1 : others.findIndex((t) => t.id === beforeId)
+  const before = from === -1 ? undefined : others.slice(from).find((t) => t.status !== 'done')
+  const at = before ? open.indexOf(before) : -1
   const openInNewOrder = at === -1 ? [...open, moved] : [...open.slice(0, at), moved, ...open.slice(at)]
   const changed = renumberGroup([...others, moved], openInNewOrder)
   // Not in `changed` means its new slot equals its old position; it still moves group.

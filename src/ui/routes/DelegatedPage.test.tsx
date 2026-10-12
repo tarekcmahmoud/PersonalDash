@@ -43,8 +43,14 @@ describe('DelegatedPage', () => {
       ),
     )
 
+    // Ticked off: it stays listed for the rest of the day, struck through and no longer due.
     await user.click(screen.getByRole('checkbox', { name: /Design content page templates/ }))
-    await waitFor(() => expect(screen.queryByText('Design content page templates')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(
+        screen.getByText('Design content page templates').closest('[data-testid="task-row"]'),
+      ).toHaveAttribute('data-status', 'done'),
+    )
+    expect(screen.getByText('Design content page templates')).toHaveClass('line-through')
   })
 
   it('explains how to delegate when nothing is', async () => {

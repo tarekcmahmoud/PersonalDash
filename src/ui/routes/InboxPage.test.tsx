@@ -19,6 +19,16 @@ describe('InboxPage', () => {
     expect(screen.queryByRole('button', { name: 'Draft sitemap' })).not.toBeInTheDocument()
   })
 
+  it('keeps a task ticked off today in the list, struck through', async () => {
+    const user = userEvent.setup()
+    render()
+    await user.click(await screen.findByRole('checkbox', { name: /Renew passport/ }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Renew passport' })).toHaveClass('line-through'),
+    )
+    expect(screen.getByRole('button', { name: 'File to… Renew passport' })).toBeInTheDocument()
+  })
+
   it('captures a task with Enter as a size S inbox task', async () => {
     const user = userEvent.setup()
     const { snapshot } = render()
